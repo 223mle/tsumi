@@ -89,7 +89,8 @@ def run_trial(case, args, out):
     for c in case["checks"]:
         hit = any(fnmatch.fnmatch(p, c["glob"]) for p in paths)
         ok = hit if c["type"] == "must_read" else (not hit) if c["type"] == "must_not_read" else None
-        results.append({**c, "pass": ok})
+        tsumi_hit = any(fnmatch.fnmatch(p, c["glob"]) and p.startswith(str(ROOT) + "/") for p in paths)
+        results.append({**c, "pass": ok, "tsumi_copy": tsumi_hit})
     trial = {"exit": code, "skills_read": sorted(paths), "tools": sorted(tools),
              "checks": results, "pass": code == 0 and all(r["pass"] for r in results)}
     (out / "trial.json").write_text(json.dumps(trial, ensure_ascii=False, indent=1))
@@ -120,7 +121,8 @@ def main():
         n = sum(t["pass"] for t in trials)
         verdict = "pass" if n == len(trials) else "fail" if n == 0 else "flaky"
         summary.append({"id": case["id"], "verdict": verdict, "passed": n, "trials": len(trials),
-                        "skills_read": [t["skills_read"] for t in trials]})
+                        "skills_read": [t["skills_read"] for t in trials],
+                        "checks": [[{k: r[k] for k in ("type", "glob", "pass", "tsumi_copy")} for r in t["checks"]] for t in trials]})
         print(f"{verdict:6} {n}/{len(trials)} {case['id']}", flush=True)
     (run_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
     print(f"results: {run_dir}")
