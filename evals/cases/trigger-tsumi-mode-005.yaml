@@ -1,0 +1,18 @@
+id: trigger-tsumi-mode-005
+title: tsumi 経由でスキルの description を変えると回帰評価のプレイブックを読む
+targets: [tsumi-mode]
+tags: [trigger, routing, ja]
+source: 手書き。tsumi-mode の Non-negotiables「スキル・プロンプトの変更 → Eval プレイブック」
+trials: 3
+prompt: |
+  tsumi で、次のスキルの description を、エージェントが読むきっかけになるように書き直してください。今の中身はこれです。
+
+  ---
+  name: invoice-check
+  description: 請求書をチェックする。
+  ---
+checks:
+  - type: must_read
+    glob: "**/tsumi-mode/SKILL.md"
+  - type: must_read
+    glob: "**/tsumi-mode/playbooks/eval.md"

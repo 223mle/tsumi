@@ -11,6 +11,8 @@
 2. description を変えたら、`evals/cases/trigger-*.yaml` のお題で、読むべき依頼で読み、読むべきでない依頼で読まないことを確かめます。
 3. 本文を変えたら、`evals/README.md` の手順で変更前と変更後を比べます。
 
+スキルを足したら、`skills/tsumi-mode/SKILL.md` の Non-negotiables に「状況 → `../<名前>/SKILL.md`」の1行を足します。足し忘れると `scripts/check-skills` が落ちます。
+
 description の書き方は [docs/skill-authoring.md](docs/skill-authoring.md) にまとめています。
 
 ## 修正ログ

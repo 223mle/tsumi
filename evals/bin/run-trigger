@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Run trigger cases (evals/cases/trigger-*.yaml) with the Cursor CLI and judge
-which SKILL.md files the agent read, from stream-json tool_call events.
+which skill and playbook .md files the agent read, from stream-json tool_call events.
 
 Usage:
   evals/bin/run-trigger --pstack <pstack plugin dir> [--trials 3] [--model M]
@@ -50,7 +50,7 @@ def collect(obj, tools, paths):
         for k, v in obj.items():
             if k.endswith("ToolCall") and isinstance(v, dict):
                 tools.add(k)
-            if isinstance(v, str) and v.endswith("SKILL.md"):
+            if isinstance(v, str) and v.endswith(".md"):
                 paths.add(v)
             collect(v, tools, paths)
     elif isinstance(obj, list):

@@ -50,9 +50,24 @@
 
 | スキル | 役割 | 出どころ | 自動で読まれるか |
 |---|---|---|---|
-| `tsumi-mode` | ルーター。pstack の poteto-mode を読ませ、4段の順番と規則を足す | 新規 | 読まれる。ただし「tsumi で」「/tsumi-mode」「Daiki のやり方で」のときだけ |
+| `tsumi-mode` | 全スキルの入口となるルーター。pstack の poteto-mode を読ませ、Non-negotiables で状況ごとに tsumi と pstack のスキルを割り当てる。4段の順番と規則を足す | 新規 | 読まれる。ただし「tsumi で」「/tsumi-mode」「Daiki のやり方で」のときだけ |
 | `agent-design-review` | エージェントやスキルの設計と改善。4段の中身（呼び出し側からの道具設計、モデルと道具の契約、再発した修正の追い方） | 223mle/skills から移した | 読まれる |
 | `clear-japanese` | 日本語の清書 | 223mle/skills から移した | 読まれる |
+
+### 4.0 tsumi-mode をルーターにした理由
+
+Daiki の要望（2026-10-18）は「`/tsumi-mode <依頼>` で、ここで定義した全てのスキルを使う」こと。poteto-mode と同じ形にした（measured、poteto-mode の SKILL.md）。
+
+- Non-negotiables に「状況 → 必ず読むスキル」を並べた。pstack の Non-negotiables に足す形で、食い違ったら tsumi が勝つ。
+- 子スキルは `../<name>/SKILL.md` の相対パスで指す。poteto-mode と同じ書き方。
+- 子スキルは `disable-model-invocation` を付けず、単独でも発動する。pstack は子スキルをスラッシュ専用にしているが、tsumi の子スキルは description で発動させたい。
+- tsumi に新しいスキルを足したら、Non-negotiables に1行足す。`scripts/check-skills` は、tsumi-mode の本文に `../<name>/SKILL.md` がないスキルを見つけるとエラーにする。書き忘れを仕組みで止める（4段の2段目）。
+
+### 4.0.1 呼び出し形式
+
+- Cursor のドキュメントでは、スキルは `/skill-name` で呼ぶ（measured、cursor.com/docs/skills と cursor.com/docs/plugins）。プラグイン名を付ける形は書かれていない。
+- `/plugin-name:skill-name` は Claude Code の形（measured、code.claude.com/docs/ja/skills）。tsumi は `.cursor-plugin/plugin.json` しか持たないので、Claude Code のプラグインとしては読まれない（inferred）。
+- Cursor のフォーラムでは、複数のプラグインが同じ名前のスキルを持つと、`/` メニューで区別できないと報告されている（公式ドキュメントではない）。223mle/skills の clear-japanese と同時に入れると衝突する（guess）。
 
 ### 4.1 Daiki の考えの出どころ
 
@@ -91,7 +106,7 @@ tsumi に書いた Daiki の考えは、次から取った（measured）。
 
 tsumi-mode は pstack の poteto-mode を全部読ませるので重い。エージェント開発の依頼ならいつでも動く、という書き方にはしなかった。「tsumi で」などの明示の言葉に絞り、明示がないエージェント設計の相談は `agent-design-review` が受ける。この境界は `evals/cases/trigger-tsumi-mode-002.yaml` で確かめる。
 
-Cursor が `disable-model-invocation` を Claude Code と同じに扱うかは確かめていない（guess で同じ）。
+Cursor のドキュメントにも、`disable-model-invocation: true` のスキルは `/skill-name` で明示したときだけ含まれ、エージェントは自動で使わないとある（measured、cursor.com/docs/skills）。
 
 ## 5. pstack への上書き（脇役）
 
@@ -143,7 +158,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 
 - 設計は `evals/README.md`。
 - description の機械的な検査は `scripts/check-skills`（作った）。
-- トリガーのお題を6件作った。まだ回していない。Daiki の Mac の `cursor-agent` は 2025.09.18 版で `--plugin-dir` がない（measured）。
+- トリガーのお題は10件。単独での発動6件と、tsumi-mode から子スキルへの振り分け4件（003〜006）。実行は `evals/bin/run-trigger`。
 
 ## 9. 作る順番
 

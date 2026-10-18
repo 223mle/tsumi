@@ -1,5 +1,5 @@
 id: trigger-tsumi-mode-001
-title: 「tsumi で」と言ってエージェント作成を頼むと tsumi-mode と pstack の poteto-mode を読む
+title: 「tsumi で」と言ってエージェント作成を頼むと tsumi-mode、pstack の poteto-mode、agent-design-review を読む
 targets: [tsumi-mode]
 tags: [trigger, routing, ja, must-pass]
 source: 手書き。description の「tsumi で」トリガー
@@ -11,3 +11,5 @@ checks:
     glob: "**/tsumi-mode/SKILL.md"
   - type: must_read
     glob: "**/poteto-mode/SKILL.md"
+  - type: must_read
+    glob: "**/agent-design-review/SKILL.md"

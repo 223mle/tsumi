@@ -92,6 +92,14 @@ for path in skills:
         if n > 100 and "contents" not in head and "目次" not in head:
             warnings.append(f"{ref.relative_to(root)}: {n} lines without a table of contents")
 
+router = root / "skills" / "tsumi-mode" / "SKILL.md"
+if router.exists():
+    rtext = router.read_text(encoding="utf-8")
+    for path in skills:
+        n = path.parent.name
+        if n != "tsumi-mode" and f"../{n}/SKILL.md" not in rtext:
+            errors.append(f"skills/tsumi-mode/SKILL.md: no route to tsumi skill '{n}' (add a Non-negotiables line with ../{n}/SKILL.md)")
+
 for w in warnings:
     print(f"warn: {w}")
 for e in errors:

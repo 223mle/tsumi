@@ -66,7 +66,7 @@ description はエージェントがスキルを読むかどうかを決める�
 - 判定は transcript の読んだパスで行う。エージェントの自己申告は使わない。
 - 形式の検査（name の形、description の長さ、いつ使うかの記述）は `scripts/check-skills` が先に行う。
 
-今あるお題は6件（clear-japanese、agent-design-review、tsumi-mode で各2件）。実行は `evals/bin/run-trigger`。まだ一度も回していない。
+今あるお題は10件。各スキルが単独で発動するか（clear-japanese、agent-design-review、tsumi-mode で各2件）と、tsumi-mode から状況に合う子スキルへ振り分けるか（tsumi-mode-003〜006）。実行は `evals/bin/run-trigger`。まだ一度も回していない。
 
 ### blinding の規則
 

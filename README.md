@@ -21,11 +21,26 @@ pstack は、principle、プレイブック、返信の書き方といった開�
 
 ## スキル
 
-| スキル | エージェントが読む場面 |
+入口は `tsumi-mode` です。`/tsumi-mode <依頼>` と打つと、tsumi の全スキルと pstack のスキルを、状況に合わせて使い分けます。
+
+| 状況 | tsumi-mode が読むもの |
 |---|---|
-| [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode` と打ったときや、「tsumi で」と頼んでエージェントやスキルを作る・直す・評価するとき。pstack の `poteto-mode` を読み、上の順番と修正ログなどの規則を足して進めます |
-| [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき。モデルが繰り返している判断を、道具、部品、スキーマ、テンプレートへ移します |
-| [`clear-japanese`](skills/clear-japanese/SKILL.md) | 「日本語を直して」「分かりやすくして」と頼んだときや、設計書、README、PR 説明などの日本語を整えるとき。意味と文体を保って清書します |
+| エージェント、スキル、プロンプト、ツール定義、出力スキーマを設計する・直す | `agent-design-review` |
+| 業務エージェントを新しく作る | New agent プレイブック（`agent-design-review` も読む） |
+| エージェントの出力の失敗、評価の失敗、エージェントへの修正 | `agent-design-review` |
+| スキル、プロンプト、ツール定義、スキーマを変えた | Eval プレイブック（回帰評価）。description を変えたら `scripts/check-skills` とトリガーお題も |
+| 人に回す出力を決める、人の修正が届く | Review triage プレイブック |
+| 日本語の文書（README、設計書、PR 説明、コミット文など） | `clear-japanese` |
+| 英語の文章、文書 | pstack の `unslop`、`technical-writing` |
+| それ以外（コード、設計、デバッグ、検証、PR） | pstack の `poteto-mode` の規則のまま |
+
+各スキルは単独でも動きます。tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
+
+| スキル | 単独で読まれる場面 |
+|---|---|
+| [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode` と打ったとき、「tsumi で」と頼んだとき。明示がなければ読まれません |
+| [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき |
+| [`clear-japanese`](skills/clear-japanese/SKILL.md) | 「日本語を直して」「分かりやすくして」と頼んだとき、日本語の文書を整えるとき |
 
 `agent-design-review` と `clear-japanese` は [223mle/skills](https://github.com/223mle/skills) から移しました。
 
@@ -50,9 +65,17 @@ pstack は、principle、プレイブック、返信の書き方といった開�
 
 ## 使い方
 
-- 「tsumi で、問い合わせメールを分類するエージェントを作りたい」のように頼みます。`/tsumi-mode` と打っても同じです。
-- 「このエージェントが毎回ちがう表記で返してくる。どう直すのがいい？」と相談すると、`agent-design-review` が読まれます。
+Cursor では、スキルを `/スキル名` で呼びます。プラグイン名は付けません。
+
+```text
+/tsumi-mode 問い合わせメールを「請求」「解約」「その他」に分類するエージェントを作りたい
+```
+
+- 「tsumi で〜して」と頼んでも、tsumi-mode が読まれます。
+- 「このエージェントが毎回ちがう表記で返してくる。どう直すのがいい？」と相談すると、tsumi-mode を通さずに `agent-design-review` が読まれます。
 - 日本語の文章を貼って「読みにくいので直して」と頼むと、`clear-japanese` が清書した本文を返します。
+
+`/tsumi:tsumi-mode` のようにプラグイン名を付ける形は Claude Code のものです。Cursor のドキュメントにはこの形がありません。
 
 ## 開発に参加するとき
 
