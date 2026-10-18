@@ -1,5 +1,5 @@
 id: triage-mistake-triage-002
-title: 2回目の出力形式の崩れはプロンプト追記ではなく仕組みへ、既存スキルを探さなかった件は文章か質問へ振り分ける
+title: 2回目の出力形式の崩れはプロンプト追記ではなく仕組みへ、既存スキルを探さなかった件も落とさず振り分ける
 targets: [mistake-triage]
 tags: [triage, ja]
 source: corrections.tsv の rewrote-existing-user-skill と、tsumi の1段目（出力を JSON スキーマで縛る）をもとに手書きした
@@ -28,4 +28,6 @@ checks:
     include: [mechanism]
   - type: triage_route
     match: "clear-japanese|既存|existing"
-    include_any: [prose, ask]
+    # corrections.tsv に同じクラスが既にあるため、会話内1回でも合計2回で mechanism になりうる。
+    # 落とさず何かに振ることだけを確かめる。
+    include_any: [mechanism, prose, ask]
