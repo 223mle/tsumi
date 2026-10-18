@@ -9,7 +9,8 @@ Usage:
 Results go to evals/runs/<JST time>-<git sha>/ (git-ignored).
 cursor: needs a logged-in CLI (`agent status`).
 claude: loads only pstack and this repo (--setting-sources project), so personal
-        skills, user plugins, and CLAUDE.md stay out of the run.
+        skills, user plugins, and CLAUDE.md stay out of the run. The agent can read
+        pstack and this repo's skills/ and agents/, not the cases or docs.
 A must_read check on a file this repo ships passes only when the agent read this
 repo's copy, not a same-named personal copy. No third-party Python packages.
 """
@@ -90,7 +91,7 @@ def claude_cmd(args, work):
     cmd = [args.cli, "-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence",
            "--setting-sources", "project", "--permission-mode", "dontAsk",
            "--plugin-dir", args.pstack, "--plugin-dir", str(ROOT),
-           "--add-dir", args.pstack, str(ROOT)]
+           "--add-dir", args.pstack, str(ROOT / "skills"), str(ROOT / "agents")]
     cmd += ["--model", args.model] if args.model else []
     return cmd + (["--effort", args.effort] if args.effort else [])
 

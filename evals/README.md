@@ -104,6 +104,7 @@ evals/bin/run-trigger --harness claude \
 ```
 
 - `claude -p --output-format stream-json` に、pstack と tsumi だけを `--plugin-dir` で渡す。`--setting-sources project` を付けるので、個人用スキル、ユーザーのプラグイン、CLAUDE.md は読み込まれない（measured、2026-10-18）。
+- 評価中のエージェントが読めるのは、pstack と、tsumi の `skills/` と `agents/` だけにする（`--add-dir`）。お題、この文書、DESIGN.md、corrections.tsv は読めない。
 - `--permission-mode dontAsk` で回すので、許可が要るツール（Bash、Edit など）は拒否される。読んだかどうかは、Read と Skill の呼び出しのうち、エラーにならなかったものから判定する。
 
 ### Cursor
@@ -114,6 +115,7 @@ evals/bin/run-trigger --harness cursor --pstack <pstack のディレクトリ> -
 
 - ログイン済みの CLI（`agent`）が要る。`--mode ask` で、読み取りだけに絞って回す（inferred、ドキュメントでは plan と ask のモードがあると書いてある）。
 - stream-json の `tool_call` イベントにある `.md` のパスを、読んだファイルとして扱う。
+- Cursor の CLI では、評価中のエージェントが読める範囲を絞っていない。
 
 ## 次に足すお題の案
 
