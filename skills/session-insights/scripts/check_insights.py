@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Validate a mistake-triage result: the JSON schema plus the routing rules.
+"""Validate a session-insights result: the JSON schema, the rules a schema cannot say,
+and (with --conversation) that every quote really appears in the session.
 
-Usage: check_triage.py [file]   (reads stdin when no file is given)
-The input may be raw JSON or text containing a ```json fenced block; the last
-block wins. Prints one error per line and exits 1 on any error. Stdlib only.
+Usage: check_insights.py [reply_file] [--conversation session_file]
+The reply may be raw JSON or text containing a ```json block; the last block wins.
+Prints one error per line and exits 1 on any error. Stdlib only.
 """
 import json
 import pathlib
 import re
 import sys
 
-SCHEMA = pathlib.Path(__file__).resolve().parent.parent / "references" / "triage.schema.json"
+SCHEMA = pathlib.Path(__file__).resolve().parent.parent / "references" / "insights.schema.json"
+NEEDS_CHECK = {"repeated-correction", "hidden-mistake"}
 
 
 def extract(text):
@@ -20,7 +22,7 @@ def extract(text):
 
 
 def validate(value, schema, path, errors):
-    """Subset of JSON Schema used by triage.schema.json."""
+    """Subset of JSON Schema used by insights.schema.json."""
     if "enum" in schema and value not in schema["enum"]:
         errors.append(f"{path}: {value!r} is not one of {schema['enum']}")
         return
@@ -55,25 +57,31 @@ def validate(value, schema, path, errors):
         errors.append(f"{path}: below minimum {schema['minimum']}")
 
 
-def rules(result, errors):
-    """Routing rules that a schema cannot express."""
-    for m in result.get("mistakes", []):
-        p = f"mistakes[{m.get('id', '?')}]"
-        routes = set(m.get("routes", []))
-        for route in routes:
-            if route not in m:
-                errors.append(f"{p}: route '{route}' needs a '{route}' object")
-        for key in ("mechanism", "prose", "eval", "ask"):
-            if key in m and key not in routes:
-                errors.append(f"{p}: has a '{key}' object but '{key}' is not in routes")
-        total = m.get("count_in_conversation", 0) + m.get("count_in_log", 0)
-        if total >= 2 and "mechanism" not in routes and "no_mechanism_reason" not in m:
-            errors.append(f"{p}: seen {total} times; route to mechanism or give no_mechanism_reason")
-        if "prose" in routes and "eval" not in routes and "no_eval_reason" not in m:
-            errors.append(f"{p}: a prose fix needs an eval route or no_eval_reason, since nothing fails when prose is skipped")
+def norm(s):
+    return re.sub(r"[\s「」『』\"'“”]+", "", s)
 
 
-def check(text):
+def rules(result, errors, conversation=None):
+    """Rules a schema cannot express."""
+    ids = [i.get("id") for i in result.get("insights", [])]
+    if len(ids) != len(set(ids)):
+        errors.append("insights: ids must be unique")
+    conv = norm(conversation) if conversation else None
+    for ins in result.get("insights", []):
+        p = f"insights[{ins.get('id', '?')}]"
+        if ins.get("kind") in NEEDS_CHECK and "check" not in ins and "no_check_reason" not in ins:
+            errors.append(f"{p}: a {ins['kind']} needs a check proposal or no_check_reason")
+        if conv is None:
+            continue
+        for e in ins.get("evidence", []):
+            # A quote may join several turns with " / " or skip text with "…"/"...".
+            parts = [x for x in re.split(r"\s/\s|…|\.\.\.", e.get("quote", "")) if norm(x)]
+            missing = [x.strip() for x in parts if norm(x) not in conv]
+            if missing:
+                errors.append(f"{p}: quote not found in the session: {missing[0][:60]!r}")
+
+
+def check(text, conversation=None):
     errors = []
     try:
         result = extract(text)
@@ -81,13 +89,18 @@ def check(text):
         return [f"no parsable JSON: {e}"]
     validate(result, json.loads(SCHEMA.read_text(encoding="utf-8")), "$", errors)
     if not errors:
-        rules(result, errors)
+        rules(result, errors, conversation)
     return errors
 
 
 if __name__ == "__main__":
-    text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8") if len(sys.argv) > 1 else sys.stdin.read()
-    errs = check(text)
+    args, conv = sys.argv[1:], None
+    if "--conversation" in args:
+        i = args.index("--conversation")
+        conv = pathlib.Path(args[i + 1]).read_text(encoding="utf-8")
+        del args[i:i + 2]
+    text = pathlib.Path(args[0]).read_text(encoding="utf-8") if args else sys.stdin.read()
+    errs = check(text, conv)
     for e in errs:
         print(e)
     print("ok" if not errs else f"{len(errs)} error(s)")

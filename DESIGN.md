@@ -130,11 +130,12 @@ dyl-stack の同名プレイブック上書きと同じ仕組みを使う。psta
 
 `/unslop` には overlay を置かず、tsumi-mode の Non-negotiables で読まないと決めている（0章）。
 
-`/reflect` の overlay は消し、tsumi の `mistake-triage` スキルに置き換えた。理由は次のとおり。
+`/reflect` の overlay は消し、tsumi の `session-insights` スキル（コマンド専用）に置き換えた。理由は次のとおり。
 
 - pstack の reflect は、会話の記録ファイルを `agent-transcripts/` から探して読む。tsumi は、その場の会話だけを対象にする。
-- pstack の reflect は、仕組みで防げる指摘を Backlog に回し、`/correct` につながらない。mistake-triage は、ミスごとに「仕組み（`/correct` の順）」「文章」「評価お題」「ユーザーに聞く」へ振り分ける。
-- 振り分けの結果は JSON で出し、`references/triage.schema.json` と `scripts/check_triage.py` で縛る。2回出たミスに仕組みの行き先がない場合と、文章の修正に評価お題がない場合は、理由がなければエラーにする。
+- 対象はミスの振り分けではなく、Daiki とのやり取りから得た示唆。好み、開発の傾向、繰り返した指摘、エージェントがミスを隠した場面を拾い、「示唆 → どのファイルをどう変えるか → 理由」で提案する（2026-10-18 に Daiki が方針変更。前の版の mistake-triage の4分類はやめた）。
+- Daiki が明示的に打つので `disable-model-invocation: true`。check-skills の `COMMAND_ONLY` に入れている。
+- 出力は人が読む短い日本語と JSON。JSON は `references/insights.schema.json` と `scripts/check_insights.py` で縛る。繰り返した指摘と隠したミスには検査案か理由を必須にし、評価では引用が会話に実在するかも確かめる。
 - 名前を reflect にすると、Cursor のスラッシュメニューで pstack の `/reflect` とぶつかる。
 
 プレイブックの上書きは `playbooks/eval.md` だけ。前の版の Harden プレイブックは消した。中身が agent-design-review の「Choose and validate a change」と重なるため。
@@ -158,8 +159,8 @@ tsumi/
       SKILL.md  references/  assets/
     clear-japanese/
       SKILL.md  references/
-    mistake-triage/
-      SKILL.md  references/triage.schema.json  scripts/check_triage.py
+    session-insights/
+      SKILL.md  references/insights.schema.json  scripts/check_insights.py
   scripts/
     check-skills          # name、description、manifest の機械的な検査
     install-hooks
@@ -184,7 +185,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - description と2つの manifest の機械的な検査は `scripts/check-skills`。PR ごとに GitHub Actions で回す。
 - Claude Code で評価するとき、評価中のエージェントが読めるのは pstack と tsumi の `skills/`、`agents/` だけにする。お題や設計文書を読ませないため。
 - トリガーのお題は14件。子スキルの単独での発動8件と、`/tsumi-mode` からの振り分け6件（001、003〜007）。
-- 振り返りのお題は2件（`triage-*`）。mistake-triage の JSON を `triage_valid` と `triage_route` で判定する。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
+- 示唆のお題は3件（`insights-*`）。session-insights の JSON を `insights_valid`、`insight_match`、`insight_absent` で判定する。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
 
 ## 9. 作る順番
 

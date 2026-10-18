@@ -18,6 +18,8 @@ PERSON_RE = re.compile(r"\b(I can|I will|I'll|you can|you should)\b|私は|あ�
 LINK_RE = re.compile(r"\]\(([^)#\s]+)\)")
 TRUE_RE = re.compile(r"^(true|yes)$", re.I)
 ROUTER = "tsumi-mode"
+# Skills Daiki runs only as a slash command; they must not trigger from their description.
+COMMAND_ONLY = {ROUTER, "session-insights"}
 
 errors, warnings = [], []
 
@@ -77,10 +79,10 @@ for path in skills:
         if len(desc) < 80:
             warnings.append(f"{rel}: description is only {len(desc)} chars; add trigger words")
     slash_only = bool(TRUE_RE.match(fm.get("disable-model-invocation", "")))
-    if path.parent.name == ROUTER and not slash_only:
-        errors.append(f"{rel}: the router must set disable-model-invocation: true so only /{ROUTER} loads it")
-    if path.parent.name != ROUTER and slash_only:
-        errors.append(f"{rel}: disable-model-invocation is true; bundled skills must trigger from their description")
+    if path.parent.name in COMMAND_ONLY and not slash_only:
+        errors.append(f"{rel}: command-only skill must set disable-model-invocation: true so only /{path.parent.name} loads it")
+    if path.parent.name not in COMMAND_ONLY and slash_only:
+        errors.append(f"{rel}: disable-model-invocation is true; bundled skills must trigger from their description (or add it to COMMAND_ONLY)")
     body_lines = len(text.splitlines()) - body_start
     if body_lines >= 500:
         errors.append(f"{rel}: body is {body_lines} lines (keep under 500)")
