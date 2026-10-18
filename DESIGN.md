@@ -160,7 +160,7 @@ tsumi/
     clear-japanese/
       SKILL.md  references/
     session-insights/
-      SKILL.md  references/triage.schema.json  scripts/check_triage.py
+      SKILL.md  references/insights.schema.json  scripts/check_insights.py
   scripts/
     check-skills          # name、description、manifest の機械的な検査
     install-hooks
