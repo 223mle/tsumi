@@ -46,7 +46,7 @@ pstack は、principle、プレイブック、返信の書き方といった開�
 
 ## 入れ方
 
-本体は、`~/tsumi` に置いた git の作業コピーです。Cursor と Claude Code は、どちらもこの main を読みます。
+本体は、`~/tsumi` に置いた git の作業コピーの main です。Claude Code はこの作業コピーを直接読み、Cursor は別に置いた clone を読みます。
 
 1. pstack を入れます。
 
