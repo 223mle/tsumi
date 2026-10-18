@@ -1,6 +1,7 @@
 ---
 name: tsumi-mode
-description: Entry point that bundles every tsumi skill with pstack for building agents the way Daiki Tsutsumi does. Takes a request, loads pstack's poteto-mode, and routes each situation to the right skill - agent-design-review for designing or fixing an agent or skill, the regression-eval playbook after any skill, prompt, tool, or schema change, clear-japanese for Japanese documents, pstack skills for everything else. Applies Daiki's order of fixes - tools, schemas, and templates first; automated checks and evals second; prompt rules only for judgment that cannot be encoded; human review only for suspicious output. Use when the user types /tsumi-mode followed by a request, says "tsumi", or asks to work in Daiki's style. Requires the pstack plugin. Each bundled skill also works on its own without this entry point. 日本語トリガー - /tsumi-mode <依頼> / tsumi で / tsumi-mode で進めて / Daiki のやり方で / 堤のやり方で。
+description: Router for every tsumi skill, layered on pstack's poteto-mode, for building agents the way Daiki Tsutsumi does. Routes agent and skill design to agent-design-review, skill, prompt, tool, and schema changes to the regression-eval playbook, Japanese documents to clear-japanese, and everything else to pstack. Applies Daiki's order of fixes - tools, schemas, and templates first; automated checks and evals second; prompt rules only for judgment that cannot be encoded; human review only for suspicious output. Use when the user starts a task with /tsumi-mode (Cursor) or /tsumi:tsumi-mode (Claude Code). Requires the pstack plugin.
+disable-model-invocation: true
 ---
 
 # tsumi mode

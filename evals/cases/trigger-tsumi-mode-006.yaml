@@ -1,14 +1,14 @@
 id: trigger-tsumi-mode-006
-title: tsumi 経由でもエージェントと日本語の文書に関係ない依頼では子スキルを読まない
+title: /tsumi-mode でもエージェントと日本語の文書に関係ない依頼では子スキルを読まない
 targets: [tsumi-mode, agent-design-review, clear-japanese]
 tags: [trigger, routing, ja]
 source: 手書き。ルーターが状況に合わない子スキルまで読み込まないか。clear-japanese は人が読む日本語の文書に限る（2026-10-18 に返信への適用をやめた）
 trials: 3
 prompt: |
-  tsumi で進めてください。Python で ISO 8601 の日付文字列を検証する関数を書いてください。2026-02-30 のような存在しない日付は弾きたいです。
+  /tsumi-mode Python で ISO 8601 の日付文字列を検証する関数を書いてください。2026-02-30 のような存在しない日付は弾きたいです。
 checks:
   - type: must_read
-    glob: "**/tsumi-mode/SKILL.md"
+    glob: "**/tsumi-mode/**"
   - type: must_not_read
     glob: "**/agent-design-review/SKILL.md"
   - type: must_not_read

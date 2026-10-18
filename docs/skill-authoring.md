@@ -13,7 +13,7 @@ Agent Skills の公式ドキュメントを読んで、tsumi で守ることを�
 - 主な使い方を先に書きます。一覧に入れるとき、長い説明は後ろが切られます。
 - 1,024文字以内です。XML タグは使えません。
 
-`disable-model-invocation: true` を付けると、description はエージェントに見えなくなり、`/名前` でしか動きません（Claude Code と Cursor の両方のドキュメントにあります）。pstack はほぼ全スキルにこれを付けています。tsumi のスキルは自動で読まれることを前提にしているので付けません。
+`disable-model-invocation: true` を付けると、description はエージェントに見えなくなり、`/名前` でしか動きません（Claude Code と Cursor の両方のドキュメントにあります）。pstack はほぼ全スキルにこれを付けています。tsumi では、ルーターの `tsumi-mode` だけに付けます。子スキルは自動で読まれることを前提にしているので付けません。`scripts/check-skills` が、この分け方から外れたスキルをエラーにします。
 
 ## name
 

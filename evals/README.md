@@ -60,14 +60,14 @@ evals/
 description はエージェントがスキルを読むかどうかを決める。description を変えたら、読むべき依頼と読むべきでない依頼の組で確かめる。
 
 - 1つのスキルにつき、読むべき依頼（`must_read`）と、近いが読むべきでない依頼（`must_not_read`）を対にする。
-- 依頼文にスキル名を書かない。ユーザーがふつうに言う言葉で書く。例外は tsumi-mode の「tsumi で」で、これは description が定めたトリガー語そのもの。
+- 依頼文にスキル名を書かない。ユーザーがふつうに言う言葉で書く。例外は tsumi-mode で、コマンド専用なので、依頼文を `/tsumi-mode` で始める。
 - `tags` に `trigger` を付ける。
 - 判定は transcript の読んだパスで行う。エージェントの自己申告は使わない。
 - `/スキル名` で呼んだスキルの SKILL.md は、Read を通らずに入り、stream-json に出ない（measured、Cursor の CLI 2026.10.16 と Claude Code 2.1.283）。Cursor では、そのスキルの他のファイル（`references/` など）を読んだかで判定する（`**/tsumi-mode/**`）。Claude Code では、依頼文が `/<スキル名>` か `/tsumi:<スキル名>` で始まれば、そのスキルの SKILL.md を読んだとみなす。
 - 個人用スキル（`~/.claude/skills`、`~/.codex/skills`）も CLI に読まれる。同じ名前のスキルがあると結果が混ざる。そこで、tsumi が持つファイルへの `must_read` は、tsumi のコピーを読んだときだけ合格にする。
 - 形式の検査（name の形、description の長さ、いつ使うかの記述）は `scripts/check-skills` が先に行う。
 
-今あるお題は10件。各スキルが単独で発動するか（clear-japanese、agent-design-review、tsumi-mode で各2件）と、tsumi-mode から状況に合う子スキルへ振り分けるか（tsumi-mode-003〜006）。実行は `evals/bin/run-trigger`。結果は DESIGN.md 12章にある。
+今あるお題は10件。子スキルが単独で発動するか（clear-japanese と agent-design-review で各2件）、コマンドなしでは tsumi-mode が入らないか（tsumi-mode-002）、`/tsumi-mode` から状況に合う子スキルへ振り分けるか（tsumi-mode-001、003〜006）。実行は `evals/bin/run-trigger`。結果は DESIGN.md 12章にある。
 
 ### blinding の規則
 

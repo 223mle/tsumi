@@ -1,13 +1,13 @@
 id: trigger-tsumi-mode-004
-title: tsumi 経由でエージェントの繰り返す誤りを相談すると agent-design-review を読む
+title: /tsumi-mode でエージェントの繰り返す誤りを相談すると agent-design-review を読む
 targets: [tsumi-mode, agent-design-review]
 tags: [trigger, routing, ja, must-pass]
 source: 手書き。tsumi-mode の Non-negotiables「エージェントの出力の失敗・修正 → agent-design-review」
 trials: 3
 prompt: |
-  tsumi で進めてください。請求書チェック用エージェントが、勘定科目を毎回ちがう表記で返してきて、後ろの集計スクリプトが落ちます。プロンプトに「正式名称で書く」と足しましたが、まだ時々ずれます。直し方を決めたいです。
+  /tsumi-mode 請求書チェック用エージェントが、勘定科目を毎回ちがう表記で返してきて、後ろの集計スクリプトが落ちます。プロンプトに「正式名称で書く」と足しましたが、まだ時々ずれます。直し方を決めたいです。
 checks:
   - type: must_read
-    glob: "**/tsumi-mode/SKILL.md"
+    glob: "**/tsumi-mode/**"
   - type: must_read
     glob: "**/agent-design-review/SKILL.md"

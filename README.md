@@ -34,11 +34,11 @@ pstack は、principle、プレイブック、返信の書き方といった開�
 | 英語の文章、文書 | pstack の `unslop`、`technical-writing` |
 | それ以外（コード、設計、デバッグ、検証、PR） | pstack の `poteto-mode` の規則のまま |
 
-各スキルは単独でも動きます。tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
+tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-design-review` と `clear-japanese` は単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
 
 | スキル | 単独で読まれる場面 |
 |---|---|
-| [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode` と打ったとき、「tsumi で」と頼んだとき。明示がなければ読まれません |
+| [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）と打ったときだけ。「tsumi で」と書くだけでは読まれません |
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき |
 | [`clear-japanese`](skills/clear-japanese/SKILL.md) | 「日本語を直して」「分かりやすくして」と頼んだとき、日本語の文書を整えるとき |
 
@@ -85,7 +85,7 @@ Cursor では、スキルを `/スキル名` で呼びます。Claude Code で�
 /tsumi-mode 問い合わせメールを「請求」「解約」「その他」に分類するエージェントを作りたい
 ```
 
-- 「tsumi で〜して」と頼んでも、tsumi-mode が読まれます。
+- 会話が長くなると、tsumi-mode の効き目は薄れます。新しい作業を始めるときは、もう一度コマンドで呼びます。Cursor では、`/` メニューで tsumi-mode を選んで Option+Enter（Windows は Alt+Enter）を押すと、毎ターン読み込まれる Custom Mode になります。
 - 「このエージェントが毎回ちがう表記で返してくる。どう直すのがいい？」と相談すると、tsumi-mode を通さずに `agent-design-review` が読まれます。
 - 日本語の文章を貼って「読みにくいので直して」と頼むと、`clear-japanese` が清書した本文を返します。
 

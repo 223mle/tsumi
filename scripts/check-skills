@@ -16,6 +16,7 @@ WHEN_RE = re.compile(r"\b(use (when|for|after|before|whenever|at)|apply (when|af
 PERSON_RE = re.compile(r"\b(I can|I will|I'll|you can|you should)\b|私は|あなたは", re.I)
 LINK_RE = re.compile(r"\]\(([^)#\s]+)\)")
 TRUE_RE = re.compile(r"^(true|yes)$", re.I)
+ROUTER = "tsumi-mode"
 
 errors, warnings = [], []
 
@@ -74,8 +75,11 @@ for path in skills:
             errors.append(f"{rel}: description is not in third person")
         if len(desc) < 80:
             warnings.append(f"{rel}: description is only {len(desc)} chars; add trigger words")
-    if TRUE_RE.match(fm.get("disable-model-invocation", "")):
-        warnings.append(f"{rel}: disable-model-invocation is true; the model never sees this description")
+    slash_only = bool(TRUE_RE.match(fm.get("disable-model-invocation", "")))
+    if path.parent.name == ROUTER and not slash_only:
+        errors.append(f"{rel}: the router must set disable-model-invocation: true so only /{ROUTER} loads it")
+    if path.parent.name != ROUTER and slash_only:
+        errors.append(f"{rel}: disable-model-invocation is true; bundled skills must trigger from their description")
     body_lines = len(text.splitlines()) - body_start
     if body_lines >= 500:
         errors.append(f"{rel}: body is {body_lines} lines (keep under 500)")
@@ -92,12 +96,12 @@ for path in skills:
         if n > 100 and "contents" not in head and "目次" not in head:
             warnings.append(f"{ref.relative_to(root)}: {n} lines without a table of contents")
 
-router = root / "skills" / "tsumi-mode" / "SKILL.md"
+router = root / "skills" / ROUTER / "SKILL.md"
 if router.exists():
     rtext = router.read_text(encoding="utf-8")
     for path in skills:
         n = path.parent.name
-        if n != "tsumi-mode" and f"../{n}/SKILL.md" not in rtext:
+        if n != ROUTER and f"../{n}/SKILL.md" not in rtext:
             errors.append(f"skills/tsumi-mode/SKILL.md: no route to tsumi skill '{n}' (add a Non-negotiables line with ../{n}/SKILL.md)")
 
 for w in warnings:

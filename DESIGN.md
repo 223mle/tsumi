@@ -15,6 +15,7 @@
 - pstack を前提にして、足りない分だけ足す。dyl-stack と同じ考え方。
 - **主役は Daiki のエージェント開発の考え方と tips をスキルにすること**（2026-10-18 の Daiki の指摘で決まった）。pstack の汎用スキルへの上書き（overlay）は脇役にした。
 - `agent-design-review` と `clear-japanese` の正本は tsumi にする。223mle/skills と、個人のスキルフォルダ（`~/.claude/skills`、`~/.codex/skills`）からは消す（2026-10-18 の Daiki の決定）。
+- tsumi-mode はコマンド専用（`disable-model-invocation: true`）にし、子スキルは description で自動に発動させる（同日の Daiki の決定。4.4）。
 - tsumi を使う環境は Cursor と Claude Code の2つ（同日の Daiki の決定）。本体は `~/tsumi` の main にする。Claude Code は `~/.claude/skills/tsumi` のシンボリックリンクから読み、Cursor は `~/.cursor/plugins/local/tsumi` の clone から読む。tsumi を直すときは `~/tsumi` から worktree を切り、PR を出す。
 - 優先順位は次の4段。tsumi の背骨にする。
   1. 環境と道具で間違いを起こせなくする（部品から選ばせる、JSON スキーマで縛る、テンプレートで値を固定する）。
@@ -52,7 +53,7 @@
 
 | スキル | 役割 | 出どころ | 自動で読まれるか |
 |---|---|---|---|
-| `tsumi-mode` | 全スキルの入口となるルーター。pstack の poteto-mode を読ませ、Non-negotiables で状況ごとに tsumi と pstack のスキルを割り当てる。4段の順番と規則を足す | 新規 | 読まれる。ただし「tsumi で」「/tsumi-mode」「Daiki のやり方で」のときだけ |
+| `tsumi-mode` | 全スキルの入口となるルーター。pstack の poteto-mode を読ませ、Non-negotiables で状況ごとに tsumi と pstack のスキルを割り当てる。4段の順番と規則を足す | 新規 | 読まれない。`/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）で呼んだときだけ |
 | `agent-design-review` | エージェントやスキルの設計と改善。4段の中身（呼び出し側からの道具設計、モデルと道具の契約、再発した修正の追い方） | 223mle/skills から移した | 読まれる |
 | `clear-japanese` | 日本語の清書 | 223mle/skills から移した | 読まれる |
 
@@ -62,7 +63,7 @@ Daiki の要望（2026-10-18）は「`/tsumi-mode <依頼>` で、ここで定�
 
 - Non-negotiables に「状況 → 必ず読むスキル」を並べた。pstack の Non-negotiables に足す形で、食い違ったら tsumi が勝つ。
 - 子スキルは `../<name>/SKILL.md` の相対パスで指す。poteto-mode と同じ書き方。
-- 子スキルは `disable-model-invocation` を付けず、単独でも発動する。pstack は子スキルをスラッシュ専用にしているが、tsumi の子スキルは description で発動させたい。
+- tsumi-mode 自身はコマンド専用にした。子スキルは `disable-model-invocation` を付けず、単独でも発動する。pstack は子スキルもスラッシュ専用にしているが、tsumi の子スキルは description で発動させたい（4.4）。
 - tsumi に新しいスキルを足したら、Non-negotiables に1行足す。`scripts/check-skills` は、tsumi-mode の本文に `../<name>/SKILL.md` がないスキルを見つけるとエラーにする。書き忘れを仕組みで止める（4段の2段目）。
 
 ### 4.0.1 呼び出し形式
@@ -98,17 +99,23 @@ tsumi に書いた Daiki の考えは、次から取った（measured）。
 
 ### 4.3 description の言語
 
-- `tsumi-mode` と `agent-design-review` は英語で書き、末尾に「日本語トリガー - 」で日本語の言い回しを並べた。223mle/skills の6スキルと同じ形（measured）。
+- `agent-design-review` は英語で書き、末尾に「日本語トリガー - 」で日本語の言い回しを並べた。223mle/skills の6スキルと同じ形（measured）。
+- `tsumi-mode` の description はモデルに見えず、`/` メニューに出るだけなので、英語で役割と呼び方だけを書いた。
 - `clear-japanese` は全文日本語。元のまま。
 - スキル本文も 223mle/skills に合わせた。`clear-japanese` は日本語、それ以外は英語。223mle/skills の README は英語にする理由を「トークン効率と小型モデルでの追従性のため」と書いている（measured）。
 
-### 4.4 disable-model-invocation を外した理由
+### 4.4 tsumi-mode だけをコマンド専用にした理由
 
-前の版の tsumi-mode には `disable-model-invocation: true` を付けていた（pstack と同じ）。Claude Code のドキュメントでは、これを付けると description がモデルのコンテキストに入らない（measured）。description をトリガーとして働かせるため、全スキルで外した。
+`disable-model-invocation: true` を付けたスキルは、description がモデルのコンテキストに入らず、`/スキル名` で呼んだときだけ読まれる（measured、Claude Code と Cursor のドキュメント）。
 
-tsumi-mode は pstack の poteto-mode を全部読ませるので重い。エージェント開発の依頼ならいつでも動く、という書き方にはしなかった。「tsumi で」などの明示の言葉に絞り、明示がないエージェント設計の相談は `agent-design-review` が受ける。この境界は `evals/cases/trigger-tsumi-mode-002.yaml` で確かめる。
+前の版では、description をトリガーとして働かせるため、全スキルから外した（corrections.tsv の2行目）。2026-10-18 に、tsumi-mode にだけ付け直した。
 
-Cursor のドキュメントにも、`disable-model-invocation: true` のスキルは `/skill-name` で明示したときだけ含まれ、エージェントは自動で使わないとある（measured、cursor.com/docs/skills）。
+- tsumi-mode は、作業全体のやり方を切り替え、pstack の poteto-mode を全部読ませる重いスキル。入るかどうかを description というモデルの判断に任せると、プロンプトの段（3段目）で発動を決めることになる。コマンドなら確実に入るので、道具の段（1段目）で決まる。pstack が poteto-mode をコマンド専用にしているのも同じ形。
+- 子スキルは、いつ必要になるかをユーザーが予想できない。そこで description で発動させ、トリガーお題（2段目）で見張る。tsumi-mode が動いているあいだは、ルーターがパスで読ませるので、発動のぶれは関係しない。
+- 子スキルの description が Claude Code で働くことは、外す前の評価で確かめた（12章）。
+- この分け方は `scripts/check-skills` が強制する。tsumi-mode に `disable-model-invocation: true` がない場合と、子スキルに付いている場合をエラーにする。
+
+コマンドで呼んでも、会話が進むと tsumi-mode の効き目は薄れる。pstack の poteto-help も、Enter で付けたスキルは会話が進むと薄れると書いている（measured）。Cursor では Custom Mode で毎ターン読み込める。Claude Code には同じ仕組みがないので、毎ターン短い注意書きを差し込む hook を別の PR で検討する。
 
 ## 5. pstack への上書き（脇役）
 
