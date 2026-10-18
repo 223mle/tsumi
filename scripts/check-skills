@@ -117,6 +117,18 @@ if router.exists():
         if n != ROUTER and f"../{n}/SKILL.md" not in rtext:
             errors.append(f"skills/tsumi-mode/SKILL.md: no route to tsumi skill '{n}' (add a Non-negotiables line with ../{n}/SKILL.md)")
 
+# Every eval case names skills (or playbooks) that exist, so `run-trigger --changed` can map diffs to cases.
+known = {p.parent.name for p in skills} | {p.stem for p in (root / "skills").glob("*/playbooks/*.md")}
+for case in sorted((root / "evals" / "cases").glob("*.yaml")):
+    m = re.search(r"^targets:\s*\[(.*)\]\s*$", case.read_text(encoding="utf-8"), re.M)
+    rel = case.relative_to(root)
+    if not m or not [t for t in m.group(1).split(",") if t.strip()]:
+        errors.append(f"{rel}: needs `targets: [skill, ...]` (run-trigger --changed uses it)")
+        continue
+    for t in (x.strip().strip("\"'") for x in m.group(1).split(",") if x.strip()):
+        if t not in known:
+            errors.append(f"{rel}: target '{t}' is not a skill in skills/ or a playbook")
+
 for w in warnings:
     print(f"warn: {w}")
 for e in errors:

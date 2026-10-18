@@ -5,8 +5,11 @@ mistake-triage JSON in the final reply (triage_valid, triage_route).
 
 Usage:
   evals/bin/run-trigger --pstack <pstack plugin dir> [--harness cursor|claude]
-                        [--trials 3] [--model M] [--effort E]
+                        [--trials 3] [--model M] [--effort E] [--jobs 4]
                         [--case trigger-clear-japanese-001] [--timeout 300]
+                        [--changed [BASE]] [--early-stop | --full]
+  Per change:  --changed --early-stop   (cases whose targets the diff touches; stop at 1 pass)
+  Before a PR: --full                   (every case, 3 trials each)
 Results go to evals/runs/<JST time>-<git sha>/ (git-ignored).
 cursor: needs a logged-in CLI (`agent status`).
 claude: loads only pstack and this repo (--setting-sources project), so personal
@@ -15,7 +18,7 @@ claude: loads only pstack and this repo (--setting-sources project), so personal
 A must_read check on a file this repo ships passes only when the agent read this
 repo's copy, not a same-named personal copy. No third-party Python packages.
 """
-import argparse, datetime, fnmatch, json, os, pathlib, re, shutil, subprocess, sys, tempfile
+import argparse, concurrent.futures, datetime, threading, time, fnmatch, json, os, pathlib, re, shutil, subprocess, sys, tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True  # keep __pycache__ out of the shipped skill dir
@@ -198,7 +201,28 @@ def judge(check, paths, reply=""):
     return {**check, "pass": ok, "tsumi_copy": bool(own)}
 
 
+RATE_LIMIT = re.compile(r"rate.?limit|too many requests|\b429\b|overloaded|usage limit|quota", re.I)
+
+
+def rate_limited(code, stdout, stderr):
+    """A trial the provider refused, not one the agent failed. Only for non-zero exits
+    with no result event, so a reply that merely mentions "429" is not retried."""
+    return code != 0 and '"type":"result"' not in stdout.replace(" ", "") and bool(
+        RATE_LIMIT.search((stderr or "") + stdout[-2000:]))
+
+
 def run_trial(case, args, out):
+    """Run one trial; retry provider refusals (rate limit) with backoff, up to 3 times."""
+    for attempt in range(4):
+        trial = run_once(case, args, out)
+        if not trial.get("rate_limited") or attempt == 3:
+            trial["retries"] = attempt
+            (out / "trial.json").write_text(json.dumps(trial, ensure_ascii=False, indent=1))
+            return trial
+        time.sleep(30 * (attempt + 1))
+
+
+def run_once(case, args, out):
     harness = HARNESSES[args.harness]
     work = pathlib.Path(tempfile.mkdtemp()) / "acme-notes"
     work.mkdir()
@@ -207,6 +231,7 @@ def run_trial(case, args, out):
     if stdin is None:
         cmd = cmd + [case["prompt"]]
     out.mkdir(parents=True, exist_ok=True)
+    started = time.time()
     (out / "cmd.json").write_text(json.dumps(cmd, ensure_ascii=False, indent=1))
     try:
         p = subprocess.run(cmd, input=stdin, capture_output=True, text=True, timeout=args.timeout, cwd=work)
@@ -218,11 +243,55 @@ def run_trial(case, args, out):
     tools, paths, reply = harness["reads"](stdout, args)
     results = [judge(c, paths, reply) for c in case["checks"]]
     trial = {"exit": code, "skills_read": sorted(paths), "tools": sorted(tools),
-             "checks": results, "pass": code == 0 and all(r["pass"] for r in results)}
+             "checks": results, "pass": code == 0 and all(r["pass"] for r in results),
+             "rate_limited": code != "timeout" and rate_limited(code, stdout, stderr), "seconds": round(time.time() - started, 1)}
     (out / "trial.json").write_text(json.dumps(trial, ensure_ascii=False, indent=1))
     (out / "reply.txt").write_text(reply)
     shutil.rmtree(work.parent, ignore_errors=True)
     return trial
+
+
+# Paths whose change can affect every case: the router, the runner, schemas, manifests.
+GLOBAL = ("skills/tsumi-mode/", "evals/bin/", "evals/schemas/", "evals/fixtures/", "evals/rubrics/",
+          ".cursor-plugin/", ".claude-plugin/", "agents/")
+# Paths that never change agent behaviour.
+INERT = ("README.md", "CONTRIBUTING.md", "DESIGN.md", "docs/", "research/", "evals/README.md",
+         "scripts/", ".github/", ".gitignore", "evals/runs/")
+# Files a skill reads at run time that live outside its directory.
+EXTRA = {"corrections.tsv": "mistake-triage"}
+
+
+def select_changed(cases, base):
+    """Return (cases to run, reasons). Any path we cannot map runs everything."""
+    diff = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", base], capture_output=True, text=True)
+    if diff.returncode:
+        sys.exit(f"git diff {base} failed: {diff.stderr.strip()}")
+    untracked = subprocess.run(["git", "-C", str(ROOT), "ls-files", "--others", "--exclude-standard"],
+                               capture_output=True, text=True).stdout
+    files = sorted(set(diff.stdout.split()) | set(untracked.split()))
+    picked, reasons = {}, []
+    for f in files:
+        if f.startswith(INERT) or f in INERT:
+            reasons.append(f"skip  {f} (does not change behaviour)")
+            continue
+        if f.startswith(GLOBAL):
+            reasons.append(f"ALL   {f} (shared by every case)")
+            return cases, reasons
+        m = re.match(r"skills/([^/]+)/", f)
+        skill = m.group(1) if m else EXTRA.get(f)
+        if f.startswith("evals/cases/"):
+            hit = [c for c in cases if c["file"].name == pathlib.Path(f).name]
+            why = "case file"
+        elif skill:
+            hit = [c for c in cases if skill in c.get("targets", [])]
+            why = f"targets {skill}"
+        else:
+            reasons.append(f"ALL   {f} (no mapping; running everything to be safe)")
+            return cases, reasons
+        for c in hit:
+            picked[c["id"]] = c
+        reasons.append(f"pick  {f} ({why}): {', '.join(c['id'] for c in hit) or 'no case'}")
+    return [c for c in cases if c["id"] in picked], reasons
 
 
 def main():
@@ -235,31 +304,82 @@ def main():
     ap.add_argument("--case", action="append")
     ap.add_argument("--timeout", type=int, default=300)
     ap.add_argument("--cli")
+    ap.add_argument("--jobs", type=int, default=4, help="trials run in parallel (default 4)")
+    ap.add_argument("--changed", nargs="?", const="origin/main", metavar="BASE",
+                    help="only cases whose targets the diff against BASE touches (default origin/main)")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--early-stop", action="store_true",
+                      help="stop a case after a passing first trial; on a fail, run all --trials")
+    mode.add_argument("--full", action="store_true", help="before a PR: every case, 3 trials, no early stop")
     args = ap.parse_args()
-    if args.trials < 1:
-        ap.error("--trials must be at least 1")
+    if args.full:
+        if args.changed or args.case:
+            ap.error("--full runs every case; drop --changed/--case")
+        args.trials = 3
+    if args.trials < 1 or args.jobs < 1:
+        ap.error("--trials and --jobs must be at least 1")
     args.cli = args.cli or HARNESSES[args.harness]["cli"]
-    files = sorted((ROOT / "evals/cases").glob("*.yaml"))
+    cases = []
+    for f in sorted((ROOT / "evals/cases").glob("*.yaml")):
+        c = load_case(f)
+        c["file"], c["targets"] = f, scalar(c.get("targets", "[]")) if isinstance(c.get("targets"), str) else c.get("targets", [])
+        cases.append(c)
     if args.case:
-        files = [f for f in files if f.stem in args.case]
-    if not files:
+        cases = [c for c in cases if c["file"].stem in args.case]
+    if args.changed:
+        cases, reasons = select_changed(cases, args.changed)
+        print(f"--changed {args.changed}:")
+        print("\n".join("  " + r for r in reasons) or "  no changed files")
+        print(f"  -> {len(cases)} case(s): {', '.join(c['id'] for c in cases)}", flush=True)
+        if not cases:
+            print("nothing to run")
+            sys.exit(0)
+    if not cases:
         ap.error("no cases matched")
     sha = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain"], capture_output=True, text=True).stdout.strip()
     stamp = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime("%Y%m%d-%H%M%S")
     run_dir = ROOT / "evals/runs" / f"{stamp}-{sha}{'-dirty' if dirty else ''}-{args.harness}"
     run_dir.mkdir(parents=True, exist_ok=True)
+    started = time.time()
+    results = {c["id"]: {} for c in cases}
+    lock = threading.Lock()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
+        def submit(c, t):
+            return pool.submit(run_trial, c, args, run_dir / c["id"] / str(t)), c, t
+        # Early stop: trial 1 first, the rest only if it fails. Otherwise all trials up front.
+        first = range(1, 2) if args.early_stop else range(1, args.trials + 1)
+        pending = {}
+        for c in cases:
+            for t in first:
+                fut, c_, t_ = submit(c, t)
+                pending[fut] = (c_, t_)
+        while pending:
+            done, _ = concurrent.futures.wait(pending, return_when=concurrent.futures.FIRST_COMPLETED)
+            for fut in done:
+                c, t = pending.pop(fut)
+                trial = fut.result()
+                with lock:
+                    results[c["id"]][t] = trial
+                if args.early_stop and t == 1 and not trial["pass"]:
+                    for t2 in range(2, args.trials + 1):
+                        f2, c2, tt = submit(c, t2)
+                        pending[f2] = (c2, tt)
     summary = []
-    for f in files:
-        case = load_case(f)
-        trials = [run_trial(case, args, run_dir / case["id"] / str(t)) for t in range(1, args.trials + 1)]
+    for c in cases:
+        trials = [results[c["id"]][t] for t in sorted(results[c["id"]])]
         n = sum(t["pass"] for t in trials)
         verdict = "pass" if n == len(trials) else "fail" if n == 0 else "flaky"
-        summary.append({"id": case["id"], "verdict": verdict, "passed": n, "trials": len(trials),
+        stopped = args.early_stop and len(trials) < args.trials
+        summary.append({"id": c["id"], "verdict": verdict, "passed": n, "trials": len(trials),
+                        "early_stopped": stopped, "rate_limit_retries": sum(t.get("retries", 0) for t in trials),
+                        "seconds": [t.get("seconds") for t in trials],
                         "skills_read": [t["skills_read"] for t in trials],
                         "checks": [[{k: r[k] for k in ("type", "glob", "match", "pass", "tsumi_copy", "detail") if k in r} for r in t["checks"]] for t in trials]})
-        print(f"{verdict:6} {n}/{len(trials)} {case['id']}", flush=True)
+        note = " (early stop)" if stopped else ""
+        print(f"{verdict:6} {n}/{len(trials)} {c['id']}{note}", flush=True)
     (run_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
+    print(f"wall: {round(time.time() - started)}s, jobs={args.jobs}, mode={'full' if args.full else 'early-stop' if args.early_stop else 'fixed'}")
     print(f"results: {run_dir}")
     sys.exit(0 if all(s["verdict"] == "pass" for s in summary) else 1)
 
