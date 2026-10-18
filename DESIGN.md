@@ -203,7 +203,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 ## 12. 限界
 
 - トリガーのお題は、Cursor の CLI で1回（20261018-153705-ce046f3）回した。このときの判定は、tsumi のコピーと個人のコピーを区別していなかった。
-- Claude Code（Opus 5.5、effort medium）では、10件を各3回回し、30回すべて合格した（20261018-165205-abcb8b5-claude）。tsumi が持つファイルへの `must_read` は、すべて tsumi のコピーを読んで合格した。この実行では個人用スキルと CLAUDE.md を外している。Cursor では、この版を回していない。
+- Claude Code（Opus 5.5、effort medium）では、tsumi-mode をコマンド専用にした版（c7790b2）で10件を各3回回し、30回すべて合格した（20261018-172643-c7790b2-claude）。tsumi が持つファイルへの `must_read` は、すべて tsumi のコピーを読んで合格した。この実行では個人用スキルと CLAUDE.md を外している。Cursor では、この版を回していない。
 - main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。
 
 ## 13. 引用元の著作権表示
