@@ -1,0 +1,14 @@
+id: trigger-tsumi-mode-007
+title: tsumi-mode で振り返りを頼むと、pstack の reflect ではなく mistake-triage を読む
+targets: [tsumi-mode, mistake-triage]
+tags: [trigger, routing, ja]
+source: 手書き。Non-negotiables の振り返りの行
+trials: 3
+prompt: |
+  /tsumi-mode この会話を振り返って、同じミスを防ぐ方法を出して。
+  ここまでで、私はスキルの description に「いつ使うか」がないと2回指摘した。
+checks:
+  - type: must_read
+    glob: "**/mistake-triage/SKILL.md"
+  - type: must_not_read
+    glob: "**/reflect/SKILL.md"

@@ -1,0 +1,90 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "tsumi/mistake-triage/triage.schema.json",
+	"title": "mistake-triage output",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["mistakes", "dropped"],
+	"properties": {
+		"mistakes": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "class", "summary", "evidence", "count_in_conversation", "count_in_log", "routes"],
+				"properties": {
+					"id": { "type": "string", "pattern": "^m[0-9]+$" },
+					"class": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+					"summary": { "type": "string", "minLength": 1 },
+					"evidence": {
+						"type": "array",
+						"minItems": 1,
+						"items": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": ["quote"],
+							"properties": { "quote": { "type": "string", "minLength": 1 } }
+						}
+					},
+					"count_in_conversation": { "type": "integer", "minimum": 1 },
+					"count_in_log": { "type": "integer", "minimum": 0 },
+					"routes": {
+						"type": "array",
+						"minItems": 1,
+						"uniqueItems": true,
+						"items": { "enum": ["mechanism", "prose", "eval", "ask"] }
+					},
+					"mechanism": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["level", "change", "proof"],
+						"properties": {
+							"level": { "enum": ["architecture", "types", "lint", "test", "docs"] },
+							"change": { "type": "string", "minLength": 1 },
+							"proof": { "type": "string", "minLength": 1 }
+						}
+					},
+					"prose": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["target", "change"],
+						"properties": {
+							"target": { "type": "string", "minLength": 1 },
+							"change": { "type": "string", "minLength": 1 }
+						}
+					},
+					"eval": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["case_id", "prompt", "check"],
+						"properties": {
+							"case_id": { "type": "string", "minLength": 1 },
+							"prompt": { "type": "string", "minLength": 1 },
+							"check": { "type": "string", "minLength": 1 }
+						}
+					},
+					"ask": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["question"],
+						"properties": { "question": { "type": "string", "minLength": 1 } }
+					},
+					"no_mechanism_reason": { "type": "string", "minLength": 1 },
+					"no_eval_reason": { "type": "string", "minLength": 1 }
+				}
+			}
+		},
+		"dropped": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["summary", "reason"],
+				"properties": {
+					"summary": { "type": "string", "minLength": 1 },
+					"reason": { "type": "string", "minLength": 1 }
+				}
+			}
+		}
+	}
+}

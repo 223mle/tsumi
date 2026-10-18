@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Run trigger cases (evals/cases/trigger-*.yaml) with the Cursor CLI or Claude Code
-and judge which skill and playbook .md files the agent read, from its stream-json output.
+"""Run eval cases (evals/cases/*.yaml) with the Cursor CLI or Claude Code. Judges which
+skill and playbook .md files the agent read, from its stream-json output, and checks the
+mistake-triage JSON in the final reply (triage_valid, triage_route).
 
 Usage:
   evals/bin/run-trigger --pstack <pstack plugin dir> [--harness cursor|claude]
@@ -17,6 +18,9 @@ repo's copy, not a same-named personal copy. No third-party Python packages.
 import argparse, datetime, fnmatch, json, os, pathlib, re, shutil, subprocess, sys, tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.dont_write_bytecode = True  # keep __pycache__ out of the shipped skill dir
+sys.path.insert(0, str(ROOT / "skills/mistake-triage/scripts"))
+import check_triage  # noqa: E402  the skill's own validator, so the eval and the skill agree
 
 
 def load_case(path):
@@ -37,18 +41,27 @@ def load_case(path):
         if m and m.group(1) == "checks":
             i += 1
             while i < len(lines) and lines[i].startswith("  "):
-                t = re.match(r"^\s*-\s*type:\s*(\S+)", lines[i])
-                if t:
-                    checks.append({"type": t.group(1)})
-                g = re.match(r"^\s*glob:\s*\"?([^\"]+)\"?", lines[i])
-                if g:
-                    checks[-1]["glob"] = g.group(1)
+                kv = re.match(r"^\s*(?:-\s*)?(\w+):\s*(.*)$", lines[i])
+                if kv:
+                    if lines[i].lstrip().startswith("-"):
+                        checks.append({})
+                    checks[-1][kv.group(1)] = scalar(kv.group(2))
                 i += 1
             continue
         if m:
             case[m.group(1)] = m.group(2).strip()
         i += 1
     return case
+
+
+def scalar(v):
+    """`"x"` -> x, `[a, b]` -> [a, b], anything else -> stripped string."""
+    v = v.strip()
+    if v.startswith("[") and v.endswith("]"):
+        return [scalar(x) for x in v[1:-1].split(",") if x.strip()]
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+        return v[1:-1]
+    return v
 
 
 def events(stdout):
@@ -139,7 +152,41 @@ def ships(glob):
     return any(fnmatch.fnmatch(str(p), glob) for p in (ROOT / "skills").rglob("*") if p.is_file())
 
 
-def judge(check, paths):
+def triage(reply):
+    try:
+        return check_triage.extract(reply)
+    except ValueError:
+        return None
+
+
+def judge_route(check, reply):
+    """Mistakes whose class, summary, or evidence match `match` (case-insensitive) must
+    exist; the union of their routes must contain every `include`, at least one of
+    `include_any`, and none of `exclude`."""
+    result = triage(reply)
+    if not isinstance(result, dict):
+        return False, "no triage JSON"
+    rx = re.compile(check["match"], re.I)
+    hits = [m for m in result.get("mistakes", []) if isinstance(m, dict) and rx.search(
+        " ".join([str(m.get("class", "")), str(m.get("summary", ""))] +
+                 [str(e.get("quote", "")) for e in m.get("evidence", []) if isinstance(e, dict)]))]
+    if not hits:
+        return False, f"no mistake matches /{check['match']}/"
+    routes = {r for m in hits for r in m.get("routes", [])}
+    errs = [f"missing {r}" for r in check.get("include", []) if r not in routes]
+    if check.get("include_any") and not routes & set(check["include_any"]):
+        errs.append(f"none of {check['include_any']}")
+    errs += [f"has {r}" for r in check.get("exclude", []) if r in routes]
+    return not errs, f"{[m.get('id') for m in hits]} routes={sorted(routes)} " + "; ".join(errs)
+
+
+def judge(check, paths, reply=""):
+    if check["type"] == "triage_valid":
+        errs = check_triage.check(reply)
+        return {**check, "pass": not errs, "detail": "; ".join(errs[:5])}
+    if check["type"] == "triage_route":
+        ok, detail = judge_route(check, reply)
+        return {**check, "pass": ok, "detail": detail}
     hits = [p for p in paths if fnmatch.fnmatch(p, check["glob"])]
     own = [p for p in hits if os.path.realpath(p).startswith(str(ROOT) + "/")]
     if check["type"] == "must_read":
@@ -169,7 +216,7 @@ def run_trial(case, args, out):
     (out / "stream.jsonl").write_text(stdout)
     (out / "stderr.txt").write_text(stderr or "")
     tools, paths, reply = harness["reads"](stdout, args)
-    results = [judge(c, paths) for c in case["checks"]]
+    results = [judge(c, paths, reply) for c in case["checks"]]
     trial = {"exit": code, "skills_read": sorted(paths), "tools": sorted(tools),
              "checks": results, "pass": code == 0 and all(r["pass"] for r in results)}
     (out / "trial.json").write_text(json.dumps(trial, ensure_ascii=False, indent=1))
@@ -192,11 +239,11 @@ def main():
     if args.trials < 1:
         ap.error("--trials must be at least 1")
     args.cli = args.cli or HARNESSES[args.harness]["cli"]
-    files = sorted((ROOT / "evals/cases").glob("trigger-*.yaml"))
+    files = sorted((ROOT / "evals/cases").glob("*.yaml"))
     if args.case:
         files = [f for f in files if f.stem in args.case]
     if not files:
-        ap.error("no trigger cases matched")
+        ap.error("no cases matched")
     sha = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain"], capture_output=True, text=True).stdout.strip()
     stamp = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime("%Y%m%d-%H%M%S")
@@ -210,7 +257,7 @@ def main():
         verdict = "pass" if n == len(trials) else "fail" if n == 0 else "flaky"
         summary.append({"id": case["id"], "verdict": verdict, "passed": n, "trials": len(trials),
                         "skills_read": [t["skills_read"] for t in trials],
-                        "checks": [[{k: r[k] for k in ("type", "glob", "pass", "tsumi_copy")} for r in t["checks"]] for t in trials]})
+                        "checks": [[{k: r[k] for k in ("type", "glob", "match", "pass", "tsumi_copy", "detail") if k in r} for r in t["checks"]] for t in trials]})
         print(f"{verdict:6} {n}/{len(trials)} {case['id']}", flush=True)
     (run_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
     print(f"results: {run_dir}")

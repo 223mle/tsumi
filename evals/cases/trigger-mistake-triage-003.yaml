@@ -1,0 +1,14 @@
+id: trigger-mistake-triage-003
+title: 今日の作業のまとめを頼む依頼では mistake-triage を読まない
+targets: [mistake-triage]
+tags: [trigger, ja]
+source: 手書き。description の「Do not use for ... summarizing work」に当たる近い依頼
+trials: 3
+prompt: |
+  今日やったことを3行でまとめて。日報に貼る。
+  - 請求書 PDF の読み取りスクリプトを書いた
+  - 金額の丸めのバグを直した
+  - README に使い方を足した
+checks:
+  - type: must_not_read
+    glob: "**/mistake-triage/SKILL.md"

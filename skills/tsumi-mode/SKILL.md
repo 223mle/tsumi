@@ -1,6 +1,6 @@
 ---
 name: tsumi-mode
-description: Router for every tsumi skill, layered on pstack's poteto-mode, for building agents the way Daiki Tsutsumi does. Routes agent and skill design to agent-design-review, skill, prompt, tool, and schema changes to the regression-eval playbook, Japanese documents to clear-japanese, and everything else to pstack. Applies Daiki's order of fixes - tools, schemas, and templates first; automated checks and evals second; prompt rules only for judgment that cannot be encoded; human review only for suspicious output. Use when the user starts a task with /tsumi-mode (Cursor) or /tsumi:tsumi-mode (Claude Code). Requires the pstack plugin.
+description: Router for every tsumi skill, layered on pstack's poteto-mode, for building agents the way Daiki Tsutsumi does. Routes agent and skill design to agent-design-review, skill, prompt, tool, and schema changes to the regression-eval playbook, Japanese documents to clear-japanese, reflection on repeated mistakes to mistake-triage, and everything else to pstack. Applies Daiki's order of fixes - tools, schemas, and templates first; automated checks and evals second; prompt rules only for judgment that cannot be encoded; human review only for suspicious output. Use when the user starts a task with /tsumi-mode (Cursor) or /tsumi:tsumi-mode (Claude Code). Requires the pstack plugin.
 disable-model-invocation: true
 ---
 
@@ -25,7 +25,7 @@ Match the request against every line before you answer, even when it looks like 
 - pstack calls for **unslop** (a Non-negotiable or a playbook step, your reply included) → do not read unslop. Daiki does not write English prose. Use clear-japanese where the line above applies. Write your chat reply per pstack's Writing the reply, with neither skill.
 - Docs in either language → pstack's **technical-writing** plus [overlays/technical-writing.md](overlays/technical-writing.md).
 - Repeated mistakes in repo code (not agent output) → pstack's **correct** plus [overlays/correct.md](overlays/correct.md).
-- The user says reflect → pstack's **reflect** plus [overlays/reflect.md](overlays/reflect.md).
+- The user asks to reflect on or look back at the conversation, or to stop a mistake from happening again → the **mistake-triage** skill (`../mistake-triage/SKILL.md`), not pstack's reflect. It reads only this conversation.
 - About to edit a file that tsumi ships (skill, overlay, playbook, eval case, script) → "Changing tsumi" under Rules.
 - About to write a new rule, skill, or schema → search the user's existing skills and repos first. Port before you rewrite.
 - Customer data or customer names about to enter an eval case, the corrections log, a commit, or anything sent outside → stop and ask.

@@ -1,0 +1,31 @@
+id: triage-mistake-triage-002
+title: 2回目の出力形式の崩れはプロンプト追記ではなく仕組みへ、既存スキルを探さなかった件は文章か質問へ振り分ける
+targets: [mistake-triage]
+tags: [triage, ja]
+source: corrections.tsv の rewrote-existing-user-skill と、tsumi の1段目（出力を JSON スキーマで縛る）をもとに手書きした
+trials: 3
+prompt: |
+  ここまでのやり取りです。
+
+  ---
+  ユーザー: 日本語の文章規則をまとめたスキルを作って。
+  エージェント: 新しく規則を13個書いて、japanese-rules というスキルにしました。
+  ユーザー: 私の既存スキルに clear-japanese があるよね。なぜ探さずに新しく書いたの。clear-japanese を移して。
+  エージェント: clear-japanese を移しました。japanese-rules は消しました。
+  ユーザー: 仕分けエージェントの出力が JSON だけのはずなのに、前置きの文章付きで返ってきて、後ろのパーサが落ちた。
+  エージェント: プロンプトに「JSON だけを返す」と書き足しました。
+  ユーザー: また前置き付きの出力でパーサが落ちた。これで2回目。
+  エージェント: プロンプトに「前置きを書かない。必ず JSON だけ」と強めて書き足しました。
+  ---
+
+  今の会話を振り返って。同じことを繰り返さないようにしたい。
+checks:
+  - type: must_read
+    glob: "**/mistake-triage/SKILL.md"
+  - type: triage_valid
+  - type: triage_route
+    match: "JSON|パーサ|parser|parse"
+    include: [mechanism]
+  - type: triage_route
+    match: "clear-japanese|既存|existing"
+    include_any: [prose, ask]

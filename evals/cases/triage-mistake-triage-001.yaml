@@ -1,0 +1,36 @@
+id: triage-mistake-triage-001
+title: 2回出た description の指摘は仕組みと評価お題へ、1回きりの判断は文章へ振り分ける
+targets: [mistake-triage]
+tags: [triage, ja]
+source: corrections.tsv の skill-description-not-a-trigger（2行）と irrelevant-content-in-readme を、顧客情報を含まない会話に書き直した
+trials: 3
+prompt: |
+  これまでの会話です。
+
+  ---
+  ユーザー: 請求書を読むスキル invoice-reader の SKILL.md を書いて。
+  エージェント: 書きました。description は「Helps with invoices.」です。
+  ユーザー: description が短すぎる。いつ読めばいいかが書いてないから、エージェントが発動しない。
+  エージェント: 「Reads invoice PDFs and extracts fields. Use when the user shares an invoice.」に直しました。
+  ユーザー: 次は経費精算のスキル expense-check も作って。
+  エージェント: 作りました。description は「Checks expenses.」です。
+  ユーザー: また description にいつ使うかが書いてない。さっきも同じことを言ったよね。
+  エージェント: 「Checks expense reports against policy. Use when the user submits an expense report.」に直しました。
+  ユーザー: README に、使っていない他社のフレームワークの紹介を書かないで。このリポジトリと関係ない。
+  エージェント: その段落を消しました。
+  ---
+
+  この会話を振り返って、同じミスをしないための提案を出して。
+checks:
+  - type: must_read
+    glob: "**/mistake-triage/SKILL.md"
+  - type: must_not_read
+    glob: "**/reflect/SKILL.md"
+  - type: triage_valid
+  - type: triage_route
+    match: "description"
+    include: [mechanism, eval]
+  - type: triage_route
+    match: "README|フレームワーク|framework"
+    include: [prose]
+    exclude: [mechanism]
