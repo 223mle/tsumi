@@ -149,9 +149,10 @@ tsumi/
     clear-japanese/
       SKILL.md  references/
   scripts/
-    check-skills          # name と description の機械的な検査
+    check-skills          # name、description、manifest の機械的な検査
     install-hooks
     hooks/pre-push
+  .github/workflows/check.yml   # PR ごとに check-skills を回す
   evals/
     README.md  cases/  fixtures/  rubrics/  schemas/  bin/  runs/
 ```
@@ -167,7 +168,8 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 ## 8. 評価
 
 - 設計は `evals/README.md`。
-- description の機械的な検査は `scripts/check-skills`（作った）。
+- description と2つの manifest の機械的な検査は `scripts/check-skills`。PR ごとに GitHub Actions で回す。
+- Claude Code で評価するとき、評価中のエージェントが読めるのは pstack と tsumi の `skills/`、`agents/` だけにする。お題や設計文書を読ませないため。
 - トリガーのお題は10件。子スキルの単独での発動5件と、`/tsumi-mode` からの振り分け5件（001、003〜006）。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
 
 ## 9. 作る順番
@@ -204,7 +206,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 
 - トリガーのお題は、Cursor の CLI で1回（20261018-153705-ce046f3）回した。このときの判定は、tsumi のコピーと個人のコピーを区別していなかった。
 - Claude Code（Opus 5.5、effort medium）では、tsumi-mode をコマンド専用にした版（c7790b2）で10件を各3回回し、30回すべて合格した（20261018-172643-c7790b2-claude）。tsumi が持つファイルへの `must_read` は、すべて tsumi のコピーを読んで合格した。この実行では個人用スキルと CLAUDE.md を外している。Cursor では、この版を回していない。
-- main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。
+- main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。同じ理由で、CI の検査は結果を出すだけで、マージを止められない。
 
 ## 13. 引用元の著作権表示
 

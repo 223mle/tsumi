@@ -18,7 +18,7 @@ Read pstack's `poteto-mode/playbooks/eval.md` first. Keep its blinding rule and 
 
 While you work, run only the cases the change touches, one trial each (`--case`, `--trials 1`). Run every case with three trials once, as the last step before the PR is ready. When you change a skill, prompt, tool definition, or schema, add these steps to that last run:
 
-1. Run the evals on the old version (see `evals/README.md` in the tsumi repo). Use a stored baseline if there is one.
+1. Run the evals on the old version with `evals/bin/run-trigger` in the tsumi source checkout (`~/tsumi`). Use a stored baseline if there is one.
 2. Make the change.
 3. Run the same cases with the same pstack version and model.
 4. Compare. If any `must-pass` case fails, do not ship. Explain the failure from the transcript.

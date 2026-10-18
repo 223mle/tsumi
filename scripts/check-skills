@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Mechanical checks for skills/*/SKILL.md frontmatter and layout.
+"""Mechanical checks for skills/*/SKILL.md frontmatter and layout, and for the two plugin manifests.
 
 Rules follow the Agent Skills docs (see docs/skill-authoring.md).
 Exit 1 if any error. Warnings do not fail.
 Usage: scripts/check-skills [repo_root]
 """
+import json
 import pathlib
 import re
 import sys
@@ -95,6 +96,18 @@ for path in skills:
         head = "\n".join(ref.read_text(encoding="utf-8").splitlines()[:20]).lower()
         if n > 100 and "contents" not in head and "目次" not in head:
             warnings.append(f"{ref.relative_to(root)}: {n} lines without a table of contents")
+
+manifests = {}
+for rel in (".cursor-plugin/plugin.json", ".claude-plugin/plugin.json"):
+    try:
+        manifests[rel] = json.loads((root / rel).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        errors.append(f"{rel}: missing or not JSON ({e})")
+if len(manifests) == 2:
+    cursor, claude = manifests.values()
+    for key in ("name", "version", "description"):
+        if cursor.get(key) != claude.get(key):
+            errors.append(f".claude-plugin/plugin.json: {key} differs from .cursor-plugin/plugin.json")
 
 router = root / "skills" / ROUTER / "SKILL.md"
 if router.exists():
