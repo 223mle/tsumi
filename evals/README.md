@@ -21,7 +21,7 @@ evals/
   schemas/
     case.schema.json   # お題ファイルの JSON スキーマ
     judge-output.schema.json   # judge の出力を縛る JSON スキーマ
-  bin/run-trigger      # トリガーお題を回す
+  bin/run-trigger      # お題を回す（トリガーと振り返りの振り分け）
   runs/                # 実行結果。git に入れない
 ```
 
@@ -52,8 +52,12 @@ evals/
 | `command` | 作業ディレクトリでコマンドを走らせ、終了コードを見る |
 | `must_read` / `must_not_read` | エージェントが読んだファイルのパス（stream-json の `readToolCall`）が glob に合う、合わない |
 | `max_turns` | ツール呼び出しの回数の上限 |
+| `insights_valid` | 最終返信の最後の ```json ブロックが session-insights の `references/insights.schema.json` と規則に合い、引用がすべて依頼文のセッションに実在する。検査はスキルと同じ `scripts/check_insights.py`（実装済み） |
+| `insight_match` | `match` に合う示唆があり、`kind`（任意）と提案先 `target`（任意、正規表現）が合う（実装済み） |
+| `insight_absent` | `match` に合う示唆がない。根拠のない示唆を出さないかを見る（実装済み） |
+| `triage_route` | `match` の正規表現に合うミス（class、summary、evidence で照合）があり、その routes が `include` を全部、`include_any` を1つ以上含み、`exclude` を含まない（実装済み） |
 
-例は `cases/trigger-*.yaml`。
+例は `cases/trigger-*.yaml` と `cases/triage-*.yaml`。`run-trigger` が実装している種類は `must_read`、`must_not_read`、`insights_valid`、`insight_match`、`insight_absent` の5つ。
 
 ## トリガーお題
 
@@ -67,7 +71,7 @@ description はエージェントがスキルを読むかどうかを決める�
 - 個人用スキル（`~/.claude/skills`、`~/.codex/skills`）も CLI に読まれる。同じ名前のスキルがあると結果が混ざる。そこで、tsumi が持つファイルへの `must_read` は、tsumi のコピーを読んだときだけ合格にする。
 - 形式の検査（name の形、description の長さ、いつ使うかの記述）は `scripts/check-skills` が先に行う。
 
-今あるお題は10件。子スキルが単独で発動するか（agent-design-review で3件、clear-japanese で2件）と、`/tsumi-mode` から状況に合う子スキルやプレイブックへ振り分けるか（tsumi-mode-001、003〜006）。tsumi-mode 自身の発動は、コマンド専用であることを `scripts/check-skills` が確かめるので、お題にしない。実行は `evals/bin/run-trigger`。結果は DESIGN.md 12章にある。
+今あるトリガーお題は10件。子スキルが単独で発動するか（agent-design-review で3件、clear-japanese で2件）と、`/tsumi-mode` から状況に合う子スキルやプレイブックへ振り分けるか（tsumi-mode-001、003〜006）。tsumi-mode と session-insights の発動は、コマンド専用であることを `scripts/check-skills` が確かめるので、お題にしない。実行は `evals/bin/run-trigger`。結果は DESIGN.md 12章にある。
 
 ### blinding の規則
 
@@ -77,6 +81,16 @@ pstack の Eval プレイブックの規則をそのまま使う（measured、`p
 - 依頼文はふつうの依頼にする。どのスキルを使ったか自己申告させない。
 - 振り分けやスキルの読み込みは、自己申告ではなく `must_read` で transcript から判定する。
 - judge は採点していると知ってよいが、出力は匿名ラベルで見せ、モデル名は見せない。
+
+## 示唆のお題
+
+session-insights が、セッションから根拠のある示唆を拾い、具体的な差分案にするかを確かめる。
+
+- コマンド専用なので、依頼文に `{{TSUMI}}/skills/session-insights/SKILL.md` を読むよう書き、その下にセッションを貼る。`run-trigger` が `{{TSUMI}}` をこのリポジトリのパスに置き換える。
+- セッションは tsumi 開発の実例を、顧客情報なしで書き直して使う。
+- `insights-session-insights-001`: 約束して黙ってやらなかった件と、聞かれるまで言わなかったブランチ取り違えを hidden-mistake として拾うか。
+- `insights-session-insights-002`: description の指摘、Claude Code 中心の使い方、評価が長い不満を拾い、description の件を具体的なファイルへの差分案にするか。
+- `insights-session-insights-003`: 信号の少ないセッションで、出ていない話題を足さないか。
 
 ## 採点
 
@@ -124,8 +138,8 @@ tsumi は pstack の上に乗るので、pstack を入れた状態で回す。�
 | 対象 | 件数 | 確かめること |
 |---|---|---|
 | smoke | 2 | `--plugin-dir` で tsumi が読まれるか。pstack の `poteto-mode/SKILL.md` と `tsumi-mode/SKILL.md` の両方を読むか（`must_read`） |
-| トリガー | 10 | 各スキルの description で、読むべき依頼で読み、近いが違う依頼で読まないか（作成済み） |
-| 修正の段 | 4 | 2回目の修正を、プロンプトではなく道具、スキーマ、テンプレート、評価に移すか |
+| トリガー | 14 | 各スキルの description で、読むべき依頼で読み、近いが違う依頼で読まないか（作成済み） |
+| 修正の段 | 4 | 2回目の修正を、プロンプトではなく道具、スキーマ、テンプレート、評価に移すか（振り返りの依頼では `triage-*` の2件で一部を作成済み） |
 | clear-japanese の清書 | 3 | 条件・数値・限定語が残り、原文にない因果を足さないか（clear-japanese の preservation.md の例を使う） |
 | 振り分け | 3 | 依頼文から `playbooks/new-agent.md`、`review-triage.md`、`eval.md`（上書き）を読むか |
 | 上書きファイルの読み込み | 1 | `/technical-writing` を tsumi-mode で使ったとき、pstack 本体のあとに `overlays/technical-writing.md` を読むか |

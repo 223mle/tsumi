@@ -127,9 +127,16 @@ dyl-stack の同名プレイブック上書きと同じ仕組みを使う。psta
 |---|---|
 | `/technical-writing` | 日本語の文書は clear-japanese で清書する |
 | `/correct` | エージェントの出力の誤りは agent-design-review に回す |
-| `/reflect` | Accepted の各行に評価お題の欄を足す |
 
 `/unslop` には overlay を置かず、tsumi-mode の Non-negotiables で読まないと決めている（0章）。
+
+`/reflect` の overlay は消し、tsumi の `session-insights` スキル（コマンド専用）に置き換えた。理由は次のとおり。
+
+- pstack の reflect は、会話の記録ファイルを `agent-transcripts/` から探して読む。tsumi は、その場の会話だけを対象にする。
+- 対象はミスの振り分けではなく、Daiki とのやり取りから得た示唆。好み、開発の傾向、繰り返した指摘、エージェントがミスを隠した場面を拾い、「示唆 → どのファイルをどう変えるか → 理由」で提案する（2026-10-18 に Daiki が方針変更。前の版の mistake-triage の4分類はやめた）。
+- Daiki が明示的に打つので `disable-model-invocation: true`。check-skills の `COMMAND_ONLY` に入れている。
+- 出力は人が読む短い日本語と JSON。JSON は `references/insights.schema.json` と `scripts/check_insights.py` で縛る。繰り返した指摘と隠したミスには検査案か理由を必須にし、評価では引用が会話に実在するかも確かめる。
+- 名前を reflect にすると、Cursor のスラッシュメニューで pstack の `/reflect` とぶつかる。
 
 プレイブックの上書きは `playbooks/eval.md` だけ。前の版の Harden プレイブックは消した。中身が agent-design-review の「Choose and validate a change」と重なるため。
 
@@ -145,13 +152,15 @@ tsumi/
   skills/
     tsumi-mode/
       SKILL.md
-      overlays/      technical-writing.md correct.md reflect.md
+      overlays/      technical-writing.md correct.md
       playbooks/     new-agent.md review-triage.md eval.md
       references/    requirements.md corrections-template.tsv
     agent-design-review/
       SKILL.md  references/  assets/
     clear-japanese/
       SKILL.md  references/
+    session-insights/
+      SKILL.md  references/insights.schema.json  scripts/check_insights.py
   scripts/
     check-skills          # name、description、manifest の機械的な検査
     install-hooks
@@ -175,14 +184,15 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - 設計は `evals/README.md`。
 - description と2つの manifest の機械的な検査は `scripts/check-skills`。PR ごとに GitHub Actions で回す。
 - Claude Code で評価するとき、評価中のエージェントが読めるのは pstack と tsumi の `skills/`、`agents/` だけにする。お題や設計文書を読ませないため。
-- トリガーのお題は10件。子スキルの単独での発動5件と、`/tsumi-mode` からの振り分け5件（001、003〜006）。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
+- トリガーのお題は14件。子スキルの単独での発動8件と、`/tsumi-mode` からの振り分け6件（001、003〜007）。
+- 示唆のお題は3件（`insights-*`）。session-insights の JSON を `insights_valid`、`insight_match`、`insight_absent` で判定する。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
 
 ## 9. 作る順番
 
 1. PR #1 をマージし、手元を0章の置き方に切り替える。個人のコピーはこのときに消す。
 2. 未決事項の上位を決める。
 3. TODO(Daiki) を埋める。
-4. reflect の Backlog の行き先、他のリポジトリで出た指摘の戻し方、修正ログの `class` の数え方を決める（別 PR）。
+4. 他のリポジトリで出た指摘の戻し方、修正ログの `class` の数え方を決める（別 PR）。
 5. 変更前後を比べる仕組みを作り、baseline を取る。
 
 ## 10. 未決事項（重要な順）

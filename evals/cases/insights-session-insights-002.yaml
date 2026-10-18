@@ -1,0 +1,34 @@
+id: insights-session-insights-002
+title: 好みと開発の傾向を拾い、根拠つきで具体的なファイルへの差分案にする
+targets: [session-insights]
+tags: [insights, ja]
+source: tsumi 開発の会話（2026-10-18）の実例を、顧客情報なしで書き直した。description の質、無関係な会社名を出さない、Claude Code 中心の使い方、評価が長い不満
+trials: 3
+prompt: |
+  {{TSUMI}}/skills/session-insights/SKILL.md を読み、その手順どおりに、下のセッションを今のセッションとして扱って提案を出して。ファイルは編集しないで。
+
+  ---
+  ユーザー: README とスキルの質が低い。特に description。エージェントがスキルを読むトリガーになるところだよ。公式ドキュメントを熟読して。
+  エージェント: description を書き直しました。
+  ユーザー: README に勤め先の会社の話を出す必要はないよ。私の考えをエージェント化するのが主目的。
+  エージェント: その段落を消しました。
+  ユーザー: 新しく足したスキルも description が「何をするか」だけで、いつ使うかが書いてない。前にも言ったよね。
+  エージェント: 「Use when ...」を足しました。
+  ユーザー: 前提として、ほとんど Claude Code でしか使わない。/tsumi: と打ったときに何が出るかが大事。
+  エージェント: わかりました。
+  ユーザー: 毎回評価が長すぎる。45分も待てない。
+  エージェント: 並列化と、変更に関係するお題だけ回す案を出します。
+  ---
+checks:
+  - type: must_read
+    glob: "**/session-insights/SKILL.md"
+  - type: insights_valid
+  - type: insight_match
+    match: "description"
+    kind: [repeated-correction, preference]
+    target: "SKILL|skill|check-skills|authoring|eval"
+  - type: insight_match
+    match: "Claude Code|/tsumi:"
+    kind: [preference, tendency]
+  - type: insight_match
+    match: "長|45分|時間|速|並列"

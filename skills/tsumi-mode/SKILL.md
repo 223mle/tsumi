@@ -25,7 +25,7 @@ Match the request against every line before you answer, even when it looks like 
 - pstack calls for **unslop** (a Non-negotiable or a playbook step, your reply included) → do not read unslop. Daiki does not write English prose. Use clear-japanese where the line above applies. Write your chat reply per pstack's Writing the reply, with neither skill.
 - Docs in either language → pstack's **technical-writing** plus [overlays/technical-writing.md](overlays/technical-writing.md).
 - Repeated mistakes in repo code (not agent output) → pstack's **correct** plus [overlays/correct.md](overlays/correct.md).
-- The user says reflect → pstack's **reflect** plus [overlays/reflect.md](overlays/reflect.md).
+- The user asks to reflect on or look back at the session → follow the **session-insights** skill (`../session-insights/SKILL.md`), not pstack's reflect. It is command-only, so read it from this link; it reads only this session and edits nothing before approval.
 - About to edit a file that tsumi ships (skill, overlay, playbook, eval case, script) → "Changing tsumi" under Rules.
 - About to write a new rule, skill, or schema → search the user's existing skills and repos first. Port before you rewrite.
 - Customer data or customer names about to enter an eval case, the corrections log, a commit, or anything sent outside → stop and ask.
