@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""Run trigger cases (evals/cases/trigger-*.yaml) with the Cursor CLI and judge
-which skill and playbook .md files the agent read, from stream-json tool_call events.
+"""Run trigger cases (evals/cases/trigger-*.yaml) with the Cursor CLI or Claude Code
+and judge which skill and playbook .md files the agent read, from its stream-json output.
 
 Usage:
-  evals/bin/run-trigger --pstack <pstack plugin dir> [--trials 3] [--model M]
+  evals/bin/run-trigger --pstack <pstack plugin dir> [--harness cursor|claude]
+                        [--trials 3] [--model M] [--effort E]
                         [--case trigger-clear-japanese-001] [--timeout 300]
 Results go to evals/runs/<JST time>-<git sha>/ (git-ignored).
-Needs a logged-in CLI (`agent status`). No third-party Python packages.
+cursor: needs a logged-in CLI (`agent status`).
+claude: loads only pstack and this repo (--setting-sources project), so personal
+        skills, user plugins, and CLAUDE.md stay out of the run.
+A must_read check on a file this repo ships passes only when the agent read this
+repo's copy, not a same-named personal copy. No third-party Python packages.
 """
 import argparse, datetime, fnmatch, json, os, pathlib, re, shutil, subprocess, sys, tempfile
 
@@ -45,52 +50,129 @@ def load_case(path):
     return case
 
 
-def collect(obj, tools, paths):
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            if k.endswith("ToolCall") and isinstance(v, dict):
-                tools.add(k)
-            if isinstance(v, str) and v.endswith(".md"):
-                paths.add(v)
-            collect(v, tools, paths)
-    elif isinstance(obj, list):
-        for v in obj:
-            collect(v, tools, paths)
+def events(stdout):
+    for line in stdout.splitlines():
+        try:
+            yield json.loads(line)
+        except ValueError:
+            continue
+
+
+def cursor_cmd(args, work):
+    cmd = [args.cli, "-p", "--output-format", "stream-json", "--trust", "--mode", "ask",
+           "--workspace", str(work), "--plugin-dir", args.pstack, "--plugin-dir", str(ROOT)]
+    return cmd + (["--model", args.model] if args.model else [])
+
+
+def cursor_reads(stdout):
+    def collect(obj, tools, paths):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if k.endswith("ToolCall") and isinstance(v, dict):
+                    tools.add(k)
+                if isinstance(v, str) and v.endswith(".md"):
+                    paths.add(v)
+                collect(v, tools, paths)
+        elif isinstance(obj, list):
+            for v in obj:
+                collect(v, tools, paths)
+
+    tools, paths, reply = set(), set(), ""
+    for ev in events(stdout):
+        if ev.get("type") == "tool_call":
+            collect(ev, tools, paths)
+        if ev.get("type") == "result":
+            reply = ev.get("result", "")
+    return tools, paths, reply
+
+
+def claude_cmd(args, work):
+    cmd = [args.cli, "-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence",
+           "--setting-sources", "project", "--permission-mode", "dontAsk",
+           "--plugin-dir", args.pstack, "--plugin-dir", str(ROOT),
+           "--add-dir", args.pstack, str(ROOT)]
+    cmd += ["--model", args.model] if args.model else []
+    return cmd + (["--effort", args.effort] if args.effort else [])
+
+
+def claude_reads(stdout, pstack, prompt):
+    """Read file paths and Skill invocations that did not error. A skill invoked as
+    `plugin:name` counts as reading that plugin's skills/<name>/SKILL.md. A prompt that
+    starts with /<name> or /tsumi:<name> loads that tsumi skill without any tool call."""
+    roots = {"tsumi": ROOT, "pstack": pathlib.Path(pstack)}
+    calls, failed, reply = {}, set(), ""
+    for ev in events(stdout):
+        if ev.get("type") == "result":
+            reply = ev.get("result", "")
+        message = ev.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        for block in content if isinstance(content, list) else []:
+            if block.get("type") == "tool_use":
+                calls[block.get("id")] = block
+            elif block.get("type") == "tool_result" and block.get("is_error"):
+                failed.add(block.get("tool_use_id"))
+    tools, paths = set(), set()
+    for call_id, block in calls.items():
+        tools.add(block.get("name"))
+        if call_id in failed:
+            continue
+        args = block.get("input") or {}
+        if block.get("name") == "Read" and args.get("file_path"):
+            paths.add(args["file_path"])
+        elif block.get("name") == "Skill" and args.get("skill"):
+            plugin, _, name = args["skill"].rpartition(":")
+            base = roots.get(plugin, pathlib.Path.home() / ".claude")
+            paths.add(str(base / "skills" / name / "SKILL.md"))
+    slash = re.match(r"^/(?:tsumi:)?([a-z0-9-]+)", prompt)
+    if slash and (ROOT / "skills" / slash.group(1) / "SKILL.md").exists():
+        paths.add(str(ROOT / "skills" / slash.group(1) / "SKILL.md"))
+    return tools, paths, reply
+
+
+HARNESSES = {
+    "cursor": {"cli": os.path.expanduser("~/.local/bin/agent"), "cmd": cursor_cmd,
+               "reads": lambda stdout, args, prompt: cursor_reads(stdout), "stdin": False},
+    "claude": {"cli": "claude", "cmd": claude_cmd,
+               "reads": lambda stdout, args, prompt: claude_reads(stdout, args.pstack, prompt), "stdin": True},
+}
+
+
+def ships(glob):
+    """True when the glob names a file in this repo's skills/, so the check is about tsumi's copy."""
+    return any(fnmatch.fnmatch(str(p), glob) for p in (ROOT / "skills").rglob("*") if p.is_file())
+
+
+def judge(check, paths):
+    hits = [p for p in paths if fnmatch.fnmatch(p, check["glob"])]
+    own = [p for p in hits if os.path.realpath(p).startswith(str(ROOT) + "/")]
+    if check["type"] == "must_read":
+        ok = bool(own) if ships(check["glob"]) else bool(hits)
+    elif check["type"] == "must_not_read":
+        ok = not hits
+    else:
+        ok = None
+    return {**check, "pass": ok, "tsumi_copy": bool(own)}
 
 
 def run_trial(case, args, out):
+    harness = HARNESSES[args.harness]
     work = pathlib.Path(tempfile.mkdtemp()) / "acme-notes"
     work.mkdir()
-    cmd = [args.cli, "-p", "--output-format", "stream-json", "--trust", "--mode", "ask",
-           "--workspace", str(work), "--plugin-dir", args.pstack, "--plugin-dir", str(ROOT)]
-    if args.model:
-        cmd += ["--model", args.model]
-    cmd.append(case["prompt"])
+    cmd = harness["cmd"](args, work)
+    stdin = case["prompt"] if harness["stdin"] else None
+    if stdin is None:
+        cmd = cmd + [case["prompt"]]
     out.mkdir(parents=True, exist_ok=True)
     (out / "cmd.json").write_text(json.dumps(cmd, ensure_ascii=False, indent=1))
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=args.timeout, cwd=work)
+        p = subprocess.run(cmd, input=stdin, capture_output=True, text=True, timeout=args.timeout, cwd=work)
         stdout, stderr, code = p.stdout, p.stderr, p.returncode
     except subprocess.TimeoutExpired as e:
         stdout, stderr, code = (e.stdout or b"").decode() if isinstance(e.stdout, bytes) else (e.stdout or ""), "timeout", "timeout"
     (out / "stream.jsonl").write_text(stdout)
     (out / "stderr.txt").write_text(stderr or "")
-    tools, paths, reply = set(), set(), ""
-    for line in stdout.splitlines():
-        try:
-            ev = json.loads(line)
-        except ValueError:
-            continue
-        if ev.get("type") == "tool_call":
-            collect(ev, tools, paths)
-        if ev.get("type") == "result":
-            reply = ev.get("result", "")
-    results = []
-    for c in case["checks"]:
-        hit = any(fnmatch.fnmatch(p, c["glob"]) for p in paths)
-        ok = hit if c["type"] == "must_read" else (not hit) if c["type"] == "must_not_read" else None
-        tsumi_hit = any(fnmatch.fnmatch(p, c["glob"]) and p.startswith(str(ROOT) + "/") for p in paths)
-        results.append({**c, "pass": ok, "tsumi_copy": tsumi_hit})
+    tools, paths, reply = harness["reads"](stdout, args, case["prompt"])
+    results = [judge(c, paths) for c in case["checks"]]
     trial = {"exit": code, "skills_read": sorted(paths), "tools": sorted(tools),
              "checks": results, "pass": code == 0 and all(r["pass"] for r in results)}
     (out / "trial.json").write_text(json.dumps(trial, ensure_ascii=False, indent=1))
@@ -102,18 +184,27 @@ def run_trial(case, args, out):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pstack", required=True)
+    ap.add_argument("--harness", choices=sorted(HARNESSES), default="cursor")
     ap.add_argument("--trials", type=int, default=3)
     ap.add_argument("--model")
+    ap.add_argument("--effort")
     ap.add_argument("--case", action="append")
     ap.add_argument("--timeout", type=int, default=300)
-    ap.add_argument("--cli", default=os.path.expanduser("~/.local/bin/agent"))
+    ap.add_argument("--cli")
     args = ap.parse_args()
+    if args.trials < 1:
+        ap.error("--trials must be at least 1")
+    args.cli = args.cli or HARNESSES[args.harness]["cli"]
     files = sorted((ROOT / "evals/cases").glob("trigger-*.yaml"))
     if args.case:
         files = [f for f in files if f.stem in args.case]
+    if not files:
+        ap.error("no trigger cases matched")
     sha = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
+    dirty = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain"], capture_output=True, text=True).stdout.strip()
     stamp = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime("%Y%m%d-%H%M%S")
-    run_dir = ROOT / "evals/runs" / f"{stamp}-{sha}"
+    run_dir = ROOT / "evals/runs" / f"{stamp}-{sha}{'-dirty' if dirty else ''}-{args.harness}"
+    run_dir.mkdir(parents=True, exist_ok=True)
     summary = []
     for f in files:
         case = load_case(f)

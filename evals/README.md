@@ -1,12 +1,12 @@
-# 評価ハーネス設計案（未実装）
+# 評価
 
-tsumi のスキル、ルーター、プロンプトを変えたときに回す回帰評価。Daiki の Mac 上の cursor-agent CLI でローカルに回す前提。クラウドエージェントは使わない。
+tsumi のスキル、ルーター、プロンプトを変えたときに回す回帰評価。Cursor の CLI か Claude Code で、ローカルに回す。クラウドエージェントは使わない。
 
 ラベルは DESIGN.md と同じ（measured、inferred、guess）。
 
 ## 目的
 
-- スキルを1つ変えたら、20〜50件のお題を回して前回と比べる。
+- スキルを1つ変えたら、変更に見合った数のお題を回して前回と比べる。
 - 回帰（前は通ったのに落ちたお題）を、出す前に見つける。
 - 修正ログの2回目のクラスを、お題として固定する。
 
@@ -21,9 +21,8 @@ evals/
   schemas/
     case.schema.json   # お題ファイルの JSON スキーマ
     judge-output.schema.json   # judge の出力を縛る JSON スキーマ
-  bin/                 # run / score / compare（未実装）
+  bin/run-trigger      # トリガーお題を回す
   runs/                # 実行結果。git に入れない
-  baseline.json        # 受け入れた最新の結果（未作成）
 ```
 
 ## お題の形式
@@ -64,11 +63,11 @@ description はエージェントがスキルを読むかどうかを決める�
 - 依頼文にスキル名を書かない。ユーザーがふつうに言う言葉で書く。例外は tsumi-mode の「tsumi で」で、これは description が定めたトリガー語そのもの。
 - `tags` に `trigger` を付ける。
 - 判定は transcript の読んだパスで行う。エージェントの自己申告は使わない。
-- `/スキル名` で呼んだスキルの SKILL.md は、Read を通らずに入り、stream-json に出ない（measured、CLI 2026.10.16）。この場合は、そのスキルの他のファイル（`references/` など）を読んだかで判定する（`**/tsumi-mode/**`）。
-- Mac の個人用スキル（`~/.claude/skills`、`~/.codex/skills`）も CLI に読まれる。同じ名前のスキルがあると結果が混ざる。run-trigger は判定ごとに tsumi の複製を読んだか（`tsumi_copy`）を記録する。
+- `/スキル名` で呼んだスキルの SKILL.md は、Read を通らずに入り、stream-json に出ない（measured、Cursor の CLI 2026.10.16 と Claude Code 2.1.283）。Cursor では、そのスキルの他のファイル（`references/` など）を読んだかで判定する（`**/tsumi-mode/**`）。Claude Code では、依頼文が `/<スキル名>` か `/tsumi:<スキル名>` で始まれば、そのスキルの SKILL.md を読んだとみなす。
+- 個人用スキル（`~/.claude/skills`、`~/.codex/skills`）も CLI に読まれる。同じ名前のスキルがあると結果が混ざる。そこで、tsumi が持つファイルへの `must_read` は、tsumi のコピーを読んだときだけ合格にする。
 - 形式の検査（name の形、description の長さ、いつ使うかの記述）は `scripts/check-skills` が先に行う。
 
-今あるお題は10件。各スキルが単独で発動するか（clear-japanese、agent-design-review、tsumi-mode で各2件）と、tsumi-mode から状況に合う子スキルへ振り分けるか（tsumi-mode-003〜006）。実行は `evals/bin/run-trigger`。まだ一度も回していない。
+今あるお題は10件。各スキルが単独で発動するか（clear-japanese、agent-design-review、tsumi-mode で各2件）と、tsumi-mode から状況に合う子スキルへ振り分けるか（tsumi-mode-003〜006）。実行は `evals/bin/run-trigger`。結果は DESIGN.md 12章にある。
 
 ### blinding の規則
 
@@ -81,101 +80,56 @@ pstack の Eval プレイブックの規則をそのまま使う（measured、`p
 
 ## 採点
 
-1. **決定的な検査を先に。** 試行ごとに `checks` を全部回す。1つでも落ちたらその試行は不合格。
-2. **judge は残りだけ。** `judge` があるお題だけ、候補と別のモデル系統で採点する。基準ごとに合否と一行の理由を返させ、1〜10点の点数は使わない。出力は `schemas/judge-output.schema.json` で縛り、合わなければ judge の失敗として扱う。
-3. **お題の判定。** k 試行のうち全部合格なら `pass`、一部なら `flaky`、全部不合格なら `fail`。
-4. **全体の判定。** `baseline.json` と比べる。
-   - `pass` から `flaky` か `fail` に落ちたお題は回帰として列挙する。
-   - `must-pass` のお題が1件でも回帰したら不合格。
-   - 全体の通過率の許容低下幅は未決（DESIGN.md 10章の5）。
-5. **数字の説明。** 回帰が出たら、対象の transcript を読み、変更のせいか、お題が不安定なのか、環境のせいかを書く（pstack の Explain the Number、measured）。
+1. **決定的な検査。** 試行ごとに `checks` を全部回す。1つでも落ちたらその試行は不合格。
+2. **お題の判定。** k 試行のうち全部合格なら `pass`、一部なら `flaky`、全部不合格なら `fail`。
+3. **数字の説明。** 回帰が出たら、対象の transcript を読み、変更のせいか、お題が不安定なのか、環境のせいかを書く（pstack の Explain the Number、measured）。
 
-## コマンド像（Mac、cursor-agent CLI）
+次の2つは未実装。決めてある方針だけを書く。
 
-Cursor のドキュメントでは CLI の名前は `agent` で、`-p`、`--output-format stream-json`、`--model`、`--force`、`--trust`、`--workspace`、`--plugin-dir`、`--mode ask` がある（measured、cursor.com/docs/cli/reference/parameters）。Daiki の Mac の CLI は 2026.10.16-e3cb207 に更新した。`agent` と `cursor-agent` の両方の名前が同じ実体を指す。`--help` に `--plugin-dir`、`--trust`、`--workspace`、`--mode`、`--model`、`--output-format` がある（measured、2026-10-18）。以下は `cursor-agent` で書く。
+- judge は、決定的に採点できない部分だけを、候補と別のモデル系統で採点する。基準ごとに合否と一行の理由を返させ、出力は `schemas/judge-output.schema.json` で縛る。
+- 前回の結果と比べ、`pass` から `flaky` か `fail` に落ちたお題を回帰として列挙する。`must-pass` のお題が1件でも回帰したら不合格にする。全体の通過率の許容低下幅は未決（DESIGN.md 10章の5）。
 
-トリガーお題は `evals/bin/run-trigger --pstack <pstack のディレクトリ> --trials 3` で回す。ログイン済みの CLI が要る。結果は `evals/runs/` に出る。
+## 回し方
 
-### 1件を手で回す
+トリガーお題は `evals/bin/run-trigger` で回す。結果は `evals/runs/<日時>-<git短縮SHA>-<harness>/` に出る。
 
-```bash
-RUN=$(mktemp -d)/acme-notes          # eval という語を含めない名前にする
-cursor-agent -p --output-format stream-json --trust --force \
-	--model "$MODEL" \
-	--plugin-dir ~/src/pstack-pinned \
-	--plugin-dir ~/src/tsumi \
-	--workspace "$RUN" \
-	"$(yq '.prompt' evals/cases/trigger-clear-japanese-001.yaml)" \
-	> evals/runs/manual/stream.jsonl
-```
+pstack は自動で更新されるので、版を固定しないと、pstack 側の変化が tsumi の回帰に見える（inferred）。比べる2回は同じ pstack の版で回す。
 
-- stream-json の `tool_call` イベントに `readToolCall.args.path` が出る（measured、output-format のドキュメント）。`must_read` はこれを読む。
-- 最終返信は末尾の `{"type":"result", ...}` の `result`。
-- `--plugin-dir` は複数指定できる（measured、parameters のドキュメント）。pstack は固定した版のコピーを渡す。pstack は自動更新されるので、版を固定しないと pstack 側の変化が tsumi の回帰に見える（inferred）。固定する版は `evals/pstack.lock` に commit SHA で書く案。
-- `--plugin-dir` で作業中のコピーを読ませる。インストール済みの tsumi と同時に読まれたときの挙動は確かめていない（guess で衝突する）。回すときはインストール版を外すか、smoke お題で確かめる。
-
-### ハーネス（未実装、bun 想定）
+### Claude Code
 
 ```bash
-# 全件を3試行
-bun evals/bin/run.ts --cases 'evals/cases/*.yaml' --trials 3 --model "$MODEL" --plugin-dir .
-
-# smoke だけ（スキル変更のたびに）
-bun evals/bin/run.ts --tag smoke --trials 1 --plugin-dir .
-
-# 採点と比較
-bun evals/bin/score.ts evals/runs/<run-id>
-bun evals/bin/compare.ts --base evals/baseline.json --run evals/runs/<run-id>
-
-# 受け入れたら baseline を更新
-bun evals/bin/compare.ts --base evals/baseline.json --run evals/runs/<run-id> --accept
+evals/bin/run-trigger --harness claude \
+	--pstack ~/.claude/plugins/cache/cursor-plugins/pstack/<版> \
+	--model claude-opus-5-5 --effort medium --trials 3
 ```
 
-### 変更前後を比べる
+- `claude -p --output-format stream-json` に、pstack と tsumi だけを `--plugin-dir` で渡す。`--setting-sources project` を付けるので、個人用スキル、ユーザーのプラグイン、CLAUDE.md は読み込まれない（measured、2026-10-18）。
+- `--permission-mode dontAsk` で回すので、許可が要るツール（Bash、Edit など）は拒否される。読んだかどうかは、Read と Skill の呼び出しのうち、エラーにならなかったものから判定する。
+
+### Cursor
 
 ```bash
-git worktree add /tmp/tsumi-base main
-bun evals/bin/run.ts --plugin-dir /tmp/tsumi-base --trials 3 --out evals/runs/base
-bun evals/bin/run.ts --plugin-dir .                 --trials 3 --out evals/runs/head
-bun evals/bin/compare.ts --base evals/runs/base --run evals/runs/head
+evals/bin/run-trigger --harness cursor --pstack <pstack のディレクトリ> --trials 3
 ```
 
-### judge
+- ログイン済みの CLI（`agent`）が要る。`--mode ask` で、読み取りだけに絞って回す（inferred、ドキュメントでは plan と ask のモードがあると書いてある）。
+- stream-json の `tool_call` イベントにある `.md` のパスを、読んだファイルとして扱う。
 
-```bash
-cursor-agent -p --mode ask --output-format json --trust \
-	--model "$JUDGE_MODEL" \
-	"$(cat judge-prompt.txt)" | jq -r '.result' > judge.json
-# judge.json を schemas/judge-output.schema.json で検査する
-```
-
-- `--mode ask` を読み取り専用として使う（inferred、ドキュメントでは plan と ask のモードがあると書いてある）。
-
-### run.ts の中身の案
-
-1. お題を読み、`case.schema.json` で検査する。合わなければ止める。
-2. 試行ごとに一時ディレクトリを作り、fixture を写す。名前はお題 id と無関係なものにする。
-3. `cursor-agent -p --output-format stream-json ...` を回し、`stream.jsonl` を保存する。並列数は2〜3から始める（guess、Mac の負荷とレート制限次第）。
-4. 作業ディレクトリの差分、読んだパス、最終返信、所要時間を `trial.json` に書く。
-5. `score.ts` が checks と judge を回し、`score.json` を書く。
-
-`runs/<日時>-<git短縮SHA>/<case-id>/<trial>/` に置く。日時は JST。
-
-## 最初の20件の案
+## 次に足すお題の案
 
 tsumi は pstack の上に乗るので、pstack を入れた状態で回す。お題は tsumi が足した分だけを見る。pstack 単体の挙動は確かめない。
 
 | 対象 | 件数 | 確かめること |
 |---|---|---|
 | smoke | 2 | `--plugin-dir` で tsumi が読まれるか。pstack の `poteto-mode/SKILL.md` と `tsumi-mode/SKILL.md` の両方を読むか（`must_read`） |
-| トリガー | 6 | 各スキルの description で、読むべき依頼で読み、近いが違う依頼で読まないか（作成済み） |
+| トリガー | 10 | 各スキルの description で、読むべき依頼で読み、近いが違う依頼で読まないか（作成済み） |
 | 修正の段 | 4 | 2回目の修正を、プロンプトではなく道具、スキーマ、テンプレート、評価に移すか |
 | clear-japanese の清書 | 3 | 条件・数値・限定語が残り、原文にない因果を足さないか（clear-japanese の preservation.md の例を使う） |
 | 振り分け | 3 | 依頼文から `playbooks/new-agent.md`、`review-triage.md`、`eval.md`（上書き）を読むか |
 | 上書きファイルの読み込み | 1 | `/technical-writing` を tsumi-mode で使ったとき、pstack 本体のあとに `overlays/technical-writing.md` を読むか |
 | pstack 不在 | 1 | pstack を外した環境で、作業を始めずに `/add-plugin pstack` を案内して止まるか |
 
-その後は修正ログの2回目のクラスから足し、50件を上限の目安にする。
+その後は、修正ログで2回目になったクラスからお題を足す。
 
 ## 未決（DESIGN.md 10章と重なるもの）
 
