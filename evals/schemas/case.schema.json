@@ -1,0 +1,43 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "tsumi/evals/case.schema.json",
+	"title": "tsumi eval case (draft)",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["id", "title", "targets", "source", "prompt", "checks"],
+	"properties": {
+		"id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+		"title": { "type": "string", "minLength": 1 },
+		"targets": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+		"tags": { "type": "array", "items": { "enum": ["smoke", "must-pass", "routing", "ja", "flaky-known"] } },
+		"source": { "type": "string", "minLength": 1 },
+		"fixture": { "type": "string" },
+		"prompt": { "type": "string", "minLength": 1 },
+		"trials": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 },
+		"checks": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "object",
+				"required": ["type"],
+				"oneOf": [
+					{ "properties": { "type": { "const": "file_exists" }, "path": { "type": "string" } }, "required": ["path"] },
+					{ "properties": { "type": { "enum": ["must_match", "must_not_match"] }, "path": { "type": "string" }, "pattern": { "type": "string" } }, "required": ["path", "pattern"] },
+					{ "properties": { "type": { "const": "json_schema" }, "path": { "type": "string" }, "schema": { "type": "string" } }, "required": ["path", "schema"] },
+					{ "properties": { "type": { "const": "command" }, "run": { "type": "string" }, "expect_exit": { "type": "integer", "default": 0 } }, "required": ["run"] },
+					{ "properties": { "type": { "enum": ["must_read", "must_not_read"] }, "glob": { "type": "string" } }, "required": ["glob"] },
+					{ "properties": { "type": { "const": "max_turns" }, "value": { "type": "integer", "minimum": 1 } }, "required": ["value"] }
+				]
+			}
+		},
+		"judge": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["rubric", "criteria"],
+			"properties": {
+				"rubric": { "type": "string" },
+				"criteria": { "type": "array", "items": { "type": "string" }, "minItems": 1, "maxItems": 6 }
+			}
+		}
+	}
+}

@@ -1,0 +1,25 @@
+# 形式を示すための見本。本番のお題ではない。
+id: example-unslop-ja-001
+title: 社内告知の AI っぽい言い回しを抜き、意味と敬語のレベルを保つ
+targets: [unslop]
+tags: [ja]
+source: 手書きの見本（修正ログ由来ではない）
+fixture: memo-ja-basic
+prompt: |
+  /tsumi-mode /unslop notice.md を読みやすく直して。
+trials: 3
+checks:
+  - type: file_exists
+    path: notice.md
+  - type: must_not_match
+    path: notice.md
+    pattern: "することができます|と言えるでしょう|シームレス|—"
+  - type: must_read
+    glob: "**/pstack/**/skills/unslop/SKILL.md"
+  - type: must_read
+    glob: "**/skills/tsumi-mode/overlays/unslop.md"
+judge:
+  rubric: rubrics/example-unslop-ja.md
+  criteria:
+    - 元の告知の事実（日時、対象者、手続き）が一つも欠けていない
+    - 敬語のレベルが元と同じ

@@ -1,0 +1,29 @@
+{
+	"name": "tsumi",
+	"displayName": "tsumi",
+	"version": "0.1.0",
+	"description": "Requires pstack. Daiki Tsutsumi's agent-development style layered on pstack: make mistakes impossible with tools, JSON schemas, and templates; run regression evals on every change; keep prompts for judgment only; send only suspicious output to human review.",
+	"author": {
+		"name": "Daiki Tsutsumi"
+	},
+	"homepage": "https://github.com/223mle/tsumi",
+	"repository": "https://github.com/223mle/tsumi",
+	"keywords": [
+		"tsumi",
+		"tsumi-mode",
+		"pstack",
+		"agent-development",
+		"evals",
+		"json-schema",
+		"agent-style"
+	],
+	"category": "developer-tools",
+	"tags": [
+		"workflow",
+		"evals",
+		"principles",
+		"agents"
+	],
+	"skills": "./skills/",
+	"agents": "./agents/"
+}

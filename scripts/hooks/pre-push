@@ -1,0 +1,11 @@
+#!/bin/sh
+# GitHub の無料プランの private リポジトリではブランチ保護が使えないため、手元で main への push を止める。
+# git は push する ref ごとに "<local ref> <local sha> <remote ref> <remote sha>" を標準入力に渡す。
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+	if [ "$remote_ref" = "refs/heads/main" ]; then
+		echo "pre-push: main への push は禁止。ブランチを切って PR を出す。" >&2
+		status=1
+	fi
+done
+exit $status
