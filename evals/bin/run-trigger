@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Run trigger cases (evals/cases/trigger-*.yaml) with the Cursor CLI and judge
+which SKILL.md files the agent read, from stream-json tool_call events.
+
+Usage:
+  evals/bin/run-trigger --pstack <pstack plugin dir> [--trials 3] [--model M]
+                        [--case trigger-clear-japanese-001] [--timeout 300]
+Results go to evals/runs/<JST time>-<git sha>/ (git-ignored).
+Needs a logged-in CLI (`agent status`). No third-party Python packages.
+"""
+import argparse, datetime, fnmatch, json, os, pathlib, re, shutil, subprocess, sys, tempfile
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+
+def load_case(path):
+    """Minimal parser for our case files: scalars, `prompt: |` block, checks list."""
+    checks = []
+    case, lines = {"checks": checks}, path.read_text(encoding="utf-8").splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        m = re.match(r"^(\w+):\s*(.*)$", line)
+        if m and m.group(2) == "|":
+            block, i = [], i + 1
+            while i < len(lines) and (lines[i].startswith("  ") or not lines[i].strip()):
+                block.append(lines[i][2:])
+                i += 1
+            case[m.group(1)] = "\n".join(block).strip() + "\n"
+            continue
+        if m and m.group(1) == "checks":
+            i += 1
+            while i < len(lines) and lines[i].startswith("  "):
+                t = re.match(r"^\s*-\s*type:\s*(\S+)", lines[i])
+                if t:
+                    checks.append({"type": t.group(1)})
+                g = re.match(r"^\s*glob:\s*\"?([^\"]+)\"?", lines[i])
+                if g:
+                    checks[-1]["glob"] = g.group(1)
+                i += 1
+            continue
+        if m:
+            case[m.group(1)] = m.group(2).strip()
+        i += 1
+    return case
+
+
+def collect(obj, tools, paths):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k.endswith("ToolCall") and isinstance(v, dict):
+                tools.add(k)
+            if isinstance(v, str) and v.endswith("SKILL.md"):
+                paths.add(v)
+            collect(v, tools, paths)
+    elif isinstance(obj, list):
+        for v in obj:
+            collect(v, tools, paths)
+
+
+def run_trial(case, args, out):
+    work = pathlib.Path(tempfile.mkdtemp()) / "acme-notes"
+    work.mkdir()
+    cmd = [args.cli, "-p", "--output-format", "stream-json", "--trust", "--mode", "ask",
+           "--workspace", str(work), "--plugin-dir", args.pstack, "--plugin-dir", str(ROOT)]
+    if args.model:
+        cmd += ["--model", args.model]
+    cmd.append(case["prompt"])
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "cmd.json").write_text(json.dumps(cmd, ensure_ascii=False, indent=1))
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=args.timeout, cwd=work)
+        stdout, stderr, code = p.stdout, p.stderr, p.returncode
+    except subprocess.TimeoutExpired as e:
+        stdout, stderr, code = (e.stdout or b"").decode() if isinstance(e.stdout, bytes) else (e.stdout or ""), "timeout", "timeout"
+    (out / "stream.jsonl").write_text(stdout)
+    (out / "stderr.txt").write_text(stderr or "")
+    tools, paths, reply = set(), set(), ""
+    for line in stdout.splitlines():
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            continue
+        if ev.get("type") == "tool_call":
+            collect(ev, tools, paths)
+        if ev.get("type") == "result":
+            reply = ev.get("result", "")
+    results = []
+    for c in case["checks"]:
+        hit = any(fnmatch.fnmatch(p, c["glob"]) for p in paths)
+        ok = hit if c["type"] == "must_read" else (not hit) if c["type"] == "must_not_read" else None
+        results.append({**c, "pass": ok})
+    trial = {"exit": code, "skills_read": sorted(paths), "tools": sorted(tools),
+             "checks": results, "pass": code == 0 and all(r["pass"] for r in results)}
+    (out / "trial.json").write_text(json.dumps(trial, ensure_ascii=False, indent=1))
+    (out / "reply.txt").write_text(reply)
+    shutil.rmtree(work.parent, ignore_errors=True)
+    return trial
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--pstack", required=True)
+    ap.add_argument("--trials", type=int, default=3)
+    ap.add_argument("--model")
+    ap.add_argument("--case", action="append")
+    ap.add_argument("--timeout", type=int, default=300)
+    ap.add_argument("--cli", default=os.path.expanduser("~/.local/bin/agent"))
+    args = ap.parse_args()
+    files = sorted((ROOT / "evals/cases").glob("trigger-*.yaml"))
+    if args.case:
+        files = [f for f in files if f.stem in args.case]
+    sha = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
+    stamp = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime("%Y%m%d-%H%M%S")
+    run_dir = ROOT / "evals/runs" / f"{stamp}-{sha}"
+    summary = []
+    for f in files:
+        case = load_case(f)
+        trials = [run_trial(case, args, run_dir / case["id"] / str(t)) for t in range(1, args.trials + 1)]
+        n = sum(t["pass"] for t in trials)
+        verdict = "pass" if n == len(trials) else "fail" if n == 0 else "flaky"
+        summary.append({"id": case["id"], "verdict": verdict, "passed": n, "trials": len(trials),
+                        "skills_read": [t["skills_read"] for t in trials]})
+        print(f"{verdict:6} {n}/{len(trials)} {case['id']}", flush=True)
+    (run_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
+    print(f"results: {run_dir}")
+    sys.exit(0 if all(s["verdict"] == "pass" for s in summary) else 1)
+
+
+if __name__ == "__main__":
+    main()

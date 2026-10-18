@@ -66,7 +66,7 @@ description はエージェントがスキルを読むかどうかを決める�
 - 判定は transcript の読んだパスで行う。エージェントの自己申告は使わない。
 - 形式の検査（name の形、description の長さ、いつ使うかの記述）は `scripts/check-skills` が先に行う。
 
-今あるお題は6件（clear-japanese、agent-design-review、tsumi-mode で各2件）。まだ一度も回していない。
+今あるお題は6件（clear-japanese、agent-design-review、tsumi-mode で各2件）。実行は `evals/bin/run-trigger`。まだ一度も回していない。
 
 ### blinding の規則
 
@@ -90,7 +90,9 @@ pstack の Eval プレイブックの規則をそのまま使う（measured、`p
 
 ## コマンド像（Mac、cursor-agent CLI）
 
-Cursor のドキュメントでは CLI の名前は `agent` で、`-p`、`--output-format stream-json`、`--model`、`--force`、`--trust`、`--workspace`、`--plugin-dir`、`--mode ask` がある（measured、cursor.com/docs/cli/reference/parameters）。Daiki の Mac にあるのは `~/.local/bin/cursor-agent` で、版は 2025.09.18。`--help` に `--plugin-dir` と `--trust` がない（measured、2026-10-18）。下のコマンドを回すには CLI の更新が要る。以下は `cursor-agent` で書く。
+Cursor のドキュメントでは CLI の名前は `agent` で、`-p`、`--output-format stream-json`、`--model`、`--force`、`--trust`、`--workspace`、`--plugin-dir`、`--mode ask` がある（measured、cursor.com/docs/cli/reference/parameters）。Daiki の Mac の CLI は 2026.10.16-e3cb207 に更新した。`agent` と `cursor-agent` の両方の名前が同じ実体を指す。`--help` に `--plugin-dir`、`--trust`、`--workspace`、`--mode`、`--model`、`--output-format` がある（measured、2026-10-18）。以下は `cursor-agent` で書く。
+
+トリガーお題は `evals/bin/run-trigger --pstack <pstack のディレクトリ> --trials 3` で回す。ログイン済みの CLI が要る。結果は `evals/runs/` に出る。
 
 ### 1件を手で回す
 
