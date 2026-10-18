@@ -31,8 +31,10 @@ pstack は、principle、プレイブック、返信の書き方といった開�
 | スキル、プロンプト、ツール定義、スキーマを変えた | Eval プレイブック（回帰評価）。description を変えたら `scripts/check-skills` とトリガーお題も |
 | 人に回す出力を決める、人の修正が届く | Review triage プレイブック |
 | 日本語の文書（README、設計書、PR 説明、コミット文など） | `clear-japanese` |
-| 英語の文章、文書 | pstack の `unslop`、`technical-writing` |
+| 文書の構成を決める（日本語、英語とも） | pstack の `technical-writing` |
 | それ以外（コード、設計、デバッグ、検証、PR） | pstack の `poteto-mode` の規則のまま |
+
+pstack の `unslop` は使いません。pstack が `unslop` を呼ぶ場面では、人が読む日本語の文書なら `clear-japanese` を使い、チャットの返信にはどちらも使いません。
 
 tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-design-review` と `clear-japanese` は単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
 
