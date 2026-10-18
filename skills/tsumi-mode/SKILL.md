@@ -9,25 +9,18 @@ Build agents so the easiest operation produces a valid result. This skill is the
 
 Bundled tsumi skills live at `../<name>/SKILL.md` from this file. Put this file's absolute path in every `tsumi-agent` prompt.
 
-## Start
-
-1. Check that pstack is installed: [references/requirements.md](references/requirements.md). If it is missing, stop and tell the user to run `/add-plugin pstack`. Do not rebuild pstack's parts.
-2. Open a todo. First item: read pstack's `poteto-mode/SKILL.md` in full. Its Non-negotiables and Principles still apply unless a line below overrides them.
-3. Match the request against the Non-negotiables below. Add one todo item per matched skill or playbook: "read `<path>` in full". Read each before acting on that part of the work.
-4. Pick a playbook: this skill's `playbooks/` first, then pstack's. Copy its steps into the todo. Mark a skipped step `skip: <reason>`.
-
 ## Non-negotiables
 
-Each line is situation → what you must read and apply. These add to pstack's Non-negotiables.
+Match the request against every line before you answer, even when it looks like a quick question. Each line is situation → what you must read and apply. These add to pstack's Non-negotiables.
 
 - Designing, building, reviewing, or changing an agent, skill, prompt, tool definition, output schema, or template → the **agent-design-review** skill (`../agent-design-review/SKILL.md`), before you write the change.
 - A new task agent from scratch → the **New agent** playbook ([playbooks/new-agent.md](playbooks/new-agent.md)). It also requires agent-design-review.
 - An agent output fails, an eval fails, or the user corrects agent behavior → agent-design-review. Fix at the highest level in the Order of fixes.
-- Writing or changing a skill, prompt, tool definition, schema, or template, including a draft or proposal the user will apply → the **Eval** playbook ([playbooks/eval.md](playbooks/eval.md)) before calling it done. Changed a `description` → also run `scripts/check-skills` and the trigger cases.
+- Writing, rewriting, or proposing a skill `description` → the **Eval** playbook ([playbooks/eval.md](playbooks/eval.md)) first. tsumi's description rules live there, not here.
+- Changing a skill, prompt, tool definition, schema, or template → the **Eval** playbook before calling it done.
 - Deciding which outputs a human reviews, or human corrections arrive → the **Review triage** playbook ([playbooks/review-triage.md](playbooks/review-triage.md)).
 - The user corrects you → add a row to the corrections log (see Rules). Second row of the same class → "Same correction twice".
 - Japanese document or prose others will read (README, design doc, PR description, commit message, Japanese SKILL.md, customer-facing text) → the **clear-japanese** skill (`../clear-japanese/SKILL.md`) on your draft before you hand it over.
-- Your own chat reply in Japanese → write it per pstack's Writing the reply, then check it against clear-japanese's preservation and cohesion rules. Do not switch to clear-japanese's "return only the rewritten text" output.
 - English prose → pstack's **unslop**. English docs → pstack's **technical-writing**.
 - Docs in either language → pstack's **technical-writing** plus [overlays/technical-writing.md](overlays/technical-writing.md).
 - Repeated mistakes in repo code (not agent output) → pstack's **correct** plus [overlays/correct.md](overlays/correct.md).
@@ -37,6 +30,13 @@ Each line is situation → what you must read and apply. These add to pstack's N
 - Anything else (code, architecture, debugging, verification, PRs) → pstack's Non-negotiables, unchanged.
 
 When tsumi gains a skill, add its line here. `scripts/check-skills` fails if a tsumi skill is missing from this file.
+
+## Start
+
+1. Check that pstack is installed: [references/requirements.md](references/requirements.md). If it is missing, stop and tell the user to run `/add-plugin pstack`. Do not rebuild pstack's parts.
+2. Open a todo. First item: read pstack's `poteto-mode/SKILL.md` in full. Its Non-negotiables and Principles still apply unless a line below overrides them.
+3. Match the request against the Non-negotiables above. Add one todo item per matched skill or playbook: "read `<path>` in full". Read each before acting on that part of the work.
+4. Pick a playbook: this skill's `playbooks/` first, then pstack's. Copy its steps into the todo. Mark a skipped step `skip: <reason>`.
 
 ## Order of fixes
 
