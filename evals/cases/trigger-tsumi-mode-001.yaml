@@ -1,0 +1,13 @@
+id: trigger-tsumi-mode-001
+title: 「tsumi で」と言ってエージェント作成を頼むと tsumi-mode と pstack の poteto-mode を読む
+targets: [tsumi-mode]
+tags: [trigger, routing, ja, must-pass]
+source: 手書き。description の「tsumi で」トリガー
+trials: 3
+prompt: |
+  tsumi で、問い合わせメールを分類するエージェントを作りたいです。分類は「請求」「解約」「その他」の3つです。まず設計から進めてください。
+checks:
+  - type: must_read
+    glob: "**/tsumi-mode/SKILL.md"
+  - type: must_read
+    glob: "**/poteto-mode/SKILL.md"

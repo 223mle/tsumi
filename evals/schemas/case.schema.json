@@ -9,7 +9,7 @@
 		"id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
 		"title": { "type": "string", "minLength": 1 },
 		"targets": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-		"tags": { "type": "array", "items": { "enum": ["smoke", "must-pass", "routing", "ja", "flaky-known"] } },
+		"tags": { "type": "array", "items": { "enum": ["smoke", "must-pass", "routing", "trigger", "ja", "flaky-known"] } },
 		"source": { "type": "string", "minLength": 1 },
 		"fixture": { "type": "string" },
 		"prompt": { "type": "string", "minLength": 1 },

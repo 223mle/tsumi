@@ -1,8 +1,8 @@
 {
 	"name": "tsumi",
 	"displayName": "tsumi",
-	"version": "0.1.0",
-	"description": "Requires pstack. Daiki Tsutsumi's agent-development style layered on pstack: make mistakes impossible with tools, JSON schemas, and templates; run regression evals on every change; keep prompts for judgment only; send only suspicious output to human review.",
+	"version": "0.2.0",
+	"description": "Requires pstack. Daiki Tsutsumi's agent-development approach as skills: fix agent failures in order - tools, JSON schemas, and templates first; automated checks and regression evals second; prompt rules only for judgment that cannot be encoded; human review only for suspicious output. Includes tsumi-mode (router over pstack's poteto-mode), agent-design-review, and clear-japanese.",
 	"author": {
 		"name": "Daiki Tsutsumi"
 	},
@@ -13,9 +13,10 @@
 		"tsumi-mode",
 		"pstack",
 		"agent-development",
+		"agent-design",
 		"evals",
 		"json-schema",
-		"agent-style"
+		"japanese-writing"
 	],
 	"category": "developer-tools",
 	"tags": [

@@ -1,5 +1,5 @@
-# /correct への上書き
+# /correct overlay
 
-pstack の `correct/SKILL.md` を先に読み、そのまま従う。足すのは次の一点。
+Read pstack's `correct/SKILL.md` first and follow it. One addition:
 
-- 直す対象が開発中のエージェントの出力（プロンプト、スキル、ツール定義、スキーマ、テンプレートで決まるもの）なら、`/correct` ではなく tsumi-mode の `playbooks/harden.md` を使う。リポジトリのコードの誤りは `/correct` のまま。
+- If the failure is in an agent's output (decided by a prompt, skill, tool definition, schema, or template), use `agent-design-review` instead of `/correct`. Code in the repo stays with `/correct`.

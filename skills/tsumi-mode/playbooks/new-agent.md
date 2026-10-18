@@ -1,13 +1,14 @@
 ### New agent
 
-**業務エージェントの設計と、それが正しいと示す評価はあなたの責任。プロンプトは最後に書く。**
+**You own the agent's design and the evals that show it works. Write the prompt last.**
 
-1. 業務の流れを書く。入力、出力、出力を誰がどう使うか、間違えたときの損害。
-2. 有限な選択と固定値を洗い出す。分類、宛先、ステータス、ID、日付、金額、定型文。
-3. 段1を先に作る。選択はツールの引数の enum か部品の一覧にする。出力は JSON スキーマで縛る。固定値はテンプレートにする。スキーマとコードの型は同じ元から作る。
-4. 評価お題を20件書く。実際の業務の入力を匿名化して使う。顧客データを使うなら、tsumi-mode の「顧客データ」を当てる。
-5. プロンプトを書く。段1と段2で強制できない判断だけ。
-6. お題を回し、通過率と落ちたお題の理由を記録する。
-7. 人に回す条件を `playbooks/review-triage.md` で決める。
+1. Read `agent-design-review/SKILL.md` in full.
+2. Write the task flow: input, output, who uses the output and how, and the cost of a wrong output.
+3. Sketch one successful tool call from the agent's side: a small structured request and an observable result. Derive the tool interface from it.
+4. List the finite choices and fixed values: categories, recipients, statuses, IDs, dates, amounts, fixed phrases. Make choices enums or component IDs. Bind output with a JSON schema validated at the boundary. Put fixed values in templates that code fills.
+5. Write eval cases before the prompt. Use real task inputs. If they contain customer data, apply "Customer data" in tsumi-mode first.
+6. Write the prompt: only the judgment that steps 3–5 cannot enforce.
+7. Run the evals. Record the pass rate and why each failure failed.
+8. Set the human-review conditions with `playbooks/review-triage.md`.
 
-**Reply:** 業務の流れ、段1で消した間違いの種類、スキーマとテンプレートの場所、お題の件数と通過率、プロンプトに残した判断とその理由、人に回す条件。
+**Reply:** task flow, the caller example, mistakes removed by tools/schemas/templates, where the schemas and templates live, eval count and pass rate, judgment left in the prompt and why, review conditions.

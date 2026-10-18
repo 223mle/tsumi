@@ -1,6 +1,6 @@
 # tsumi 設計
 
-更新 2026-10-18（JST）。前の版は box の `/workspace/dstack/DESIGN.md`（仮名 dstack）。
+更新 2026-10-18（JST）。
 
 ラベルの意味は次の通り。
 
@@ -13,16 +13,19 @@
 - プラグイン名は `tsumi`。ルーターは `tsumi-mode`。
 - リポジトリは GitHub の private リポジトリ `223mle/tsumi`。
 - pstack を前提にして、足りない分だけ足す。dyl-stack と同じ考え方。
-
-この3つから、次も決まると見ている（inferred）。
-
-- モデル設定は pstack の `~/.cursor/rules/pstack-models.mdc` をそのまま使う。tsumi 用の設定ファイルは作らない。
-- `/in-your-own-words` など、pstack にあって変える必要のないスキルは pstack のものを呼ぶ。写さない。
+- **主役は Daiki のエージェント開発の考え方と tips をスキルにすること**（2026-10-18 の Daiki の指摘で決まった）。pstack の汎用スキルへの上書き（overlay）は脇役にした。
+- 優先順位は次の4段。tsumi の背骨にする。
+  1. 環境と道具で間違いを起こせなくする（部品から選ばせる、JSON スキーマで縛る、テンプレートで値を固定する）。
+  2. 自動チェックと回帰評価（20〜50件、スキルを変えるたびに回す）。
+  3. 仕組みにできない判断だけをプロンプトに最小限書く。同じ修正が2回出たら1か2へ移す。
+  4. 人のレビューは最後で、怪しいものだけ。修正はログに残す。
 
 ## 1. 読んだもの
 
 - pstack v0.15.25（`/workspace/plugins/pstack/`）。構造の要約は前の版の DESIGN.md 1章（measured）。
 - dyl-stack（`cursor/plugins` の `dyl-stack/`、最新コミット fae2c6e、2026-09-30 09:58 JST）。`dyl-mode/SKILL.md`、`references/requirements.md`、`playbooks/opening-a-pr.md`、`agents/dyl-agent.md`、README を GitHub の raw から読んだ（measured）。
+- 223mle/skills（public、最新コミット 43e6320、2026-10-18 00:06 JST）。7スキルの SKILL.md と、clear-japanese と agent-design-review の参照ファイルを全部読んだ（measured）。
+- Agent Skills の公式ドキュメント3ページ。要点は `docs/skill-authoring.md`（measured）。
 - poteto の投稿 2111133080526495985。原文と図は box の `/workspace/dstack/research/` にある。図は poteto の著作物なので、このリポジトリには入れていない。
 
 ## 2. pstack の構造（要点、measured）
@@ -43,163 +46,143 @@
 - **サブエージェント。** `dyl-agent` は「dyl-mode を読み、次に pstack の poteto-mode を読む」とだけ書く。
 - pstack のスキルの別名（`dyl-unslop` のようなもの）は作っていない。
 
-## 4. 汎用スキルにどう足すか
+## 4. スキルの構成
 
-### 4.1 足す必要があるもの
-
-| pstack のスキル | 足すもの |
-|---|---|
-| `/unslop` | 日本語の規則 |
-| `/technical-writing` | 日本語の文書の扱い |
-| `/correct` | 開発中のエージェントの誤りは Harden に回す、という一行 |
-| `/reflect` | Accepted の各行に評価お題の欄 |
-| `/bro`、`/sharpen` | なし。pstack のものを呼ぶだけ |
-
-### 4.2 比べた方法
-
-| 方法 | 中身 | 良い点 | 悪い点 |
+| スキル | 役割 | 出どころ | 自動で読まれるか |
 |---|---|---|---|
-| A. tsumi-mode に直接書く | ルーターの gate に4つの追記を全部書く | ファイルが1つで済む。dyl の「返信は `/bro`」と同じ形 | 日本語の規則13個などでルーターが太る。毎回全部読まれる。pstack がプレイブックを参照ファイルに分けた理由（必要なときだけ読む）に反する |
-| B. overlay 参照ファイル | `tsumi-mode/overlays/<スキル名>.md` を置く。tsumi-mode に「pstack のスキルを使うとき、同名の overlay があれば本体のあとに読む。食い違ったら overlay が勝つ」と一行書く | dyl の同名プレイブック上書きと同じ仕組みを、スキルに広げるだけ。必要なときだけ読まれる。スラッシュ名は増えない。`/technical-writing` の中で `/unslop` を当てるような、スキル経由の呼び出しにも一行の規則で届く | tsumi-mode を付けずに `/unslop` を直接打つと、overlay は読まれない |
-| C. 別名の小さなスキル | `/unslop-ja` や `/tsumi-reflect` を作り、中で pstack 本体を読ませる | tsumi-mode なしでも単独で使える | 同じ仕事に名前が2つできる。pstack の他のスキルや `poteto-mode` の Non-negotiables は `unslop` を名指しするので、別名は呼ばれない。dyl-stack もこの方法は使っていない |
-| D. pstack を写して書き換える | 移植6本を tsumi に持つ | 自由に変えられる | 今回の方針（写さない）に反する。pstack の更新を追う手間が増える |
+| `tsumi-mode` | ルーター。pstack の poteto-mode を読ませ、4段の順番と規則を足す | 新規 | 読まれる。ただし「tsumi で」「/tsumi-mode」「Daiki のやり方で」のときだけ |
+| `agent-design-review` | エージェントやスキルの設計と改善。4段の中身（呼び出し側からの道具設計、モデルと道具の契約、再発した修正の追い方） | 223mle/skills から移した | 読まれる |
+| `clear-japanese` | 日本語の清書 | 223mle/skills から移した | 読まれる |
 
-### 4.3 選んだのは B
+### 4.1 Daiki の考えの出どころ
 
-理由は次の4つ。
+tsumi に書いた Daiki の考えは、次から取った（measured）。
 
-1. dyl-stack が実際に使っている仕組み（同名ファイルを上書き分として、本体のあとに読ませる）と同じ形になる（measured）。pstack の利用者が読み慣れた形。
-2. pstack 本体は呼ばれ方が変わらない。`poteto-mode` や `/technical-writing` は今まで通り `unslop` を名指しし、tsumi-mode の一行の規則で overlay が付いてくる。C だとここが切れる（inferred）。
-3. 必要なときだけ読まれる。日本語の規則はルーターに入れず、`/unslop` を使うときだけ読む。A よりトークンが少ない（inferred）。
-4. 足す量が小さい。`/correct` と `/reflect` は数行で済む。別名のスキルを作るほどの量ではない。
+- 4段の順番。Daiki がこの作業の指示で示したものと、`agent-design-review` の Improvement order。
+- 呼び出し側から道具を設計する、モデルの入力と道具の持ち分を表で決める。`agent-design-review` の「Design the tool from its caller」。
+- 再発した修正を「失敗の証拠 → 防ぐ境界 → 強制する資源 → 確かめるお題 → 残る判断」で追う。`agent-design-review` の「Choose and validate a change」。
+- 新しいチェックは、過去の実際の失敗で落ちることを示してから入れる。同じ出典。
+- 評価では成功基準を実行するエージェントに見せず、成果物と観察した行動で判定する。同じ出典。
 
-B の弱点（tsumi-mode なしで `/unslop` を直接打つと日本語の規則が付かない）は受け入れる。困る場面が実際に出たら、そのときに `/unslop` 用だけ C を足す。
+読める資料がなかったものは、tsumi-mode の「Not yet written down」に TODO(Daiki) として残した。評価の合否基準と試行回数、人に回す出力の目印、FDE の顧客案件との対応、役割ごとのモデル選び。推測で埋めていない。
 
-### 4.4 overlay の置き場所と書き方
+223mle/skills の `plan-delegate`、`fresh-review`、`spec-first`、`field-guide`、`context-economy` は移していない。中身が pstack の委譲、レビュー、仕様の規則と重なる（inferred）。どちらを使うかは未決事項に残す。
 
-- スキルへの上書きは `skills/tsumi-mode/overlays/<pstack のスキル名>.md`。
-- プレイブックへの上書きは dyl-stack と同じく `skills/tsumi-mode/playbooks/<pstack のプレイブック名>.md`。今は `eval.md` だけ。
-- どの overlay も1行目で「pstack の本体を先に読む」と書き、そのあと足す分だけを書く。pstack の文章は写さない。
-- overlay が読まれたかは評価で確かめる（`evals/README.md` の「上書きファイルの読み込み」）。
+### 4.2 clear-japanese を独立したスキルにした理由
 
-## 5. ディレクトリ構成
+前の版では、pstack の `/unslop` への overlay として日本語の規則（J1〜J13、自作）を置いていた。これを捨て、`skills/clear-japanese/` として独立させた。
+
+1. description で発動させるため。overlay は tsumi-mode が動いているときにしか読まれない。独立したスキルなら、「日本語を直して」のような依頼だけで読まれる（ドキュメントの仕組みから inferred）。
+2. Daiki がすでに使っている名前と description をそのまま使える。「日本語を直して」「AIっぽさを消して」のように、ユーザーが実際に言う言葉が入っている（measured）。
+3. 内容は clear-japanese が正。本文と参照7本はそのまま写した。description だけ「README・PR 説明」を足した。
+4. unslop という名前は pstack の英語向けスキルと紛れる。日本語の清書は clear-japanese と呼ぶほうが、何をするかが名前で分かる。
+
+`/technical-writing` で日本語の文書を書くときは、overlay から clear-japanese を呼ぶ。
+
+### 4.3 description の言語
+
+- `tsumi-mode` と `agent-design-review` は英語で書き、末尾に「日本語トリガー - 」で日本語の言い回しを並べた。223mle/skills の6スキルと同じ形（measured）。
+- `clear-japanese` は全文日本語。元のまま。
+- スキル本文も 223mle/skills に合わせた。`clear-japanese` は日本語、それ以外は英語。223mle/skills の README は英語にする理由を「トークン効率と小型モデルでの追従性のため」と書いている（measured）。
+
+### 4.4 disable-model-invocation を外した理由
+
+前の版の tsumi-mode には `disable-model-invocation: true` を付けていた（pstack と同じ）。Claude Code のドキュメントでは、これを付けると description がモデルのコンテキストに入らない（measured）。description をトリガーとして働かせるため、全スキルで外した。
+
+tsumi-mode は pstack の poteto-mode を全部読ませるので重い。エージェント開発の依頼ならいつでも動く、という書き方にはしなかった。「tsumi で」などの明示の言葉に絞り、明示がないエージェント設計の相談は `agent-design-review` が受ける。この境界は `evals/cases/trigger-tsumi-mode-002.yaml` で確かめる。
+
+Cursor が `disable-model-invocation` を Claude Code と同じに扱うかは確かめていない（guess で同じ）。
+
+## 5. pstack への上書き（脇役）
+
+dyl-stack の同名プレイブック上書きと同じ仕組みを使う。pstack のスキルを使うとき、`tsumi-mode/overlays/<スキル名>.md` があれば本体のあとに読む。食い違ったら overlay が勝つ。
+
+| pstack のスキル | overlay |
+|---|---|
+| `/technical-writing` | 日本語の文書は clear-japanese で清書する |
+| `/correct` | エージェントの出力の誤りは agent-design-review に回す |
+| `/reflect` | Accepted の各行に評価お題の欄を足す |
+
+プレイブックの上書きは `playbooks/eval.md` だけ。前の版の Harden プレイブックは消した。中身が agent-design-review の「Choose and validate a change」と重なるため。
+
+## 6. ディレクトリ構成
 
 ```
 tsumi/
   .cursor-plugin/plugin.json
-  .gitignore
-  README.md
-  DESIGN.md
-  agents/
-    tsumi-agent.md
+  README.md  CONTRIBUTING.md  DESIGN.md  corrections.tsv
+  docs/skill-authoring.md
+  agents/tsumi-agent.md
   skills/
     tsumi-mode/
       SKILL.md
-      overlays/
-        unslop.md
-        technical-writing.md
-        correct.md
-        reflect.md
-      playbooks/
-        new-agent.md
-        harden.md
-        review-triage.md
-        eval.md               # pstack の Eval への上書き
-      references/
-        requirements.md
-        corrections-template.tsv
+      overlays/      technical-writing.md correct.md reflect.md
+      playbooks/     new-agent.md review-triage.md eval.md
+      references/    requirements.md corrections-template.tsv
+    agent-design-review/
+      SKILL.md  references/  assets/
+    clear-japanese/
+      SKILL.md  references/
   scripts/
-    install-hooks         # scripts/hooks/ を .git/hooks/ に写す
-    hooks/pre-push        # main への push を止める
+    check-skills          # name と description の機械的な検査
+    install-hooks
+    hooks/pre-push
   evals/
-    README.md
-    cases/ fixtures/ rubrics/ schemas/ bin/ runs/
+    README.md  cases/  fixtures/  rubrics/  schemas/  bin/  runs/
 ```
 
-LICENSE は未決なので置いていない。
+LICENSE は未決なので置いていない。`research/` は調査メモで、git に入れない。
 
-## 6. manifest
+## 7. 修正ログ
 
-`.cursor-plugin/plugin.json` だけを置く。dyl-stack も同じでルートの `plugin.json` はない（measured）。
+- 形は `skills/tsumi-mode/references/corrections-template.tsv`。
+- tsumi 自体への指摘は、リポジトリ直下の `corrections.tsv` に書き、コミットする。顧客データを含まないため。
+- 顧客案件の修正ログは、置き場所をユーザーが決めるまでコミットしない（tsumi-mode の規則）。
 
-- `description` の先頭に「Requires pstack.」と書いた。manifest に依存を書く欄は pstack にも dyl-stack にもなかった（measured）。
-- `keywords` に `pstack` を入れた。
-- `license` はライセンスが未決なので書いていない。
-- `description` は英語にした。pstack と dyl-stack が英語だから。言語は未決事項に残す。
+## 8. 評価
 
-## 7. tsumi-mode の中身
+- 設計は `evals/README.md`。
+- description の機械的な検査は `scripts/check-skills`（作った）。
+- トリガーのお題を6件作った。まだ回していない。Daiki の Mac の `cursor-agent` は 2025.09.18 版で `--plugin-dir` がない（measured）。
 
-- 冒頭で「pstack の `poteto-mode` に乗る薄いルーター。食い違ったら tsumi の gate が勝つ」と書く。
-- 前提の確認は `references/requirements.md`。pstack がなければ止まる。
-- 最初にやることは4つ。pstack の `poteto-mode` を全部読む。プレイブックは tsumi を先に探し、同名なら pstack のあとに読む。pstack のスキルを使うときは overlay を探す。tsumi の gate を当てる。
-- tsumi gates は次の通り。
-  - **修正の段。** 道具と環境、自動チェックと回帰評価、プロンプト、人のレビューの順に直せるか試す。返信に、直した段と上の段で直せなかった理由を書く。
-  - **同じ修正の2回目。** プロンプトに足さず段1か段2に移す。エージェントの誤りは Harden、コードの誤りは pstack の `/correct`。
-  - **変更ごとの回帰評価。** スキル、プロンプト、ツール定義、スキーマを変えたら Eval を通す。
-  - **修正ログ。** 修正を受けたら1行足す。
-  - **顧客データ。** 評価お題、ログ、コミット、外部送信に入れる前に止まる。
-- サブエージェントは `tsumi-agent`。
-- プレイブックは New agent、Harden、Review triage、Eval（上書き）の4本。
+## 9. 作る順番
 
-## 8. dstack 案から削ったもの
+1. Mac の CLI を更新して、トリガーのお題6件を回す。
+2. 未決事項の上位を決める。
+3. TODO(Daiki) を埋める。
+4. 評価ハーネスを作り、最初の20件を入れて baseline を取る。
 
-| dstack 案 | tsumi | 理由 |
+## 10. 未決事項（重要な順）
+
+| # | 項目 | 論点 |
 |---|---|---|
-| 汎用6スキルの移植 | 写さない。4本は overlay、2本は pstack を呼ぶだけ | 上乗せの方針 |
-| principle 7本の leaf | 作らない。tsumi-mode の gate に入れた | dyl-stack も principle は1本だけ（measured）。中身の多くは pstack の `encode-lessons-in-structure`、`type-system-discipline`、`boundary-discipline`、`explain-the-number` と重なる（inferred）。gate が10行を超えたり、名前で引用したくなったら leaf に分ける |
-| `/harden` `/eval-case` `/regress` スキル | Harden プレイブックと Eval の上書きにした。お題づくりは Harden の手順2と New agent の手順4に入れた | スラッシュ名を増やさない。pstack と同じく、手順はプレイブックに置く |
-| prompt-or-skill-change と eval-authoring のプレイブック | Eval の上書きに入れた | pstack に Eval プレイブックがある |
-| customer-poc のプレイブック | 作らない | 未決事項に残す |
-| `validate-skills.ts` と `corrections.ts` | まだ作らない | 中身が固まってから。修正ログは当面手で数える |
+| 1 | 公開範囲 | private のまま個人で使う、LayerX 社内に共有する、公開する |
+| 2 | 顧客データの扱い | 実際の案件からお題を作ってよいか。匿名化の基準 |
+| 3 | 223mle/skills との二重管理 | agent-design-review と clear-japanese の正本をどちらに置くか。両方を入れると同じ名前のスキルが2つ見える（guess） |
+| 4 | 223mle/skills のハーネス5本 | plan-delegate など。pstack と重なる部分をどちらに寄せるか |
+| 5 | 回帰の合否基準と予算 | must-pass の扱い、通過率の許容低下幅、試行回数 |
+| 6 | 主な実行環境 | Cursor IDE、cursor-agent CLI、Claude Code |
+| 7 | ライセンス | 公開範囲で決まる |
+| 8 | ハーネスの言語 | bun と TypeScript、Python、シェル |
+| 9 | FDE 固有のプレイブック | 顧客案件の流れを入れるか（1と2に依存） |
 
-## 9. 修正ログ
+## 11. 前の版から変えたこと
 
-- 形は `skills/tsumi-mode/references/corrections-template.tsv`。列は `ts`、`target`、`class`、`wrong`、`correction`、`moved_to`、`evidence`。
-- 置き場所が決まるまでは、作業中のリポジトリ直下の `corrections.tsv` に書き、コミットしない。
-- 同じ `class` が2行になったら「同じ修正の2回目」を当てる。数えるスクリプトは後で作る。
+- 主役を overlay から Daiki の考えに移した。
+- 自作の日本語規則 J1〜J13 と `overlays/unslop.md` を捨て、clear-japanese を移した。
+- agent-design-review を移し、Harden プレイブックを消した。
+- 全スキルの description を書き直し、`disable-model-invocation` を外した。
+- README から無関係な話題とフックの詳細を外した。フックは CONTRIBUTING.md に移した。
 
-## 10. 評価
+## 12. 限界
 
-- 設計は `evals/README.md`。お題、採点、Mac 上の cursor-agent CLI でのコマンド像を書いた。
-- tsumi は pstack の上に乗るので、pstack を入れた状態で回す。pstack は自動更新されるので、版を固定したコピーを `--plugin-dir` で渡す案にした（inferred）。
-- 最初の20件は、tsumi が足した分だけを見る。overlay が読まれるか、tsumi のプレイブックに振り分けるか、段の順に直すか、pstack がないときに止まるか。
+- トリガーのお題は一度も回していない。description が実際に効くかは確かめていない。
+- `--plugin-dir` が `-p` モードでスキルを読み込むかは確かめていない（guess）。
+- main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。
 
-## 11. 作る順番
+## 13. 引用元の著作権表示
 
-1. 未決事項の上位を決める。
-2. tsumi-mode の初稿を、Daiki の実際の修正で直す。特に `overlays/unslop.md` の J 規則。
-3. 評価ハーネスを作り、最初の20件を入れて baseline を取る。
-4. 以後、スキルを変えるたびに Eval を通す。
-
-## 12. 未決事項（重要な順）
-
-| # | 項目 | 重要な理由 | 選択肢や論点 |
-|---|---|---|---|
-| 1 | 公開範囲 | 書ける内容（顧客名、社内事情）とライセンスの要否が決まる | private のまま個人で使う。LayerX 社内に共有する。公開する |
-| 2 | 顧客データの扱い | 誤ると情報漏えいになる。評価お題と修正ログの両方に効く | 実際の案件からお題を作ってよいか。匿名化の基準。修正ログをコミットするか、ローカルだけにするか |
-| 3 | スキル本文と返信の言語と文体 | これから書く全部の文章に効く。後で変えると全部書き直し | 日本語か英語か。日本語なら常体か敬体か。manifest の `description` の言語 |
-| 4 | 主な実行環境 | 評価ハーネス、パス、インストール手順が変わる | Cursor IDE、cursor-agent CLI、Claude Code、Grok Bot。Claude Code も使うなら pstack の読み替え表に乗るか |
-| 5 | 回帰の合否基準と予算 | 毎回の変更の速さとコストが決まる | must-pass が1件落ちたら不合格にするか。通過率の許容低下幅。1回に何件を何試行回すか。毎回全件か smoke だけか |
-| 6 | `/unslop` の日本語規則の採否 | 初稿の J1〜J13 は候補（guess）。Daiki の実際の修正と合っていないと逆効果 | どの規則を残すか。足りない規則 |
-| 7 | 日本語の文書の基準 | `/technical-writing` の overlay が最小限のまま | JTF 日本語標準スタイルガイド、社内ルール、自分の規則 |
-| 8 | ライセンス | 共有や公開の前に要る | MIT か、なしか。公開範囲で決まる |
-| 9 | tsumi の対象範囲 | gate とプレイブックの書き方が変わる | tsumi 自身のスキル評価までか、顧客向けエージェントの評価の型まで含めるか |
-| 10 | ハーネスの言語 | 実装に入る前に要る | bun と TypeScript（pstack と同じ）、Python、シェル |
-| 11 | FDE 固有のプレイブック | 顧客案件の流れを入れるか | customer-poc などを足すか。どこまで書けるか（1と2に依存） |
-
-前の版から消したもの。置き場所、プラグイン名、mode 名、pstack との関係は決まった。モデル設定と `/in-your-own-words` は、上乗せの方針から決まった（0章）。
-
-## 13. 限界
-
-- tsumi-mode と overlay は初稿で、評価をまだ回していない。overlay が実際に読まれるかは確かめていない（guess で読まれる）。
-- `--plugin-dir` が `-p` モードでスキルを読み込むか、pstack と tsumi を同時に渡したときの挙動は確かめていない（guess）。
-- Cursor の IDE で private のプラグインを入れる手順は確かめていない。
-- Daiki の過去の修正や transcript は読んでいない。
-- main のブランチ保護は GitHub 側でかけられなかった。classic の branch protection も rulesets も「Upgrade to GitHub Pro or make this repository public to enable this feature.」（HTTP 403）で弾かれた（measured、2026-10-18 JST）。代わりの pre-push フックは手元だけの仕組みで、`--no-verify` で外せる。
-
-## 14. 引用元の著作権表示
-
-この文書の2章と3章は、pstack と dyl-stack の文を短く引用し、要約している。tsumi の他のファイルには、両者の文章を写していない。
+この文書の2章と3章は、pstack と dyl-stack の文を短く引用し、要約している。tsumi のスキルには、両者の文章を写していない。`agent-design-review` と `clear-japanese` は 223mle/skills（MIT、Copyright (c) 2026 223mle）から移した。223mle は Daiki 本人のアカウント。
 
 pstack（https://github.com/cursor/plugins/tree/main/pstack）
 

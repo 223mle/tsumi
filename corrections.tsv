@@ -1,0 +1,5 @@
+ts	target	class	wrong	correction	moved_to	evidence
+2026-10-18T14:30:20+09:00	skills/*/SKILL.md description	skill-description-not-a-trigger	description が短く、何をするかといつ読むかが具体的でなかった。tsumi-mode は disable-model-invocation: true で description がモデルに見えなかった	公式ドキュメントに沿い、何をするかと読む依頼を具体的な言葉で書く。トリガーとして働かせる	scripts/check-skills（形式）, evals/cases/trigger-*.yaml（発動）	PR #1 への Daiki のコメント 2026-10-18
+2026-10-18T14:30:20+09:00	README.md, skills/tsumi-mode	scope-drift-from-daiki-ideas	主役が pstack への overlay と汎用スキルの移植になり、Daiki のエージェント開発の考えが脇にあった	pstack を土台に Daiki の考えと tips を主役にする	prompt: DESIGN.md 0章と tsumi-mode の Order of fixes を背骨にした。機械では判定できない	PR #1 への Daiki のコメント 2026-10-18
+2026-10-18T14:30:20+09:00	README.md	irrelevant-content-in-readme	README に無関係な他社フレームワークの話とブランチ保護の詳細を書いた	README は目的、考え方、入れ方と使い方に絞る。開発の手順は CONTRIBUTING.md へ	prompt: 一回目なので移していない	PR #1 への Daiki のコメント 2026-10-18
+2026-10-18T14:30:20+09:00	skills/tsumi-mode/overlays/unslop.md	rewrote-existing-user-skill	Daiki の既存スキル clear-japanese を探さずに、日本語の規則 J1〜J13 を自作した	既存の clear-japanese を移植し、内容はそれを正とする	prompt: tsumi-mode の Look for existing work first	PR #1 への Daiki のコメント 2026-10-18

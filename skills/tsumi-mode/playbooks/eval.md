@@ -1,13 +1,14 @@
-### Eval（tsumi の上書き）
+### Eval (tsumi override)
 
-pstack の `poteto-mode/playbooks/eval.md` を先に読む。blinding の規則と、判定を transcript から取る規則はそのまま使う。
+Read pstack's `poteto-mode/playbooks/eval.md` first. Keep its blinding rule and its rule to judge from the transcript.
 
-tsumi のリポジトリでスキル、プロンプト、スキーマを変えたときは、次を足す。
+When you change a skill, prompt, tool definition, or schema, add these steps:
 
-1. 変更前の版で、tsumi リポジトリの `evals/` を回す（手順は `evals/README.md`）。baseline があれば使う。
-2. 変える。
-3. 同じお題、同じ pstack の版、同じモデルで回す。
-4. 比べる。`must-pass` のお題が1件でも落ちたら出さない。落ちた理由を transcript から説明する。
-5. 新しく足したお題は、変更前の版で落ちることも記録する。
+1. Run the evals on the old version (see `evals/README.md` in the tsumi repo). Use a stored baseline if there is one.
+2. Make the change.
+3. Run the same cases with the same pstack version and model.
+4. Compare. If any `must-pass` case fails, do not ship. Explain the failure from the transcript.
+5. For each new case, record that it fails on the old version.
+6. If you changed a `description`, also run the trigger cases (`evals/cases/trigger-*.yaml`) and `scripts/check-skills`.
 
-**Reply:** pstack の Eval の返信に加えて、通過率の前後、回帰したお題、不安定なお題、使った pstack の版。
+**Reply:** pstack's Eval reply plus pass rate before and after, regressed cases, flaky cases, pstack version used.

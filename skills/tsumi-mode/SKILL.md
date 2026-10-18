@@ -1,80 +1,88 @@
 ---
 name: tsumi-mode
-description: Daiki のエージェント開発スタイル。pstack の poteto-mode の上に乗る。道具とスキーマとテンプレートで間違いを消し、変更ごとに回帰評価を回し、プロンプトは判断だけに絞り、人は怪しいものだけ見る。Use for Daiki, /tsumi-mode, or requests to work in this style.
-disable-model-invocation: true
+description: Daiki Tsutsumi's agent-development workflow, layered on pstack's poteto-mode. Loads pstack, then runs agent and skill work in Daiki's order of fixes - tools, schemas, and templates first; automated checks and regression evals second; prompt rules only for judgment that cannot be encoded; human review only for suspicious output. Adds rules for repeated corrections, a corrections log, regression evals on every skill change, and customer data. Use when the user types /tsumi-mode, says "tsumi", or asks to work in Daiki's style while building, fixing, or evaluating an agent, skill, prompt, tool definition, or output schema. Requires the pstack plugin. For a single design review without the full workflow, agent-design-review is enough. 日本語トリガー - /tsumi-mode / tsumi で / tsumi-mode で進めて / Daiki のやり方で / 堤のやり方で。
 ---
 
 # tsumi mode
 
-pstack の `poteto-mode` に乗る薄いルーター。principle、プレイブック、返信の書き方、Autonomy、Subagents の土台は pstack にある。ここには tsumi が足す分だけを書く。pstack と食い違ったら、このファイルの gate を優先する。
+Build agents so the easiest operation produces a valid result. pstack's `poteto-mode` supplies the base: principles, playbooks, reply format, autonomy, subagents. This file adds Daiki's agent-development rules. On conflict, this file wins.
 
-## 前提
+## Start
 
-pstack が要る。最初に [references/requirements.md](references/requirements.md) で確かめる。なければ作業を始めず、ユーザーに `/add-plugin pstack` を案内して止まる。
+1. Check that pstack is installed: [references/requirements.md](references/requirements.md). If it is missing, stop and tell the user to run `/add-plugin pstack`. Do not rebuild pstack's parts.
+2. Open a todo. First item: read pstack's `poteto-mode/SKILL.md` in full. Read a principle's leaf skill before you cite it.
+3. Pick a playbook. Look in this skill's `playbooks/` first, then pstack's. Copy its steps into the todo. Mark a skipped step `skip: <reason>`.
+4. Apply the order of fixes and the rules below to every change.
 
-## 最初にやること
+## Order of fixes
 
-1. todo を開く。1項目目は「pstack の `poteto-mode/SKILL.md` を全部読む」。Principles 索引もそこにある。使った principle は leaf を読んでから名指しする。
-2. プレイブックを選ぶ。このスキルの `playbooks/<名前>.md` を先に探す。
-   - tsumi だけにある名前なら、それを使う。
-   - pstack と同じ名前なら、pstack 版を読んでから tsumi 版を読む。tsumi 版は上書き分で、食い違ったら tsumi 版が勝つ。
-   - tsumi になければ pstack 版を使う。
-   - 手順は pstack と同じく todo の先頭にそのまま写す。やらない手順は `skip: <理由>` を残す。
-3. pstack のスキルを使うときは、このスキルの `overlays/<スキル名>.md` を探す。あれば pstack 本体を読んだあとに読み、両方に従う。食い違ったら overlay が勝つ。別のスキルの途中で使うとき（`/technical-writing` の中で `/unslop` を当てるときなど）も同じ。
-4. 下の tsumi gates を当てる。
+Fix every failure, correction, or new requirement at the highest level that can own it. Do not write a lower-level fix when a higher one works.
 
-## tsumi gates
+1. **Environment, tools, and structure.** The model picks from enumerated options or component IDs instead of writing free text. Output that code consumes is bound by a JSON schema and rejected at the boundary. IDs, dates, amounts, recipients, and fixed phrases come from templates that code fills.
+2. **Automated checks.** Deterministic checks and regression evals catch what remains. A new check must fail on the real past failure before the fix and pass after it.
+3. **Prompts and skills.** Only judgment that 1 and 2 cannot enforce: interpreting intent, choosing a component, resolving ambiguity, deciding what matters. Keep it short.
+4. **Human review.** Only output flagged as suspicious. Every human correction goes into the corrections log.
 
-### 修正の段
+This orders investment. It is not a four-stage project. Pair a structural fix with its check. Contain an active incident first, then apply the order to the durable fix. Do not remove a check or review step before its replacement works.
 
-修正指示、評価の失敗、エラーが出たら、次の順で直せるかを試す。上の段で直せるなら、下の段には書かない。
+For the full method (caller-first tool design, the model/tool contract, choosing and validating a change), read [../agent-design-review/SKILL.md](../agent-design-review/SKILL.md). Read it before designing a new agent or skill, or before moving a correction up a level.
 
-1. **道具と環境。** 選択肢が有限なら、自由文ではなく列挙や ID 付きの部品から選ばせる。後段のコードが読む出力は JSON スキーマで縛り、スキーマ外は境界で弾く。黙って直さない。スキーマはコードの型と同じ元から作る。ID、日付、金額、宛先、定型文はモデルに書かせず、テンプレートの穴をコードで埋める。
-2. **自動チェックと回帰評価。** バリデータ、テスト、評価お題で捕まえる。お題は直す前の版で落ちることを確かめてから足す。
-3. **プロンプト。** 1と2で強制できない判断だけ書く。書くなら、判断が要る理由を一つと失敗例を一つ。pstack の `principle-encode-lessons-in-structure` を読む。
-4. **人のレビュー。** 全件は回さない。スキーマ違反、バリデータの警告、評価で不安定な入力に近いもの、信頼度の低い出力だけを回す。人が直した内容は修正ログに残す。
+In the reply, state the level you fixed at and, in one line, why a higher level could not own it.
 
-返信には、直した段と、上の段で直せなかった理由を一行ずつ書く。
+## Rules
 
-### 同じ修正の2回目
+### Same correction twice
 
-同じクラスの修正が2回目に出たら、プロンプトへの追記で済ませない。段1か段2に移す。移せなかったら理由を修正ログの `moved_to` と `evidence` に書く。開発中のエージェントの誤りなら `playbooks/harden.md`、リポジトリのコードの誤りなら pstack の `/correct` を使う。
+When the same class of correction appears a second time, do not add another prompt line. Move it to level 1 or 2. Track it as: failure evidence → prevention boundary → enforcing resource → verification case → remaining judgment. If it cannot move, write why in the log's `moved_to` and `evidence` columns. For code in this repo rather than agent output, use pstack's `/correct`.
 
-### 変更ごとの回帰評価
+### Regression eval on every change
 
-スキル、プロンプト、ツール定義、スキーマを変えたら `playbooks/eval.md` を通す。結果を見るまで完了と言わない。回帰が出たら、pstack の `principle-explain-the-number` に沿って原因を説明できるまで出さない。
+After changing a skill, prompt, tool definition, or schema, run [playbooks/eval.md](playbooks/eval.md). Do not call the change done before you have the result. Compare old and new versions on the same requests. Keep the success criteria out of the executing agent's prompt; judge artifacts and observed actions, not the agent's claim.
 
-### 修正ログ
+### Corrections log
 
-ユーザーから修正を受けたら、修正ログに1行足す。形は [references/corrections-template.tsv](references/corrections-template.tsv)。置き場所が決まるまでは作業中のリポジトリ直下の `corrections.tsv` に書き、コミットしない。同じ `class` の行が2つになったら「同じ修正の2回目」を当てる。
+When the user corrects you, add one row to `corrections.tsv` at the root of the repo you are working in. Columns: [references/corrections-template.tsv](references/corrections-template.tsv). A second row with the same `class` triggers "Same correction twice". In a customer project, do not commit the log until the user says where it lives.
 
-### 顧客データ
+### Customer data
 
-顧客のデータや固有名を、評価お題、修正ログ、コミット、外部への送信に入れる前に止まり、ユーザーに確かめる。pstack の Autonomy の「必ず止まる」に足す項目。
+Stop and ask before customer data or customer names go into an eval case, the corrections log, a commit, or anything sent outside. This adds to pstack's must-stop list.
 
-## 返信
+### Look for existing work first
 
-pstack の Writing the reply に従う。日本語で書くときは `overlays/unslop.md` の J 規則も当てる。
+Before writing new rules, a new skill, or a new schema, search the user's existing skills and repos for one that already covers it. Port it instead of rewriting it.
 
-## サブエージェント
+### Writing
 
-pstack が `poteto-agent` を使えと言う場面では `tsumi-agent` を使う。`tsumi-agent` はこのファイルと pstack の `poteto-mode` の両方を読む。`how`、`why`、`reflect` など、pstack のスキルが自分で指定するサブエージェントの種類は変えない。
+- Japanese prose: write it, then apply the `clear-japanese` skill to the draft.
+- English prose: pstack's `/unslop` and `/technical-writing`.
 
-## tsumi のプレイブック
+## Playbooks
 
-- **New agent**（`playbooks/new-agent.md`）。業務エージェントを新しく作る。
-- **Harden**（`playbooks/harden.md`）。開発中のエージェントの誤りの一類を、段1から順に潰す。
-- **Review triage**（`playbooks/review-triage.md`）。人に回す出力の選び方と、人の修正をログとお題に戻す流れ。
-- **Eval**（`playbooks/eval.md`）。pstack の Eval プレイブックへの上書き。tsumi の `evals/` ハーネスで回す。
+- **New agent** ([playbooks/new-agent.md](playbooks/new-agent.md)). Build a new task agent: tools and schemas first, evals before prompt.
+- **Review triage** ([playbooks/review-triage.md](playbooks/review-triage.md)). Decide which outputs go to a human and feed corrections back.
+- **Eval** ([playbooks/eval.md](playbooks/eval.md)). Override of pstack's Eval playbook. Read pstack's version first.
 
-それ以外は pstack の Playbooks 索引から選ぶ。
+Anything else: pstack's Playbooks index. A recurring agent failure goes to `agent-design-review`.
 
-## pstack のスキルへの上書き
+## pstack skill overlays
 
-| pstack のスキル | tsumi の扱い |
+When you use one of these pstack skills, read the pstack skill first, then the overlay. On conflict, the overlay wins.
+
+| pstack skill | Overlay |
 |---|---|
-| `/unslop` | `overlays/unslop.md` で日本語の規則を足す |
-| `/technical-writing` | `overlays/technical-writing.md` で日本語の文書の扱いを足す |
-| `/correct` | `overlays/correct.md` で開発中のエージェントの誤りを Harden に回す |
-| `/reflect` | `overlays/reflect.md` で Accepted の各行に評価お題の欄を足す |
-| `/bro`、`/sharpen`、`/in-your-own-words` ほか | 上書きなし。pstack のものをそのまま使う |
+| `/technical-writing` | [overlays/technical-writing.md](overlays/technical-writing.md): Japanese documents use clear-japanese |
+| `/correct` | [overlays/correct.md](overlays/correct.md): agent-output failures go to agent-design-review |
+| `/reflect` | [overlays/reflect.md](overlays/reflect.md): each accepted learning gets an eval-case column |
+
+## Subagents
+
+Where pstack says to use `poteto-agent`, use `tsumi-agent`. Skills that name their own subagent type keep it.
+
+## Not yet written down
+
+These are Daiki's calls and are not captured yet. Do not fill them by guessing. Use pstack's default and say so, or ask.
+
+- TODO(Daiki): pass criteria and trial count for agent evals.
+- TODO(Daiki): which signals mark output as suspicious enough for human review.
+- TODO(Daiki): how an FDE engagement with a customer maps onto these playbooks.
+- TODO(Daiki): model choice per role when building agents.

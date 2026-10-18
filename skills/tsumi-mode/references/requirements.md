@@ -1,11 +1,11 @@
-# 前提プラグイン
+# Required plugin
 
-tsumi は pstack の上に乗る。作業の前に確かめる。
+tsumi sits on pstack. Check before you start.
 
-| プラグイン | 入っているかの見分け方 | ファイルの場所 |
+| Plugin | How to detect | Where its files are |
 |---|---|---|
-| `pstack` | スキル一覧に `setup-pstack` がある | pstack のスキルの多くはスラッシュ専用で一覧に出ない。`setup-pstack` と同じ階層にある。`<setup-pstack のディレクトリ>/../poteto-mode/SKILL.md`、`../poteto-mode/playbooks/<名前>.md`、`../principle-<名前>/SKILL.md`、`../unslop/SKILL.md`、`../technical-writing/SKILL.md`、`../correct/SKILL.md`、`../reflect/SKILL.md`。 |
+| `pstack` | `setup-pstack` appears in the skill list | Most pstack skills are slash-only and hidden from the list. They sit next to `setup-pstack`: `<setup-pstack dir>/../poteto-mode/SKILL.md`, `../poteto-mode/playbooks/<name>.md`, `../principle-<name>/SKILL.md`, `../unslop/SKILL.md`, `../technical-writing/SKILL.md`, `../correct/SKILL.md`, `../reflect/SKILL.md`. |
 
-見つからなければ止まる。ユーザーに `/add-plugin pstack` を案内する。足りない部分を自分で作らない。
+If pstack is missing, stop and tell the user to run `/add-plugin pstack`. Do not rebuild the missing parts.
 
-pstack が複数の版で見つかったら、`.cursor-plugin/plugin.json` の `version` が一番大きいものを使う。
+If several pstack versions exist, use the one with the highest `version` in `.cursor-plugin/plugin.json`.

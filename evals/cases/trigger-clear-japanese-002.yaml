@@ -1,0 +1,13 @@
+id: trigger-clear-japanese-002
+title: 日本語の文の事実確認だけを頼む依頼では clear-japanese を読まない
+targets: [clear-japanese]
+tags: [trigger, ja]
+source: 手書き。description の「内容の正誤の確認は扱わない」に当たる近い依頼
+trials: 3
+prompt: |
+  次の文の内容は事実として合っていますか。文章は直さなくていいです。
+
+  東京タワーの高さは333メートルで、1958年に完成した。
+checks:
+  - type: must_not_read
+    glob: "**/clear-japanese/SKILL.md"

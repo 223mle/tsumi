@@ -1,0 +1,11 @@
+id: trigger-agent-design-review-001
+title: エージェントの出力が繰り返しずれる相談で agent-design-review を読む
+targets: [agent-design-review]
+tags: [trigger, ja, must-pass]
+source: 手書き。description の「同じ間違いを繰り返す」「出力がブレる」に当たる依頼
+trials: 3
+prompt: |
+  社内の請求書チェック用エージェントが、勘定科目を毎回ちがう表記で返してきて、後ろの集計スクリプトが落ちます。プロンプトに「正式名称で書く」と足しましたが、まだ時々ずれます。どう直すのがいいですか。
+checks:
+  - type: must_read
+    glob: "**/agent-design-review/SKILL.md"

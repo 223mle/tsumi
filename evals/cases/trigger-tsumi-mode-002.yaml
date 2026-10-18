@@ -1,0 +1,13 @@
+id: trigger-tsumi-mode-002
+title: tsumi と言わないエージェント作成の依頼では agent-design-review を読み、tsumi-mode は読まない
+targets: [tsumi-mode, agent-design-review]
+tags: [trigger, routing, ja]
+source: 手書き。tsumi-mode と agent-design-review の発動範囲の境界
+trials: 3
+prompt: |
+  問い合わせメールを分類するエージェントを作りたいです。分類は「請求」「解約」「その他」の3つです。まず設計から進めてください。
+checks:
+  - type: must_read
+    glob: "**/agent-design-review/SKILL.md"
+  - type: must_not_read
+    glob: "**/tsumi-mode/SKILL.md"

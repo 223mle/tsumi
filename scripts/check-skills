@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""Mechanical checks for skills/*/SKILL.md frontmatter and layout.
+
+Rules follow the Agent Skills docs (see docs/skill-authoring.md).
+Exit 1 if any error. Warnings do not fail.
+Usage: scripts/check-skills [repo_root]
+"""
+import pathlib
+import re
+import sys
+
+root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).resolve().parent.parent)
+NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+XML_RE = re.compile(r"<[A-Za-z/][^>]*>")
+WHEN_RE = re.compile(r"\b(use (when|for|after|before|whenever|at)|apply (when|after|before|whenever))\b|とき|場合|依頼", re.I)
+PERSON_RE = re.compile(r"\b(I can|I will|I'll|you can|you should)\b|私は|あなたは", re.I)
+LINK_RE = re.compile(r"\]\(([^)#\s]+)\)")
+TRUE_RE = re.compile(r"^(true|yes)$", re.I)
+
+errors, warnings = [], []
+
+
+def parse_frontmatter(text):
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None, 0
+    fm = {}
+    for i, line in enumerate(lines[1:], start=1):
+        if line.strip() == "---":
+            return fm, i + 1
+        m = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", line)
+        if m:
+            v = m.group(2).strip()
+            if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+                v = v[1:-1]
+            fm[m.group(1)] = v
+    return None, 0
+
+
+skills = sorted((root / "skills").glob("*/SKILL.md"))
+if not skills:
+    errors.append("no skills/*/SKILL.md found")
+
+for path in skills:
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    fm, body_start = parse_frontmatter(text)
+    if fm is None:
+        errors.append(f"{rel}: missing or unterminated frontmatter")
+        continue
+    name = fm.get("name", "")
+    desc = fm.get("description", "")
+    if not name:
+        errors.append(f"{rel}: name is empty")
+    else:
+        if len(name) > 64:
+            errors.append(f"{rel}: name longer than 64 chars")
+        if not NAME_RE.match(name):
+            errors.append(f"{rel}: name must be lowercase letters, digits, hyphens")
+        if "anthropic" in name or "claude" in name:
+            errors.append(f"{rel}: name contains a reserved word")
+        if name != path.parent.name:
+            errors.append(f"{rel}: name '{name}' differs from directory '{path.parent.name}'")
+    if not desc:
+        errors.append(f"{rel}: description is empty")
+    else:
+        if len(desc) > 1024:
+            errors.append(f"{rel}: description is {len(desc)} chars (max 1024)")
+        if XML_RE.search(desc):
+            errors.append(f"{rel}: description contains an XML-like tag")
+        if not WHEN_RE.search(desc):
+            errors.append(f"{rel}: description does not say when to use it")
+        if PERSON_RE.search(desc):
+            errors.append(f"{rel}: description is not in third person")
+        if len(desc) < 80:
+            warnings.append(f"{rel}: description is only {len(desc)} chars; add trigger words")
+    if TRUE_RE.match(fm.get("disable-model-invocation", "")):
+        warnings.append(f"{rel}: disable-model-invocation is true; the model never sees this description")
+    body_lines = len(text.splitlines()) - body_start
+    if body_lines >= 500:
+        errors.append(f"{rel}: body is {body_lines} lines (keep under 500)")
+    for target in LINK_RE.findall(text):
+        if re.match(r"^[a-z]+:", target):
+            continue
+        if not (path.parent / target).exists():
+            errors.append(f"{rel}: broken link {target}")
+    for ref in path.parent.rglob("*.md"):
+        if ref == path:
+            continue
+        n = len(ref.read_text(encoding="utf-8").splitlines())
+        head = "\n".join(ref.read_text(encoding="utf-8").splitlines()[:20]).lower()
+        if n > 100 and "contents" not in head and "目次" not in head:
+            warnings.append(f"{ref.relative_to(root)}: {n} lines without a table of contents")
+
+for w in warnings:
+    print(f"warn: {w}")
+for e in errors:
+    print(f"error: {e}")
+print(f"checked {len(skills)} skills: {len(errors)} errors, {len(warnings)} warnings")
+sys.exit(1 if errors else 0)

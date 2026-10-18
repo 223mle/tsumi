@@ -28,7 +28,7 @@ evals/
 
 ## お題の形式
 
-`cases/<id>.yaml`。`schemas/case.schema.json` で検査する。お題ファイル自体をスキーマで縛るのは tsumi-mode の「修正の段」の段1を自分にも当てたもの。
+`cases/<id>.yaml`。`schemas/case.schema.json` で検査する。お題ファイル自体をスキーマで縛るのは tsumi-mode の Order of fixes の1段目を、評価そのものにも当てたもの。
 
 | 項目 | 必須 | 中身 |
 |---|---|---|
@@ -54,7 +54,19 @@ evals/
 | `must_read` / `must_not_read` | エージェントが読んだファイルのパス（stream-json の `readToolCall`）が glob に合う、合わない |
 | `max_turns` | ツール呼び出しの回数の上限 |
 
-例は `cases/example-unslop-ja-001.yaml`。
+例は `cases/trigger-*.yaml`。
+
+## トリガーお題
+
+description はエージェントがスキルを読むかどうかを決める。description を変えたら、読むべき依頼と読むべきでない依頼の組で確かめる。
+
+- 1つのスキルにつき、読むべき依頼（`must_read`）と、近いが読むべきでない依頼（`must_not_read`）を対にする。
+- 依頼文にスキル名を書かない。ユーザーがふつうに言う言葉で書く。例外は tsumi-mode の「tsumi で」で、これは description が定めたトリガー語そのもの。
+- `tags` に `trigger` を付ける。
+- 判定は transcript の読んだパスで行う。エージェントの自己申告は使わない。
+- 形式の検査（name の形、description の長さ、いつ使うかの記述）は `scripts/check-skills` が先に行う。
+
+今あるお題は6件（clear-japanese、agent-design-review、tsumi-mode で各2件）。まだ一度も回していない。
 
 ### blinding の規則
 
@@ -73,24 +85,23 @@ pstack の Eval プレイブックの規則をそのまま使う（measured、`p
 4. **全体の判定。** `baseline.json` と比べる。
    - `pass` から `flaky` か `fail` に落ちたお題は回帰として列挙する。
    - `must-pass` のお題が1件でも回帰したら不合格。
-   - 全体の通過率の許容低下幅は未決（DESIGN.md 12章の5）。
+   - 全体の通過率の許容低下幅は未決（DESIGN.md 10章の5）。
 5. **数字の説明。** 回帰が出たら、対象の transcript を読み、変更のせいか、お題が不安定なのか、環境のせいかを書く（pstack の Explain the Number、measured）。
 
 ## コマンド像（Mac、cursor-agent CLI）
 
-Cursor のドキュメントでは CLI の名前は `agent` で、`-p`、`--output-format stream-json`、`--model`、`--force`、`--trust`、`--workspace`、`--plugin-dir`、`--mode ask` がある（measured、cursor.com/docs/cli/reference/parameters）。手元で `cursor-agent` の名前が使えるかは確かめていない（guess で別名として残っている）。以下は `cursor-agent` で書く。
+Cursor のドキュメントでは CLI の名前は `agent` で、`-p`、`--output-format stream-json`、`--model`、`--force`、`--trust`、`--workspace`、`--plugin-dir`、`--mode ask` がある（measured、cursor.com/docs/cli/reference/parameters）。Daiki の Mac にあるのは `~/.local/bin/cursor-agent` で、版は 2025.09.18。`--help` に `--plugin-dir` と `--trust` がない（measured、2026-10-18）。下のコマンドを回すには CLI の更新が要る。以下は `cursor-agent` で書く。
 
 ### 1件を手で回す
 
 ```bash
 RUN=$(mktemp -d)/acme-notes          # eval という語を含めない名前にする
-cp -R evals/fixtures/memo-ja-basic/. "$RUN"
 cursor-agent -p --output-format stream-json --trust --force \
 	--model "$MODEL" \
 	--plugin-dir ~/src/pstack-pinned \
 	--plugin-dir ~/src/tsumi \
 	--workspace "$RUN" \
-	"$(yq '.prompt' evals/cases/example-unslop-ja-001.yaml)" \
+	"$(yq '.prompt' evals/cases/trigger-clear-japanese-001.yaml)" \
 	> evals/runs/manual/stream.jsonl
 ```
 
@@ -153,15 +164,15 @@ tsumi は pstack の上に乗るので、pstack を入れた状態で回す。�
 | 対象 | 件数 | 確かめること |
 |---|---|---|
 | smoke | 2 | `--plugin-dir` で tsumi が読まれるか。pstack の `poteto-mode/SKILL.md` と `tsumi-mode/SKILL.md` の両方を読むか（`must_read`） |
-| 上書きファイルの読み込み | 4 | `/unslop`、`/technical-writing`、`/correct`、`/reflect` を tsumi-mode で使ったとき、pstack 本体のあとに `overlays/<名前>.md` を読むか |
-| 日本語の unslop | 4 | J 規則の表現が消え、意味と敬語のレベルが変わらない |
-| 振り分け | 4 | 依頼文から `playbooks/new-agent.md`、`harden.md`、`review-triage.md`、`eval.md`（上書き）を読むか |
-| 段の順番 | 4 | 2回目の修正を、プロンプトではなく道具、スキーマ、テンプレート、評価に移すか |
-| `/reflect` の評価お題欄 | 1 | Accepted の各行に「評価お題にするか」があるか |
+| トリガー | 6 | 各スキルの description で、読むべき依頼で読み、近いが違う依頼で読まないか（作成済み） |
+| 修正の段 | 4 | 2回目の修正を、プロンプトではなく道具、スキーマ、テンプレート、評価に移すか |
+| clear-japanese の清書 | 3 | 条件・数値・限定語が残り、原文にない因果を足さないか（clear-japanese の preservation.md の例を使う） |
+| 振り分け | 3 | 依頼文から `playbooks/new-agent.md`、`review-triage.md`、`eval.md`（上書き）を読むか |
+| 上書きファイルの読み込み | 1 | `/technical-writing` を tsumi-mode で使ったとき、pstack 本体のあとに `overlays/technical-writing.md` を読むか |
 | pstack 不在 | 1 | pstack を外した環境で、作業を始めずに `/add-plugin pstack` を案内して止まるか |
 
 その後は修正ログの2回目のクラスから足し、50件を上限の目安にする。
 
-## 未決（DESIGN.md 12章と重なるもの）
+## 未決（DESIGN.md 10章と重なるもの）
 
-- 顧客データの扱い（2）、合否基準と予算（5）、ハーネスの言語（10）。
+- 顧客データの扱い（2）、合否基準と予算（5）、ハーネスの言語（8）。

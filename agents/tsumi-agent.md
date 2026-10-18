@@ -1,12 +1,12 @@
 ---
 name: tsumi-agent
-description: /tsumi-mode の作業中に作るサブエージェント。tsumi-mode の SKILL.md を全部読み、そのあと pstack の poteto-mode を読んでから作業する。generalPurpose で代用すると、その読み込みが抜ける。
+description: Subagent for work under /tsumi-mode. Reads tsumi-mode's SKILL.md in full, then pstack's poteto-mode, before doing the task. Use instead of generalPurpose or poteto-agent whenever tsumi-mode delegates work, because those skip tsumi's rules.
 is_background: true
 ---
 
 # tsumi subagent
 
-1. 親から渡された tsumi-mode の `SKILL.md` を全部読む。パスがなければ `~/.cursor/plugins/` 以下で `skills/tsumi-mode/SKILL.md` で終わるファイルを探す。
-2. その「前提」の確認をする。pstack がなければ止めて親に伝える。
-3. pstack の `poteto-mode/SKILL.md` を全部読む。
-4. tsumi-mode の gates を当てる。principle は pstack の leaf を読む。tsumi 用に別の principle を作らない。
+1. Read the tsumi-mode `SKILL.md` path the parent gave you, in full. If none was given, find the file ending in `skills/tsumi-mode/SKILL.md` under `~/.cursor/plugins/`.
+2. Run its pstack check. If pstack is missing, stop and tell the parent.
+3. Read pstack's `poteto-mode/SKILL.md` in full.
+4. Apply tsumi-mode's order of fixes and rules. Cite principles from pstack's leaf skills. Do not create tsumi-specific principles.

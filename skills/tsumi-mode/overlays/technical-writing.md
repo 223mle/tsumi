@@ -1,12 +1,6 @@
-# /technical-writing への上書き（日本語の文書）
+# /technical-writing overlay (Japanese documents)
 
-pstack の `technical-writing/SKILL.md` を先に読む。上の3規則、Diátaxis の4モード、「コードベースが用語集」、PR 説明とコミット文への適用はそのまま使う。
+Read pstack's `technical-writing/SKILL.md` first. Keep its three rules, the four Diátaxis modes, "the codebase is the glossary", and its rules for PR descriptions and commit messages.
 
-- Google developer style、STE、Global English の節は、英語で書くときだけ当てる。
-- 日本語で書くときは次を当てる。どの基準を採るかは未決（DESIGN.md の未決事項）。決まるまではこの最小限で書く。
-  - 一文に一つのことを書く。読点が3つを超えたら分ける。
-  - 主語と動作主を書く。「〜される」より「〜が〜する」。
-  - 一つのものは一つの名前で呼ぶ。コード中の名前をそのまま使う。
-  - 手順は番号付きで、一文に一つの指示。条件を指示の前に置く。
-  - 文体は文書の中で揃える。敬体と常体を混ぜない。
-  - `overlays/unslop.md` の J 規則を当てる。
+- Apply the Google developer style, STE, and Global English sections only to English text.
+- For Japanese text, pick the Diátaxis mode and structure with pstack, write the draft, then apply the `clear-japanese` skill to it.

@@ -1,11 +1,12 @@
 ### Review triage
 
-**人のレビューは最後の段。全件ではなく怪しいものだけ回す仕組みを作る。**
+**Human review is the last level. Send people only suspicious output, and turn their corrections into structure.**
 
-1. 人に回す条件を、機械で判定できる形で書く。スキーマ違反、バリデータの警告、信頼度の閾値、評価で不安定なお題に近い入力。
-2. 条件ごとに、過去の出力で何件が回るかを数える。多すぎたら、段1か段2で消せる種類がないかを先に見る。
-3. 人が直した内容を修正ログに残す流れを作る。1件1行。
-4. 修正ログの同じクラスが2回になったら Harden に回す。
-5. 人が直した事例のうち、再発を防ぎたいものを評価お題にする。
+1. Write the review conditions so code can evaluate them: schema violations, validator warnings, inputs close to unstable eval cases. TODO(Daiki): add the signals Daiki uses in practice.
+2. Point review at meaning, business assumptions, and decisions that cannot yet be checked reliably. Do not spend it on what a check could catch.
+3. For each condition, count how many past outputs it would send. If too many, first look for a kind that level 1 or 2 can remove.
+4. Log every human correction in `corrections.tsv`, one row each.
+5. When a `class` reaches two rows, apply "Same correction twice" in tsumi-mode.
+6. Turn corrections worth preventing into eval cases.
 
-**Reply:** 回す条件、回る件数の見込み、ログの置き場所と形、お題に回した件数。
+**Reply:** conditions, expected volume, log location and format, cases added.
