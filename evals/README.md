@@ -52,10 +52,12 @@ evals/
 | `command` | 作業ディレクトリでコマンドを走らせ、終了コードを見る |
 | `must_read` / `must_not_read` | エージェントが読んだファイルのパス（stream-json の `readToolCall`）が glob に合う、合わない |
 | `max_turns` | ツール呼び出しの回数の上限 |
-| `triage_valid` | 最終返信の最後の ```json ブロックが、mistake-triage の `references/triage.schema.json` と振り分けの規則に合う。検査はスキルと同じ `scripts/check_triage.py` で行う（実装済み） |
+| `insights_valid` | 最終返信の最後の ```json ブロックが session-insights の `references/insights.schema.json` と規則に合い、引用がすべて依頼文のセッションに実在する。検査はスキルと同じ `scripts/check_insights.py`（実装済み） |
+| `insight_match` | `match` に合う示唆があり、`kind`（任意）と提案先 `target`（任意、正規表現）が合う（実装済み） |
+| `insight_absent` | `match` に合う示唆がない。根拠のない示唆を出さないかを見る（実装済み） |
 | `triage_route` | `match` の正規表現に合うミス（class、summary、evidence で照合）があり、その routes が `include` を全部、`include_any` を1つ以上含み、`exclude` を含まない（実装済み） |
 
-例は `cases/trigger-*.yaml` と `cases/triage-*.yaml`。`run-trigger` が実装している種類は `must_read`、`must_not_read`、`triage_valid`、`triage_route` の4つ。
+例は `cases/trigger-*.yaml` と `cases/triage-*.yaml`。`run-trigger` が実装している種類は `must_read`、`must_not_read`、`insights_valid`、`insight_match`、`insight_absent` の5つ。
 
 ## トリガーお題
 
@@ -69,7 +71,7 @@ description はエージェントがスキルを読むかどうかを決める�
 - 個人用スキル（`~/.claude/skills`、`~/.codex/skills`）も CLI に読まれる。同じ名前のスキルがあると結果が混ざる。そこで、tsumi が持つファイルへの `must_read` は、tsumi のコピーを読んだときだけ合格にする。
 - 形式の検査（name の形、description の長さ、いつ使うかの記述）は `scripts/check-skills` が先に行う。
 
-今あるトリガーお題は14件。子スキルが単独で発動するか（agent-design-review で3件、clear-japanese で2件、mistake-triage で3件）と、`/tsumi-mode` から状況に合う子スキルやプレイブックへ振り分けるか（tsumi-mode-001、003〜007）。tsumi-mode 自身の発動は、コマンド専用であることを `scripts/check-skills` が確かめるので、お題にしない。実行は `evals/bin/run-trigger`。結果は DESIGN.md 12章にある。
+今あるトリガーお題は10件。子スキルが単独で発動するか（agent-design-review で3件、clear-japanese で2件）と、`/tsumi-mode` から状況に合う子スキルやプレイブックへ振り分けるか（tsumi-mode-001、003〜006）。tsumi-mode と session-insights の発動は、コマンド専用であることを `scripts/check-skills` が確かめるので、お題にしない。実行は `evals/bin/run-trigger`。結果は DESIGN.md 12章にある。
 
 ### blinding の規則
 
@@ -80,13 +82,15 @@ pstack の Eval プレイブックの規則をそのまま使う（measured、`p
 - 振り分けやスキルの読み込みは、自己申告ではなく `must_read` で transcript から判定する。
 - judge は採点していると知ってよいが、出力は匿名ラベルで見せ、モデル名は見せない。
 
-## 振り返りのお題
+## 示唆のお題
 
-mistake-triage が、ミスを正しい行き先に振り分けるかを確かめる。
+session-insights が、セッションから根拠のある示唆を拾い、具体的な差分案にするかを確かめる。
 
-- 答えが分かっている会話を依頼文に貼り、「振り返って」と頼む。会話は修正ログの実例を、顧客情報を含まない形に書き直して使う。
-- 判定は最終返信の JSON で行う。`triage_valid` で形と規則を、`triage_route` で各ミスの行き先を見る。
-- 今あるお題は2件。`triage-mistake-triage-001` は、2回出た description の指摘が仕組みと評価お題に行き、1回きりの README の指摘が文章に行くか。`triage-mistake-triage-002` は、2回目の出力形式の崩れが仕組みに行き、既存スキルを探さなかった件が文章か質問に行くか。
+- コマンド専用なので、依頼文に `{{TSUMI}}/skills/session-insights/SKILL.md` を読むよう書き、その下にセッションを貼る。`run-trigger` が `{{TSUMI}}` をこのリポジトリのパスに置き換える。
+- セッションは tsumi 開発の実例を、顧客情報なしで書き直して使う。
+- `insights-session-insights-001`: 約束して黙ってやらなかった件と、聞かれるまで言わなかったブランチ取り違えを hidden-mistake として拾うか。
+- `insights-session-insights-002`: description の指摘、Claude Code 中心の使い方、評価が長い不満を拾い、description の件を具体的なファイルへの差分案にするか。
+- `insights-session-insights-003`: 信号の少ないセッションで、出ていない話題を足さないか。
 
 ## 採点
 

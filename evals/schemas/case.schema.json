@@ -9,7 +9,7 @@
 		"id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
 		"title": { "type": "string", "minLength": 1 },
 		"targets": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-		"tags": { "type": "array", "items": { "enum": ["smoke", "must-pass", "routing", "trigger", "triage", "ja", "flaky-known"] } },
+		"tags": { "type": "array", "items": { "enum": ["smoke", "must-pass", "routing", "trigger", "insights", "ja", "flaky-known"] } },
 		"source": { "type": "string", "minLength": 1 },
 		"fixture": { "type": "string" },
 		"prompt": { "type": "string", "minLength": 1 },
@@ -27,17 +27,17 @@
 					{ "properties": { "type": { "const": "command" }, "run": { "type": "string" }, "expect_exit": { "type": "integer", "default": 0 } }, "required": ["run"] },
 					{ "properties": { "type": { "enum": ["must_read", "must_not_read"] }, "glob": { "type": "string" } }, "required": ["glob"] },
 					{ "properties": { "type": { "const": "max_turns" }, "value": { "type": "integer", "minimum": 1 } }, "required": ["value"] },
-					{ "properties": { "type": { "const": "triage_valid" } } },
+					{ "properties": { "type": { "const": "insights_valid" } } },
 					{
 						"properties": {
-							"type": { "const": "triage_route" },
+							"type": { "const": "insight_match" },
 							"match": { "type": "string", "minLength": 1 },
-							"include": { "type": "array", "items": { "enum": ["mechanism", "prose", "eval", "ask"] } },
-							"include_any": { "type": "array", "items": { "enum": ["mechanism", "prose", "eval", "ask"] } },
-							"exclude": { "type": "array", "items": { "enum": ["mechanism", "prose", "eval", "ask"] } }
+							"kind": { "type": "array", "items": { "enum": ["preference", "tendency", "repeated-correction", "hidden-mistake"] } },
+							"target": { "type": "string" }
 						},
 						"required": ["match"]
-					}
+					},
+					{ "properties": { "type": { "const": "insight_absent" }, "match": { "type": "string", "minLength": 1 } }, "required": ["match"] }
 				]
 			}
 		},

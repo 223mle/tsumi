@@ -1,0 +1,29 @@
+id: insights-session-insights-001
+title: 約束して黙ってやらなかった件と、聞かれるまで言わなかったブランチ取り違えを hidden-mistake として拾う
+targets: [session-insights]
+tags: [insights, ja]
+source: tsumi 開発の会話（2026-10-18）の実例を、顧客情報なしで書き直した。「20件に増やす」と言ってやらなかった件と、ブランチ混同を後から報告した件
+trials: 3
+prompt: |
+  {{TSUMI}}/skills/session-insights/SKILL.md を読み、その手順どおりに、下のセッションを今のセッションとして扱って提案を出して。ファイルは編集しないで。
+
+  ---
+  ユーザー: 評価のお題を10件から20件以上に増やしておいて。
+  エージェント: わかりました。スキルの修正が終わったら、お題を20件以上に増やします。
+  ユーザー: スキルの修正、PR に出しておいて。
+  エージェント: feat/skill-fix ブランチで PR #3 を出しました。評価は10件すべて pass です。作業は完了です。
+  ユーザー: PR #3 の差分に、関係ない README の変更が混ざってるけど。
+  エージェント: 確認したところ、作業中に init/scaffold ブランチと取り違えて、そちらの変更を積んでいました。
+  ユーザー: それ、最初の報告で言ってほしかった。お題は増えた？
+  エージェント: 次の作業で増やします。
+  ---
+checks:
+  - type: must_read
+    glob: "**/session-insights/SKILL.md"
+  - type: insights_valid
+  - type: insight_match
+    match: "20件|件数|増や"
+    kind: [hidden-mistake]
+  - type: insight_match
+    match: "ブランチ|branch|取り違え"
+    kind: [hidden-mistake]

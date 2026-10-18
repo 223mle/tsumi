@@ -31,20 +31,20 @@ pstack は、principle、プレイブック、返信の書き方といった開�
 | スキル、プロンプト、ツール定義、スキーマを変えた | Eval プレイブック（回帰評価）。description を変えたら `scripts/check-skills` とトリガーお題も |
 | 人に回す出力を決める、人の修正が届く | Review triage プレイブック |
 | 日本語の文書（README、設計書、PR 説明、コミット文など） | `clear-japanese` |
-| 会話を振り返る、同じミスを防ぎたい | `mistake-triage`（pstack の `reflect` は使わない） |
+| セッションの終わりに、やり取りから得た示唆をスキルに反映したい | `/tsumi:session-insights` を自分で打つ（pstack の `reflect` は使わない） |
 | 文書の構成を決める（日本語、英語とも） | pstack の `technical-writing` |
 | それ以外（コード、設計、デバッグ、検証、PR） | pstack の `poteto-mode` の規則のまま |
 
 pstack の `unslop` は使いません。pstack が `unslop` を呼ぶ場面では、人が読む日本語の文書なら `clear-japanese` を使い、チャットの返信にはどちらも使いません。
 
-tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-design-review`、`clear-japanese`、`mistake-triage` は単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
+tsumi-mode は、コマンドで呼んだときだけ動きます。`session-insights` もコマンド専用です。`agent-design-review` と `clear-japanese` は単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
 
 | スキル | 単独で読まれる場面 |
 |---|---|
 | [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）と打ったときだけ。「tsumi で」と書くだけでは読まれません |
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき |
 | [`clear-japanese`](skills/clear-japanese/SKILL.md) | 「日本語を直して」「分かりやすくして」と頼んだとき、日本語の文書を整えるとき |
-| [`mistake-triage`](skills/mistake-triage/SKILL.md) | 「振り返って」「同じミスをしないようにして」と頼んだとき。その場の会話だけを読み、ミスごとに仕組み・文章・評価お題・質問へ振り分けて JSON で出す。過去の会話の記録ファイルは読まない |
+| [`session-insights`](skills/session-insights/SKILL.md) | コマンド専用。セッション全体を読み、Daiki の好み・開発の傾向・繰り返した指摘と、エージェントがミスを隠した・未完了を完了と報告した場面を拾う。示唆ごとに根拠の引用、どのファイルをどう変えるかの差分案、理由を出す。承認まで何も編集しない。過去の会話の記録ファイルは読まない |
 
 `agent-design-review` と `clear-japanese` は [223mle/skills](https://github.com/223mle/skills) から移しました。正本は tsumi で、223mle/skills には残しません。
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Run eval cases (evals/cases/*.yaml) with the Cursor CLI or Claude Code. Judges which
 skill and playbook .md files the agent read, from its stream-json output, and checks the
-mistake-triage JSON in the final reply (triage_valid, triage_route).
+session-insights JSON in the final reply (insights_valid, insight_match, insight_absent).
+A prompt may use {{TSUMI}} for this repo's path, so a command-only skill can be handed to the agent.
 
 Usage:
   evals/bin/run-trigger --pstack <pstack plugin dir> [--harness cursor|claude]
@@ -19,8 +20,8 @@ import argparse, datetime, fnmatch, json, os, pathlib, re, shutil, subprocess, s
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True  # keep __pycache__ out of the shipped skill dir
-sys.path.insert(0, str(ROOT / "skills/mistake-triage/scripts"))
-import check_triage  # noqa: E402  the skill's own validator, so the eval and the skill agree
+sys.path.insert(0, str(ROOT / "skills/session-insights/scripts"))
+import check_insights  # noqa: E402  the skill's own validator, so the eval and the skill agree
 
 
 def load_case(path):
@@ -152,41 +153,52 @@ def ships(glob):
     return any(fnmatch.fnmatch(str(p), glob) for p in (ROOT / "skills").rglob("*") if p.is_file())
 
 
-def triage(reply):
+def insights(reply):
     try:
-        return check_triage.extract(reply)
+        result = check_insights.extract(reply)
     except ValueError:
         return None
+    return result if isinstance(result, dict) else None
 
 
-def judge_route(check, reply):
-    """Mistakes whose class, summary, or evidence match `match` (case-insensitive) must
-    exist; the union of their routes must contain every `include`, at least one of
-    `include_any`, and none of `exclude`."""
-    result = triage(reply)
-    if not isinstance(result, dict):
-        return False, "no triage JSON"
+def matching(check, reply):
+    """Insights whose summary, evidence, or proposal match `match` (case-insensitive)."""
+    result = insights(reply)
+    if result is None:
+        return None
     rx = re.compile(check["match"], re.I)
-    hits = [m for m in result.get("mistakes", []) if isinstance(m, dict) and rx.search(
-        " ".join([str(m.get("class", "")), str(m.get("summary", ""))] +
-                 [str(e.get("quote", "")) for e in m.get("evidence", []) if isinstance(e, dict)]))]
+    def text(i):
+        p = i.get("proposal") or {}
+        return " ".join([str(i.get("summary", "")), str(p.get("change", "")), str(p.get("target", ""))] +
+                        [str(e.get("quote", "")) for e in i.get("evidence", []) if isinstance(e, dict)])
+    return [i for i in result.get("insights", []) if isinstance(i, dict) and rx.search(text(i))]
+
+
+def judge_match(check, reply):
+    """Some insight matches `match`, has a `kind` in `kind` (if given), and a proposal
+    target matching `target` (if given)."""
+    hits = matching(check, reply)
+    if hits is None:
+        return False, "no insights JSON"
     if not hits:
-        return False, f"no mistake matches /{check['match']}/"
-    routes = {r for m in hits for r in m.get("routes", [])}
-    errs = [f"missing {r}" for r in check.get("include", []) if r not in routes]
-    if check.get("include_any") and not routes & set(check["include_any"]):
-        errs.append(f"none of {check['include_any']}")
-    errs += [f"has {r}" for r in check.get("exclude", []) if r in routes]
-    return not errs, f"{[m.get('id') for m in hits]} routes={sorted(routes)} " + "; ".join(errs)
+        return False, f"no insight matches /{check['match']}/"
+    kinds = check.get("kind") or []
+    ok = [i for i in hits if (not kinds or i.get("kind") in kinds) and
+          (not check.get("target") or re.search(check["target"], str((i.get("proposal") or {}).get("target", "")), re.I))]
+    detail = f"{[(i.get('id'), i.get('kind'), (i.get('proposal') or {}).get('target')) for i in hits]}"
+    return bool(ok), detail
 
 
-def judge(check, paths, reply=""):
-    if check["type"] == "triage_valid":
-        errs = check_triage.check(reply)
+def judge(check, paths, reply="", prompt=""):
+    if check["type"] == "insights_valid":
+        errs = check_insights.check(reply, conversation=prompt)
         return {**check, "pass": not errs, "detail": "; ".join(errs[:5])}
-    if check["type"] == "triage_route":
-        ok, detail = judge_route(check, reply)
+    if check["type"] == "insight_match":
+        ok, detail = judge_match(check, reply)
         return {**check, "pass": ok, "detail": detail}
+    if check["type"] == "insight_absent":
+        hits = matching(check, reply)
+        return {**check, "pass": hits == [], "detail": "no insights JSON" if hits is None else str([i.get("id") for i in hits])}
     hits = [p for p in paths if fnmatch.fnmatch(p, check["glob"])]
     own = [p for p in hits if os.path.realpath(p).startswith(str(ROOT) + "/")]
     if check["type"] == "must_read":
@@ -203,9 +215,10 @@ def run_trial(case, args, out):
     work = pathlib.Path(tempfile.mkdtemp()) / "acme-notes"
     work.mkdir()
     cmd = harness["cmd"](args, work)
-    stdin = case["prompt"] if harness["stdin"] else None
+    prompt = case["prompt"].replace("{{TSUMI}}", str(ROOT))
+    stdin = prompt if harness["stdin"] else None
     if stdin is None:
-        cmd = cmd + [case["prompt"]]
+        cmd = cmd + [prompt]
     out.mkdir(parents=True, exist_ok=True)
     (out / "cmd.json").write_text(json.dumps(cmd, ensure_ascii=False, indent=1))
     try:
@@ -216,7 +229,7 @@ def run_trial(case, args, out):
     (out / "stream.jsonl").write_text(stdout)
     (out / "stderr.txt").write_text(stderr or "")
     tools, paths, reply = harness["reads"](stdout, args)
-    results = [judge(c, paths, reply) for c in case["checks"]]
+    results = [judge(c, paths, reply, case["prompt"]) for c in case["checks"]]
     trial = {"exit": code, "skills_read": sorted(paths), "tools": sorted(tools),
              "checks": results, "pass": code == 0 and all(r["pass"] for r in results)}
     (out / "trial.json").write_text(json.dumps(trial, ensure_ascii=False, indent=1))

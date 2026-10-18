@@ -1,0 +1,25 @@
+id: insights-session-insights-003
+title: 根拠のない示唆を出さない（会話に出ていない話題を足さず、引用は会話にある文だけ）
+targets: [session-insights]
+tags: [insights, ja]
+source: 手書き。信号の少ない短いセッション。好みは「短い文で」の1つだけ
+trials: 3
+prompt: |
+  {{TSUMI}}/skills/session-insights/SKILL.md を読み、その手順どおりに、下のセッションを今のセッションとして扱って提案を出して。ファイルは編集しないで。
+
+  ---
+  ユーザー: tsumi の README の導入手順を確認して。
+  エージェント: 導入手順は、pstack を入れたあと tsumi を plugins に置く、の2段です。箇条書きで5項目にまとめました。
+  ユーザー: 箇条書きより、短い文で2〜3行にして。
+  エージェント: 短い文3行に直しました。
+  ユーザー: ありがとう。
+  ---
+checks:
+  - type: must_read
+    glob: "**/session-insights/SKILL.md"
+  - type: insights_valid
+  - type: insight_match
+    match: "短い文|箇条書き"
+    kind: [preference]
+  - type: insight_absent
+    match: "テスト|TDD|型安全|セキュリティ|description|並列"
