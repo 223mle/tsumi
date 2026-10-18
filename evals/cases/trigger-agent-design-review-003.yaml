@@ -1,0 +1,11 @@
+id: trigger-agent-design-review-003
+title: エージェントを新しく作る相談で agent-design-review を読む
+targets: [agent-design-review]
+tags: [trigger, ja]
+source: 手書き。description の「エージェントを設計して」に当たる依頼。tsumi-mode はコマンド専用なので、ここでは判定しない
+trials: 3
+prompt: |
+  問い合わせメールを分類するエージェントを作りたいです。分類は「請求」「解約」「その他」の3つです。まず設計から進めてください。
+checks:
+  - type: must_read
+    glob: "**/agent-design-review/SKILL.md"

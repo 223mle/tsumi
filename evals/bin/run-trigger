@@ -95,10 +95,9 @@ def claude_cmd(args, work):
     return cmd + (["--effort", args.effort] if args.effort else [])
 
 
-def claude_reads(stdout, pstack, prompt):
+def claude_reads(stdout, pstack):
     """Read file paths and Skill invocations that did not error. A skill invoked as
-    `plugin:name` counts as reading that plugin's skills/<name>/SKILL.md. A prompt that
-    starts with /<name> or /tsumi:<name> loads that tsumi skill without any tool call."""
+    `plugin:name` counts as reading that plugin's skills/<name>/SKILL.md."""
     roots = {"tsumi": ROOT, "pstack": pathlib.Path(pstack)}
     calls, failed, reply = {}, set(), ""
     for ev in events(stdout):
@@ -123,17 +122,14 @@ def claude_reads(stdout, pstack, prompt):
             plugin, _, name = args["skill"].rpartition(":")
             base = roots.get(plugin, pathlib.Path.home() / ".claude")
             paths.add(str(base / "skills" / name / "SKILL.md"))
-    slash = re.match(r"^/(?:tsumi:)?([a-z0-9-]+)", prompt)
-    if slash and (ROOT / "skills" / slash.group(1) / "SKILL.md").exists():
-        paths.add(str(ROOT / "skills" / slash.group(1) / "SKILL.md"))
     return tools, paths, reply
 
 
 HARNESSES = {
     "cursor": {"cli": os.path.expanduser("~/.local/bin/agent"), "cmd": cursor_cmd,
-               "reads": lambda stdout, args, prompt: cursor_reads(stdout), "stdin": False},
+               "reads": lambda stdout, args: cursor_reads(stdout), "stdin": False},
     "claude": {"cli": "claude", "cmd": claude_cmd,
-               "reads": lambda stdout, args, prompt: claude_reads(stdout, args.pstack, prompt), "stdin": True},
+               "reads": lambda stdout, args: claude_reads(stdout, args.pstack), "stdin": True},
 }
 
 
@@ -171,7 +167,7 @@ def run_trial(case, args, out):
         stdout, stderr, code = (e.stdout or b"").decode() if isinstance(e.stdout, bytes) else (e.stdout or ""), "timeout", "timeout"
     (out / "stream.jsonl").write_text(stdout)
     (out / "stderr.txt").write_text(stderr or "")
-    tools, paths, reply = harness["reads"](stdout, args, case["prompt"])
+    tools, paths, reply = harness["reads"](stdout, args)
     results = [judge(c, paths) for c in case["checks"]]
     trial = {"exit": code, "skills_read": sorted(paths), "tools": sorted(tools),
              "checks": results, "pass": code == 0 and all(r["pass"] for r in results)}

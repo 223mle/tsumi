@@ -2,14 +2,12 @@ id: trigger-tsumi-mode-003
 title: /tsumi-mode で日本語の文書の清書を頼むと tsumi-mode から clear-japanese を読む
 targets: [tsumi-mode, clear-japanese]
 tags: [trigger, routing, ja, must-pass]
-source: 手書き。tsumi-mode の Non-negotiables「日本語の文書 → clear-japanese」。/tsumi-mode で呼ぶと SKILL.md は Read を通らずに入り、stream-json に出ない（measured 2026-10-18）。tsumi-mode のファイル（requirements.md など）を読んだことで判定する
+source: 手書き。tsumi-mode の Non-negotiables「日本語の文書 → clear-japanese」
 trials: 3
 prompt: |
   /tsumi-mode 次の設計メモを、チームに共有できる日本語に整えてください。
 
   問い合わせ分類エージェントの出力はJSONにする。分類は請求、解約、その他の3つ。その他が多い。担当者が毎朝その他を手で見ている。分類の理由も出す。理由は100字以内。
 checks:
-  - type: must_read
-    glob: "**/tsumi-mode/**"
   - type: must_read
     glob: "**/clear-japanese/SKILL.md"

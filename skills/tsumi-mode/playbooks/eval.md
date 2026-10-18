@@ -10,13 +10,13 @@ The description decides whether an agent ever opens the skill. Apply these when 
 4. Name a nearby situation where it should not open, if one exists.
 5. At most 1,024 characters. No XML tags.
 6. Write one request that should open the skill and one close request that should not. Add them to `evals/cases/trigger-<skill>-NNN.yaml` in the repo, or include them in the reply when you only propose the text.
-7. Run `scripts/check-skills`, then the trigger cases, when you can run commands.
+7. Run `scripts/check-skills`, then every trigger case whose `targets` names the skill, one trial each, when you can run commands. The full three-trial run happens once at the end (below).
 
 #### After changing a skill, prompt, tool definition, or schema
 
 Read pstack's `poteto-mode/playbooks/eval.md` first. Keep its blinding rule and its rule to judge from the transcript.
 
-When you change a skill, prompt, tool definition, or schema, add these steps:
+While you work, run only the cases the change touches, one trial each (`--case`, `--trials 1`). Run every case with three trials once, as the last step before the PR is ready. When you change a skill, prompt, tool definition, or schema, add these steps to that last run:
 
 1. Run the evals on the old version (see `evals/README.md` in the tsumi repo). Use a stored baseline if there is one.
 2. Make the change.

@@ -113,7 +113,7 @@ tsumi に書いた Daiki の考えは、次から取った（measured）。
 - tsumi-mode は、作業全体のやり方を切り替え、pstack の poteto-mode を全部読ませる重いスキル。入るかどうかを description というモデルの判断に任せると、プロンプトの段（3段目）で発動を決めることになる。コマンドなら確実に入るので、道具の段（1段目）で決まる。pstack が poteto-mode をコマンド専用にしているのも同じ形。
 - 子スキルは、いつ必要になるかをユーザーが予想できない。そこで description で発動させ、トリガーお題（2段目）で見張る。tsumi-mode が動いているあいだは、ルーターがパスで読ませるので、発動のぶれは関係しない。
 - 子スキルの description が Claude Code で働くことは、外す前の評価で確かめた（12章）。
-- この分け方は `scripts/check-skills` が強制する。tsumi-mode に `disable-model-invocation: true` がない場合と、子スキルに付いている場合をエラーにする。
+- この分け方は `scripts/check-skills` が強制する。tsumi-mode に `disable-model-invocation: true` がない場合と、子スキルに付いている場合をエラーにする。そのため、tsumi-mode が発動するかどうかのお題はやめた。振り分けのお題は残す。コマンドで入ったあと、どの子スキルを読むかはモデルの判断だからである。
 
 コマンドで呼んでも、会話が進むと tsumi-mode の効き目は薄れる。pstack の poteto-help も、Enter で付けたスキルは会話が進むと薄れると書いている（measured）。Cursor では Custom Mode で毎ターン読み込める。Claude Code には同じ仕組みがないので、毎ターン短い注意書きを差し込む hook を別の PR で検討する。
 
@@ -168,7 +168,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 
 - 設計は `evals/README.md`。
 - description の機械的な検査は `scripts/check-skills`（作った）。
-- トリガーのお題は10件。単独での発動6件と、tsumi-mode から子スキルへの振り分け4件（003〜006）。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
+- トリガーのお題は10件。子スキルの単独での発動5件と、`/tsumi-mode` からの振り分け5件（001、003〜006）。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
 
 ## 9. 作る順番
 

@@ -13,6 +13,4 @@ prompt: |
   ---
 checks:
   - type: must_read
-    glob: "**/tsumi-mode/**"
-  - type: must_read
     glob: "**/tsumi-mode/playbooks/eval.md"

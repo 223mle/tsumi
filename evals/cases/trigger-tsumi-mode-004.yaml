@@ -8,6 +8,4 @@ prompt: |
   /tsumi-mode 請求書チェック用エージェントが、勘定科目を毎回ちがう表記で返してきて、後ろの集計スクリプトが落ちます。プロンプトに「正式名称で書く」と足しましたが、まだ時々ずれます。直し方を決めたいです。
 checks:
   - type: must_read
-    glob: "**/tsumi-mode/**"
-  - type: must_read
     glob: "**/agent-design-review/SKILL.md"

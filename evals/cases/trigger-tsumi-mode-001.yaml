@@ -8,8 +8,6 @@ prompt: |
   /tsumi-mode 問い合わせメールを分類するエージェントを作りたいです。分類は「請求」「解約」「その他」の3つです。まず設計から進めてください。
 checks:
   - type: must_read
-    glob: "**/tsumi-mode/**"
-  - type: must_read
     glob: "**/poteto-mode/SKILL.md"
   - type: must_read
     glob: "**/agent-design-review/SKILL.md"
