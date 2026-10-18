@@ -1,0 +1,21 @@
+#!/bin/sh
+# Claude Code と Cursor が読む tsumi の作業コピーを、main の最新に fast-forward する。
+# Claude Code の SessionStart フックから呼ぶので、どんな場合も 0 で終わり、結果はログにだけ書く。
+log=${TSUMI_SYNC_LOG:-$HOME/Library/Logs/tsumi-sync.log}
+dirs=${TSUMI_SYNC_DIRS:-"$HOME/tsumi $HOME/.cursor/plugins/local/tsumi"}
+mkdir -p "$(dirname "$log")"
+for dir in $dirs; do
+	if ! git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+		result="skip: not a git checkout"
+	elif [ "$(git -C "$dir" branch --show-current)" != main ]; then
+		result="skip: not on main"
+	elif [ -n "$(git -C "$dir" status --porcelain --untracked-files=no)" ]; then
+		result="skip: uncommitted changes"
+	elif out=$(GIT_TERMINAL_PROMPT=0 git -C "$dir" pull --ff-only -q 2>&1); then
+		result="ok: $(git -C "$dir" rev-parse --short HEAD)"
+	else
+		result="fail: $(printf '%s' "$out" | tr '\n' ' ')"
+	fi
+	printf '%s %s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$dir" "$result" >>"$log"
+done
+exit 0

@@ -16,6 +16,7 @@
 - **主役は Daiki のエージェント開発の考え方と tips をスキルにすること**（2026-10-18 の Daiki の指摘で決まった）。pstack の汎用スキルへの上書き（overlay）は脇役にした。
 - `agent-design-review` と `clear-japanese` の正本は tsumi にする。223mle/skills と、個人のスキルフォルダ（`~/.claude/skills`、`~/.codex/skills`）からは消す（2026-10-18 の Daiki の決定）。
 - tsumi-mode はコマンド専用（`disable-model-invocation: true`）にし、子スキルは description で自動に発動させる（同日の Daiki の決定。4.4）。
+- マージした変更は、Claude Code の SessionStart フックが `scripts/sync-installs` を呼んで、`~/tsumi` と Cursor 用の clone に取り込む。手で `git pull` しない（同日の Daiki の決定）。
 - tsumi を使う環境は Cursor と Claude Code の2つ（同日の Daiki の決定）。本体は `~/tsumi` の main にする。Claude Code は `~/.claude/skills/tsumi` のシンボリックリンクから読み、Cursor は `~/.cursor/plugins/local/tsumi` の clone から読む。tsumi を直すときは `~/tsumi` から worktree を切り、PR を出す。
 - 優先順位は次の4段。tsumi の背骨にする。
   1. 環境と道具で間違いを起こせなくする（部品から選ばせる、JSON スキーマで縛る、テンプレートで値を固定する）。
@@ -151,6 +152,7 @@ tsumi/
   scripts/
     check-skills          # name と description の機械的な検査
     install-hooks
+    sync-installs        # セッション開始時に作業コピーを main の最新にする
     hooks/pre-push
   evals/
     README.md  cases/  fixtures/  rubrics/  schemas/  bin/  runs/

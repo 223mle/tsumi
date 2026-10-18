@@ -71,9 +71,28 @@ tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-desig
    git clone https://github.com/223mle/tsumi.git ~/.cursor/plugins/local/tsumi
    ```
 
-5. Claude Code では新しいセッションを始めます。Cursor では、再起動するか Developer: Reload Window を実行します。スキル一覧に tsumi のスキルが出ていれば入っています。
+5. Claude Code の `~/.claude/settings.json` に、セッション開始時のフックを足します。新しいセッションを始めるたびに `scripts/sync-installs` が動き、`~/tsumi` と `~/.cursor/plugins/local/tsumi` を main の最新にします。
 
-更新するときは、`~/tsumi` と `~/.cursor/plugins/local/tsumi` で `git pull` を実行します。
+   ```json
+   "hooks": {
+     "SessionStart": [
+       {
+         "matcher": "startup",
+         "hooks": [
+           {
+             "type": "command",
+             "command": "[ -x \"$HOME/tsumi/scripts/sync-installs\" ] && \"$HOME/tsumi/scripts/sync-installs\"; exit 0",
+             "timeout": 30
+           }
+         ]
+       }
+     ]
+   }
+   ```
+
+   取り込むのは、main にいて未コミットの変更がない作業コピーだけです。結果は `~/Library/Logs/tsumi-sync.log` に残ります。Claude Code を開かずに Cursor だけを使うときは、Cursor 側は更新されません。
+
+6. Claude Code では新しいセッションを始めます。Cursor では、再起動するか Developer: Reload Window を実行します。スキル一覧に tsumi のスキルが出ていれば入っています。
 
 tsumi を直すときは、読み込まれているコピーは直しません。`~/tsumi` から worktree を切って直し、PR を出します。
 
