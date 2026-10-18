@@ -14,9 +14,11 @@
 - リポジトリは GitHub の private リポジトリ `223mle/tsumi`。
 - pstack を前提にして、足りない分だけ足す。dyl-stack と同じ考え方。
 - **主役は Daiki のエージェント開発の考え方と tips をスキルにすること**（2026-10-18 の Daiki の指摘で決まった）。pstack の汎用スキルへの上書き（overlay）は脇役にした。
+- `agent-design-review` と `clear-japanese` の正本は tsumi にする。223mle/skills と、個人のスキルフォルダ（`~/.claude/skills`、`~/.codex/skills`）からは消す（2026-10-18 の Daiki の決定）。
+- tsumi を使う環境は Cursor と Claude Code の2つ（同日の Daiki の決定）。本体は `~/tsumi` の main にする。Claude Code は `~/.claude/skills/tsumi` のシンボリックリンクから読み、Cursor は `~/.cursor/plugins/local/tsumi` の clone から読む。tsumi を直すときは `~/tsumi` から worktree を切り、PR を出す。
 - 優先順位は次の4段。tsumi の背骨にする。
   1. 環境と道具で間違いを起こせなくする（部品から選ばせる、JSON スキーマで縛る、テンプレートで値を固定する）。
-  2. 自動チェックと回帰評価（20〜50件、スキルを変えるたびに回す）。
+  2. 自動チェックと回帰評価（スキルを変えるたびに、変更に見合った数のお題を回す）。
   3. 仕組みにできない判断だけをプロンプトに最小限書く。同じ修正が2回出たら1か2へ移す。
   4. 人のレビューは最後で、怪しいものだけ。修正はログに残す。
 
@@ -65,9 +67,9 @@ Daiki の要望（2026-10-18）は「`/tsumi-mode <依頼>` で、ここで定�
 
 ### 4.0.1 呼び出し形式
 
-- Cursor のドキュメントでは、スキルは `/skill-name` で呼ぶ（measured、cursor.com/docs/skills と cursor.com/docs/plugins）。プラグイン名を付ける形は書かれていない。
-- `/plugin-name:skill-name` は Claude Code の形（measured、code.claude.com/docs/ja/skills）。tsumi は `.cursor-plugin/plugin.json` しか持たないので、Claude Code のプラグインとしては読まれない（inferred）。
-- Cursor のフォーラムでは、複数のプラグインが同じ名前のスキルを持つと、`/` メニューで区別できないと報告されている（公式ドキュメントではない）。223mle/skills の clear-japanese と同時に入れると衝突する（guess）。
+- Cursor では、スキルを `/skill-name` で呼ぶ（measured、cursor.com/docs/skills と cursor.com/docs/plugins）。
+- Claude Code では、プラグインのスキル名に `tsumi:` が付く。`claude -p` の起動イベントにあるスキル一覧に、`tsumi:tsumi-mode`、`tsumi:agent-design-review`、`tsumi:clear-japanese` が出た（measured、2026-10-18、Claude Code 2.1.283）。
+- 同じ名前のスキルが個人のスキルフォルダにもあると、Claude Code では `clear-japanese` と `tsumi:clear-japanese` の両方が見えた（measured、同日）。そのため、個人のコピーは消す（0章）。
 
 ### 4.1 Daiki の考えの出どころ
 
@@ -89,7 +91,7 @@ tsumi に書いた Daiki の考えは、次から取った（measured）。
 
 1. description で発動させるため。overlay は tsumi-mode が動いているときにしか読まれない。独立したスキルなら、「日本語を直して」のような依頼だけで読まれる（ドキュメントの仕組みから inferred）。
 2. Daiki がすでに使っている名前と description をそのまま使える。「日本語を直して」「AIっぽさを消して」のように、ユーザーが実際に言う言葉が入っている（measured）。
-3. 内容は clear-japanese が正。本文と参照7本はそのまま写した。description だけ「README・PR 説明」を足した。
+3. 正本は tsumi（0章）。本文と参照7本は 223mle/skills からそのまま写し、description だけ「README・PR 説明」を足した。
 4. unslop という名前は pstack の英語向けスキルと紛れる。日本語の清書は clear-japanese と呼ぶほうが、何をするかが名前で分かる。
 
 `/technical-writing` で日本語の文書を書くときは、overlay から clear-japanese を呼ぶ。
@@ -124,7 +126,8 @@ dyl-stack の同名プレイブック上書きと同じ仕組みを使う。psta
 
 ```
 tsumi/
-  .cursor-plugin/plugin.json
+  .cursor-plugin/plugin.json   # Cursor 用
+  .claude-plugin/plugin.json   # Claude Code 用
   README.md  CONTRIBUTING.md  DESIGN.md  corrections.tsv
   docs/skill-authoring.md
   agents/tsumi-agent.md
@@ -158,14 +161,15 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 
 - 設計は `evals/README.md`。
 - description の機械的な検査は `scripts/check-skills`（作った）。
-- トリガーのお題は10件。単独での発動6件と、tsumi-mode から子スキルへの振り分け4件（003〜006）。実行は `evals/bin/run-trigger`。
+- トリガーのお題は10件。単独での発動6件と、tsumi-mode から子スキルへの振り分け4件（003〜006）。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
 
 ## 9. 作る順番
 
-1. Mac の CLI を更新して、トリガーのお題6件を回す。
+1. PR #1 をマージし、手元を0章の置き方に切り替える。個人のコピーはこのときに消す。
 2. 未決事項の上位を決める。
 3. TODO(Daiki) を埋める。
-4. 評価ハーネスを作り、最初の20件を入れて baseline を取る。
+4. reflect の Backlog の行き先、他のリポジトリで出た指摘の戻し方、修正ログの `class` の数え方を決める（別 PR）。
+5. 変更前後を比べる仕組みを作り、baseline を取る。
 
 ## 10. 未決事項（重要な順）
 
@@ -173,10 +177,10 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 |---|---|---|
 | 1 | 公開範囲 | private のまま個人で使う、LayerX 社内に共有する、公開する |
 | 2 | 顧客データの扱い | 実際の案件からお題を作ってよいか。匿名化の基準 |
-| 3 | 223mle/skills との二重管理 | agent-design-review と clear-japanese の正本をどちらに置くか。両方を入れると同じ名前のスキルが2つ見える（guess） |
+| 3 | 223mle/skills との二重管理 | 決定。正本は tsumi（0章） |
 | 4 | 223mle/skills のハーネス5本 | plan-delegate など。pstack と重なる部分をどちらに寄せるか |
 | 5 | 回帰の合否基準と予算 | must-pass の扱い、通過率の許容低下幅、試行回数 |
-| 6 | 主な実行環境 | Cursor IDE、cursor-agent CLI、Claude Code |
+| 6 | 主な実行環境 | 決定。Cursor と Claude Code（0章） |
 | 7 | ライセンス | 公開範囲で決まる |
 | 8 | ハーネスの言語 | bun と TypeScript、Python、シェル |
 | 9 | FDE 固有のプレイブック | 顧客案件の流れを入れるか（1と2に依存） |
@@ -191,8 +195,8 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 
 ## 12. 限界
 
-- トリガーのお題は一度も回していない。description が実際に効くかは確かめていない。
-- `--plugin-dir` が `-p` モードでスキルを読み込むかは確かめていない（guess）。
+- トリガーのお題は、Cursor の CLI で1回（20261018-153705-ce046f3）回した。このときの判定は、tsumi のコピーと個人のコピーを区別していなかった。
+- Claude Code では、まだ全件を回していない。
 - main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。
 
 ## 13. 引用元の著作権表示

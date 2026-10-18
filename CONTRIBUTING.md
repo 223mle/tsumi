@@ -2,14 +2,14 @@
 
 ## ブランチと PR
 
-- 変更はブランチを切り、PR で出します。`main` へ直接 push しません。
+- 変更は `~/tsumi` から worktree とブランチを切り、PR で出します。`main` へ直接 push しません。Cursor や Claude Code が読み込んでいるコピーは直しません。
 - 最初に `scripts/install-hooks` を実行します。`main` への push を止める pre-push フックが入ります。
 
 ## スキルを変えたとき
 
 1. `scripts/check-skills` を実行します。name の形、description の長さ、いつ使うかの記述、本文の行数、リンク切れを確かめます。
-2. description を変えたら、`evals/cases/trigger-*.yaml` のお題で、読むべき依頼で読み、読むべきでない依頼で読まないことを確かめます。
-3. 本文を変えたら、`evals/README.md` の手順で変更前と変更後を比べます。
+2. description を変えたら、`evals/cases/trigger-*.yaml` のお題で、読むべき依頼で読み、読むべきでない依頼で読まないことを確かめます。回し方は `evals/README.md` の「回し方」にあります。
+3. 本文を変えたら、変更前と変更後で同じお題を回し、結果を比べます。
 
 スキルを足したら、`skills/tsumi-mode/SKILL.md` の Non-negotiables に「状況 → `../<名前>/SKILL.md`」の1行を足します。足し忘れると `scripts/check-skills` が落ちます。
 

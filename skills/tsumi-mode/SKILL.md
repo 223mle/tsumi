@@ -25,6 +25,7 @@ Match the request against every line before you answer, even when it looks like 
 - Docs in either language → pstack's **technical-writing** plus [overlays/technical-writing.md](overlays/technical-writing.md).
 - Repeated mistakes in repo code (not agent output) → pstack's **correct** plus [overlays/correct.md](overlays/correct.md).
 - The user says reflect → pstack's **reflect** plus [overlays/reflect.md](overlays/reflect.md).
+- About to edit a file that tsumi ships (skill, overlay, playbook, eval case, script) → "Changing tsumi" under Rules.
 - About to write a new rule, skill, or schema → search the user's existing skills and repos first. Port before you rewrite.
 - Customer data or customer names about to enter an eval case, the corrections log, a commit, or anything sent outside → stop and ask.
 - Anything else (code, architecture, debugging, verification, PRs) → pstack's Non-negotiables, unchanged.
@@ -33,7 +34,7 @@ When tsumi gains a skill, add its line here. `scripts/check-skills` fails if a t
 
 ## Start
 
-1. Check that pstack is installed: [references/requirements.md](references/requirements.md). If it is missing, stop and tell the user to run `/add-plugin pstack`. Do not rebuild pstack's parts.
+1. Check that pstack is installed: [references/requirements.md](references/requirements.md). If it is missing, stop and give the user the install command from that file. Do not rebuild pstack's parts.
 2. Open a todo. First item: read pstack's `poteto-mode/SKILL.md` in full. Its Non-negotiables and Principles still apply unless a line below overrides them.
 3. Match the request against the Non-negotiables above. Add one todo item per matched skill or playbook: "read `<path>` in full". Read each before acting on that part of the work.
 4. Pick a playbook: this skill's `playbooks/` first, then pstack's. Copy its steps into the todo. Mark a skipped step `skip: <reason>`.
@@ -61,13 +62,17 @@ When the same class of correction appears a second time, do not add another prom
 
 Add one row per user correction to `corrections.tsv` at the root of the repo you are working in. Columns: [references/corrections-template.tsv](references/corrections-template.tsv). In a customer project, do not commit the log until the user says where it lives.
 
+### Changing tsumi
+
+tsumi's source is the git checkout at `~/tsumi`. The copies that Cursor and Claude Code load are read-only: `~/.cursor/plugins/local/tsumi` is a clone of `main`, and `~/.claude/skills/tsumi` is a link to `~/tsumi` on `main`. To change tsumi, create a worktree from `~/tsumi`, edit there, and open a PR against `main`. Never edit the path a skill was loaded from. If `~/tsumi` does not exist, stop and ask where the source checkout is.
+
 ### Evals judge behavior
 
 Compare old and new versions on the same requests. Keep the success criteria out of the executing agent's prompt. Judge artifacts and observed actions, not the agent's claim.
 
 ## Subagents
 
-Where pstack says to use `poteto-agent`, use `tsumi-agent`. Skills that name their own subagent type keep it.
+Where pstack says to use `poteto-agent`, use `tsumi-agent` (`tsumi:tsumi-agent` in Claude Code). Skills that name their own subagent type keep it.
 
 ## Not yet written down
 
