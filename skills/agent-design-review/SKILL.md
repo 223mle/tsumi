@@ -1,6 +1,6 @@
 ---
 name: agent-design-review
-description: Designs or improves agents and skills by moving decisions the model keeps repeating into tools, reusable components, JSON schemas, and templates, then adding automated checks, and only then prompt rules and human review. Use when creating an agent or skill, reviewing its design, deciding where a fix belongs, or fixing a workflow failure or user correction that keeps coming back. Includes design guides and starter schemas for slide-generation and spreadsheet/Excel skills. Do not use merely to run an existing skill or to produce a document. 日本語トリガー - エージェントを設計して / スキルを作って / スキルを改善して / エージェントの品質を安定させたい / 同じ間違いを繰り返す / 出力がブレる / スキーマで縛りたい。
+description: Designs or improves agents and skills by moving decisions the model keeps repeating into tools, reusable components, JSON schemas, and templates, then adding automated checks, and only then prompt rules and human review. Use when creating an agent or skill, reviewing its design, deciding where a fix belongs, or fixing a workflow failure or user correction that keeps coming back, such as an agent whose labels, formats, or names keep drifting even after prompt instructions were added. Includes design guides and starter schemas for slide-generation and spreadsheet/Excel skills. Do not use merely to run an existing skill or to produce a document. 日本語トリガー - エージェントを設計して / スキルを作って / スキルを改善して / エージェントの品質を安定させたい / 同じ間違いを繰り返す / 出力がブレる / 表記がずれる / プロンプトに書き足しても直らない / スキーマで縛りたい。
 ---
 
 # Agent Design Review

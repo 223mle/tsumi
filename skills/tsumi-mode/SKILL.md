@@ -23,7 +23,7 @@ Each line is situation → what you must read and apply. These add to pstack's N
 - Designing, building, reviewing, or changing an agent, skill, prompt, tool definition, output schema, or template → the **agent-design-review** skill (`../agent-design-review/SKILL.md`), before you write the change.
 - A new task agent from scratch → the **New agent** playbook ([playbooks/new-agent.md](playbooks/new-agent.md)). It also requires agent-design-review.
 - An agent output fails, an eval fails, or the user corrects agent behavior → agent-design-review. Fix at the highest level in the Order of fixes.
-- Any change to a skill, prompt, tool definition, schema, or template → the **Eval** playbook ([playbooks/eval.md](playbooks/eval.md)) before calling it done. Changed a `description` → also run `scripts/check-skills` and the trigger cases.
+- Writing or changing a skill, prompt, tool definition, schema, or template, including a draft or proposal the user will apply → the **Eval** playbook ([playbooks/eval.md](playbooks/eval.md)) before calling it done. Changed a `description` → also run `scripts/check-skills` and the trigger cases.
 - Deciding which outputs a human reviews, or human corrections arrive → the **Review triage** playbook ([playbooks/review-triage.md](playbooks/review-triage.md)).
 - The user corrects you → add a row to the corrections log (see Rules). Second row of the same class → "Same correction twice".
 - Japanese document or prose others will read (README, design doc, PR description, commit message, Japanese SKILL.md, customer-facing text) → the **clear-japanese** skill (`../clear-japanese/SKILL.md`) on your draft before you hand it over.
