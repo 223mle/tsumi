@@ -271,7 +271,7 @@ GLOBAL = ("skills/tsumi-mode/", "evals/bin/", "evals/schemas/", "evals/fixtures/
 INERT = ("README.md", "CONTRIBUTING.md", "DESIGN.md", "docs/", "research/", "evals/README.md",
          "scripts/", ".github/", ".gitignore", "evals/runs/")
 # Files a skill reads at run time that live outside its directory.
-EXTRA = {"corrections.tsv": "mistake-triage"}
+EXTRA = {"corrections.tsv": "session-insights"}
 
 
 def select_changed(cases, base):
