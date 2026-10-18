@@ -1,0 +1,12 @@
+#!/bin/sh
+# scripts/hooks/ のフックを .git/hooks/ に写す。
+# core.hooksPath を使わないのは、scripts/ がない main を checkout したときにフックが消えるため。
+set -eu
+root=$(git rev-parse --show-toplevel)
+hooks=$(git rev-parse --git-path hooks)
+mkdir -p "$hooks"
+for f in "$root"/scripts/hooks/*; do
+	cp "$f" "$hooks/$(basename "$f")"
+	chmod +x "$hooks/$(basename "$f")"
+	echo "installed $(basename "$f")"
+done

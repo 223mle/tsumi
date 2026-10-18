@@ -1,0 +1,11 @@
+id: trigger-agent-design-review-002
+title: ふつうの関数の実装依頼では agent-design-review を読まない
+targets: [agent-design-review]
+tags: [trigger, ja]
+source: 手書き。スキーマや検証の語を含むが、エージェントやスキルの設計ではない依頼
+trials: 3
+prompt: |
+  Python で ISO 8601 の日付文字列を検証する関数を書いてください。2026-02-30 のような存在しない日付は弾きたいです。
+checks:
+  - type: must_not_read
+    glob: "**/agent-design-review/SKILL.md"
