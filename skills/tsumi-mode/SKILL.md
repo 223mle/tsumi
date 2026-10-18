@@ -22,7 +22,7 @@ Match the request against every line before you answer, even when it looks like 
 - Deciding which outputs a human reviews, or human corrections arrive → the **Review triage** playbook ([playbooks/review-triage.md](playbooks/review-triage.md)).
 - The user corrects you → add a row to the corrections log (see Rules). Second row of the same class → "Same correction twice".
 - Japanese document or prose others will read (README, design doc, PR description, commit message, Japanese SKILL.md, customer-facing text) → the **clear-japanese** skill (`../clear-japanese/SKILL.md`) on your draft before you hand it over.
-- English prose → pstack's **unslop**. English docs → pstack's **technical-writing**.
+- pstack calls for **unslop** (a Non-negotiable or a playbook step, your reply included) → do not read unslop. Daiki does not write English prose. Use clear-japanese where the line above applies. Write your chat reply per pstack's Writing the reply, with neither skill.
 - Docs in either language → pstack's **technical-writing** plus [overlays/technical-writing.md](overlays/technical-writing.md).
 - Repeated mistakes in repo code (not agent output) → pstack's **correct** plus [overlays/correct.md](overlays/correct.md).
 - The user says reflect → pstack's **reflect** plus [overlays/reflect.md](overlays/reflect.md).

@@ -16,6 +16,7 @@
 - **主役は Daiki のエージェント開発の考え方と tips をスキルにすること**（2026-10-18 の Daiki の指摘で決まった）。pstack の汎用スキルへの上書き（overlay）は脇役にした。
 - `agent-design-review` と `clear-japanese` の正本は tsumi にする。223mle/skills と、個人のスキルフォルダ（`~/.claude/skills`、`~/.codex/skills`）からは消す（2026-10-18 の Daiki の決定）。
 - tsumi-mode はコマンド専用（`disable-model-invocation: true`）にし、子スキルは description で自動に発動させる（同日の Daiki の決定。4.4）。
+- pstack の `unslop` は使わない。Daiki は英語の文章を書かないため（同日の Daiki の決定）。pstack が unslop を呼ぶ箇所（Non-negotiables とプレイブック）では、人が読む日本語の文書なら clear-japanese を使い、チャットの返信にはどちらも使わない。
 - マージした変更は、Claude Code の SessionStart フックが `scripts/sync-installs` を呼んで、`~/tsumi` と Cursor 用の clone に取り込む。手で `git pull` しない（同日の Daiki の決定）。
 - tsumi を使う環境は Cursor と Claude Code の2つ（同日の Daiki の決定）。本体は `~/tsumi` の main にする。Claude Code は `~/.claude/skills/tsumi` のシンボリックリンクから読み、Cursor は `~/.cursor/plugins/local/tsumi` の clone から読む。tsumi を直すときは `~/tsumi` から worktree を切り、PR を出す。
 - 優先順位は次の4段。tsumi の背骨にする。
@@ -128,6 +129,8 @@ dyl-stack の同名プレイブック上書きと同じ仕組みを使う。psta
 | `/correct` | エージェントの出力の誤りは agent-design-review に回す |
 | `/reflect` | Accepted の各行に評価お題の欄を足す |
 
+`/unslop` には overlay を置かず、tsumi-mode の Non-negotiables で読まないと決めている（0章）。
+
 プレイブックの上書きは `playbooks/eval.md` だけ。前の版の Harden プレイブックは消した。中身が agent-design-review の「Choose and validate a change」と重なるため。
 
 ## 6. ディレクトリ構成
@@ -208,6 +211,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 
 - トリガーのお題は、Cursor の CLI で1回（20261018-153705-ce046f3）回した。このときの判定は、tsumi のコピーと個人のコピーを区別していなかった。
 - Claude Code（Opus 5.5、effort medium）では、tsumi-mode をコマンド専用にした版（c7790b2）で10件を各3回回し、30回すべて合格した（20261018-172643-c7790b2-claude）。tsumi が持つファイルへの `must_read` は、すべて tsumi のコピーを読んで合格した。この実行では個人用スキルと CLAUDE.md を外している。Cursor では、この版を回していない。
+- pstack の unslop を外した版でも、同じ条件で10件を各3回回し、30回すべて合格した（20261018-195159-aff008c-dirty-claude）。tsumi-mode-003 と 006 に足した「unslop を読まない」検査は、外す前の版でも1回ずつ合格した（20261018-185555-aff008c-dirty-claude）。この検査は、外したことの効果を示すものではなく、unslop を読む動きに戻ったときに気づくためのもの。
 - main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。同じ理由で、CI の検査は結果を出すだけで、マージを止められない。
 
 ## 13. 引用元の著作権表示

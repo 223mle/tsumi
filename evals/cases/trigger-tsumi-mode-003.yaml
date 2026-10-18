@@ -1,8 +1,8 @@
 id: trigger-tsumi-mode-003
-title: /tsumi-mode で日本語の文書の清書を頼むと tsumi-mode から clear-japanese を読む
+title: /tsumi-mode で日本語の文書の清書を頼むと tsumi-mode から clear-japanese を読み、unslop は読まない
 targets: [tsumi-mode, clear-japanese]
 tags: [trigger, routing, ja, must-pass]
-source: 手書き。tsumi-mode の Non-negotiables「日本語の文書 → clear-japanese」
+source: 手書き。tsumi-mode の Non-negotiables「日本語の文書 → clear-japanese」と「pstack の unslop は読まない」（2026-10-18 の Daiki の決定）
 trials: 3
 prompt: |
   /tsumi-mode 次の設計メモを、チームに共有できる日本語に整えてください。
@@ -11,3 +11,5 @@ prompt: |
 checks:
   - type: must_read
     glob: "**/clear-japanese/SKILL.md"
+  - type: must_not_read
+    glob: "**/unslop/SKILL.md"
