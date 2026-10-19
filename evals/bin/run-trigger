@@ -179,10 +179,19 @@ def matching(check, reply):
 
 def judge_match(check, reply):
     """Some insight matches `match`, has a `kind` in `kind` (if given), and a proposal
-    target matching `target` (if given)."""
+    target matching `target` (if given). With `or_dropped`, a dropped item whose summary
+    matches `match` and whose reason matches `or_dropped` also passes."""
     hits = matching(check, reply)
     if hits is None:
         return False, "no insights JSON"
+    if not hits and check.get("or_dropped"):
+        # Also accept the signal moved to `dropped` with a reason matching `or_dropped`
+        # (e.g. "already in the repo"), since the skill says not to re-propose what exists.
+        rx, why = re.compile(check["match"], re.I), re.compile(check["or_dropped"], re.I)
+        gone = [d for d in insights(reply).get("dropped", []) if isinstance(d, dict)
+                and rx.search(str(d.get("summary", ""))) and why.search(str(d.get("reason", "")))]
+        if gone:
+            return True, f"dropped as: {str(gone[0].get('reason'))[:80]}"
     if not hits:
         return False, f"no insight matches /{check['match']}/"
     kinds = check.get("kind") or []
@@ -234,6 +243,31 @@ def run_trial(case, args, out):
         time.sleep(30 * (attempt + 1))
 
 
+# Variables a clean-home trial keeps; everything else (and the real HOME) stays out.
+PASS_ENV = ("PATH", "LANG", "LC_ALL", "TERM", "TMPDIR", "CURSOR_API_KEY", "ANTHROPIC_API_KEY", "SSL_CERT_FILE")
+
+
+def trial_env(args, out):
+    """None = inherit. With --clean-home, each trial gets an empty HOME of its own, so
+    personal rules and skills (~/.cursor/rules, ~/.cursor/skills, ~/.claude, ~/.codex)
+    cannot leak in. Auth must come from an env var such as CURSOR_API_KEY."""
+    if not args.clean_home:
+        return None
+    home = pathlib.Path(args.clean_home) / out.relative_to(out.parents[2])
+    shutil.rmtree(home, ignore_errors=True)
+    home.mkdir(parents=True)
+    env = {k: os.environ[k] for k in PASS_ENV if k in os.environ}
+    env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"), XDG_CACHE_HOME=str(home / ".cache"),
+               XDG_DATA_HOME=str(home / ".local/share"))
+    return env
+
+
+def outside(paths, args):
+    """Read paths that are neither this repo nor the pstack dir (globs like **/SKILL.md excluded)."""
+    roots = [str(ROOT) + "/", os.path.realpath(args.pstack) + "/", str(pathlib.Path(args.pstack).resolve()) + "/"]
+    return sorted(p for p in paths if p.startswith("/") and not any(os.path.realpath(p).startswith(r) or p.startswith(r) for r in roots))
+
+
 def run_once(case, args, out):
     harness = HARNESSES[args.harness]
     work = pathlib.Path(tempfile.mkdtemp()) / "acme-notes"
@@ -247,7 +281,8 @@ def run_once(case, args, out):
     started = time.time()
     (out / "cmd.json").write_text(json.dumps(cmd, ensure_ascii=False, indent=1))
     try:
-        p = subprocess.run(cmd, input=stdin, capture_output=True, text=True, timeout=args.timeout, cwd=work)
+        p = subprocess.run(cmd, input=stdin, capture_output=True, text=True, timeout=args.timeout, cwd=work,
+                           env=trial_env(args, out))
         stdout, stderr, code = p.stdout, p.stderr, p.returncode
     except subprocess.TimeoutExpired as e:
         stdout, stderr, code = (e.stdout or b"").decode() if isinstance(e.stdout, bytes) else (e.stdout or ""), "timeout", "timeout"
@@ -255,7 +290,7 @@ def run_once(case, args, out):
     (out / "stderr.txt").write_text(stderr or "")
     tools, paths, reply = harness["reads"](stdout, args)
     results = [judge(c, paths, reply, case["prompt"]) for c in case["checks"]]
-    trial = {"exit": code, "skills_read": sorted(paths), "tools": sorted(tools),
+    trial = {"exit": code, "skills_read": sorted(paths), "outside_reads": outside(paths, args), "tools": sorted(tools),
              "checks": results, "pass": code == 0 and all(r["pass"] for r in results),
              "rate_limited": code != "timeout" and rate_limited(code, stdout, stderr), "seconds": round(time.time() - started, 1)}
     (out / "trial.json").write_text(json.dumps(trial, ensure_ascii=False, indent=1))
@@ -317,6 +352,8 @@ def main():
     ap.add_argument("--case", action="append")
     ap.add_argument("--timeout", type=int, default=300)
     ap.add_argument("--cli")
+    ap.add_argument("--clean-home", nargs="?", const="/tmp/tsumi-eval-home", metavar="DIR",
+                    help="run each trial with an empty HOME under DIR (default /tmp/tsumi-eval-home); pass auth via CURSOR_API_KEY")
     ap.add_argument("--jobs", type=int, default=4, help="trials run in parallel (default 4)")
     ap.add_argument("--changed", nargs="?", const="origin/main", metavar="BASE",
                     help="only cases whose targets the diff against BASE touches (default origin/main)")
@@ -332,6 +369,8 @@ def main():
     if args.trials < 1 or args.jobs < 1:
         ap.error("--trials and --jobs must be at least 1")
     args.cli = args.cli or HARNESSES[args.harness]["cli"]
+    if args.clean_home and not any(k in os.environ for k in ("CURSOR_API_KEY", "ANTHROPIC_API_KEY")):
+        ap.error("--clean-home hides the CLI's stored login; set CURSOR_API_KEY (cursor) first")
     cases = []
     for f in sorted((ROOT / "evals/cases").glob("*.yaml")):
         c = load_case(f)
@@ -387,10 +426,13 @@ def main():
         summary.append({"id": c["id"], "verdict": verdict, "passed": n, "trials": len(trials),
                         "early_stopped": stopped, "rate_limit_retries": sum(t.get("retries", 0) for t in trials),
                         "seconds": [t.get("seconds") for t in trials],
+                        "outside_reads": sorted({p for t in trials for p in t.get("outside_reads", [])}),
                         "skills_read": [t["skills_read"] for t in trials],
                         "checks": [[{k: r[k] for k in ("type", "glob", "match", "pass", "tsumi_copy", "detail") if k in r} for r in t["checks"]] for t in trials]})
         note = " (early stop)" if stopped else ""
         print(f"{verdict:6} {n}/{len(trials)} {c['id']}{note}", flush=True)
+        if summary[-1]["outside_reads"]:
+            print(f"  warn: read outside tsumi/pstack: {', '.join(summary[-1]['outside_reads'])}", flush=True)
     (run_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
     print(f"wall: {round(time.time() - started)}s, jobs={args.jobs}, mode={'full' if args.full else 'early-stop' if args.early_stop else 'fixed'}")
     print(f"results: {run_dir}")

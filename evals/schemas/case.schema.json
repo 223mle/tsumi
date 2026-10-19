@@ -33,7 +33,8 @@
 							"type": { "const": "insight_match" },
 							"match": { "type": "string", "minLength": 1 },
 							"kind": { "type": "array", "items": { "enum": ["preference", "tendency", "repeated-correction", "hidden-mistake"] } },
-							"target": { "type": "string" }
+							"target": { "type": "string" },
+							"or_dropped": { "type": "string" }
 						},
 						"required": ["match"]
 					},

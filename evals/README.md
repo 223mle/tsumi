@@ -119,6 +119,20 @@ session-insights が、セッションから根拠のある示唆を拾い、具
 - summary の `early_stopped: true` は、1回目の pass で止めたお題。`seconds` は試行ごとの秒数。
 - お題の `targets` が実在するスキルかプレイブックを指しているかは、`scripts/check-skills` が確かめる。
 
+### box（評価用の Linux）で回す
+
+個人のルールやスキル（`~/.cursor/rules`、`~/.cursor/skills`、`~/.claude`、`~/.codex`）が混ざらないよう、評価は box で `--clean-home` を付けて回す。
+
+```bash
+curl https://cursor.com/install -fsS | bash   # agent CLI。~/.local/bin/agent に入る
+export CURSOR_API_KEY=...                     # Cursor Dashboard → API Keys で作るユーザー API キー
+evals/bin/run-trigger --harness cursor --clean-home \
+	--pstack <pstack のディレクトリ（Mac と同じ版にそろえる）> --full --jobs 4
+```
+
+- `--clean-home [DIR]` は、試行ごとに空の HOME（既定 `/tmp/tsumi-eval-home/<run>/<お題>/<試行>`）で CLI を起動する。渡す環境変数は PATH、言語、`CURSOR_API_KEY` など認証に要るものだけ。保存済みのログインは使えないので、`CURSOR_API_KEY` がないとエラーにする。
+- tsumi と pstack 以外のパスを読んだお題には `warn: read outside tsumi/pstack` を出し、summary の `outside_reads` に残す。
+
 pstack は自動で更新されるので、版を固定しないと、pstack 側の変化が tsumi の回帰に見える（inferred）。比べる2回は同じ pstack の版で回す。
 
 ### Claude Code
