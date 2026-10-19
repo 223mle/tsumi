@@ -107,6 +107,32 @@ session-insights が、セッションから根拠のある示唆を拾い、具
 
 トリガーお題は `evals/bin/run-trigger` で回す。結果は `evals/runs/<日時>-<git短縮SHA>-<harness>/` に出る。
 
+使い分けは二つ。
+
+- **変更ごと:** `--changed --early-stop`。`origin/main`（`--changed <base>` で変えられる）との差分を見て、変えたスキルを `targets` に持つお題だけを回す。1回目が pass ならそのお題は止め、fail なら `--trials` 回まで回して flaky か fail かを決める。
+- **PR 前:** `--full`。全件を3回ずつ回す。早めに止めることはしない。
+
+補足:
+
+- `--jobs N`（既定 4）で試行を並列に回す。レート制限で落ちた試行は判定の失敗に数えず、待ってから最大3回やり直す（summary の `rate_limit_retries`）。
+- `--changed` は選んだお題と理由を最初に表示する。`skills/tsumi-mode/`、`evals/bin/`、`evals/schemas/`、`evals/fixtures/`、`evals/rubrics/`、`agents/`、プラグインの manifest が変わったら全件を回す。対応が分からないファイルも全件にする。README などの文書だけの変更では回さない。
+- summary の `early_stopped: true` は、1回目の pass で止めたお題。`seconds` は試行ごとの秒数。
+- お題の `targets` が実在するスキルかプレイブックを指しているかは、`scripts/check-skills` が確かめる。
+
+### box（評価用の Linux）で回す
+
+個人のルールやスキル（`~/.cursor/rules`、`~/.cursor/skills`、`~/.claude`、`~/.codex`）が混ざらないよう、評価は box で `--clean-home` を付けて回す。
+
+```bash
+curl https://cursor.com/install -fsS | bash   # agent CLI。~/.local/bin/agent に入る
+export CURSOR_API_KEY=...                     # Cursor Dashboard → API Keys で作るユーザー API キー
+evals/bin/run-trigger --harness cursor --clean-home \
+	--pstack <pstack のディレクトリ（Mac と同じ版にそろえる）> --full --jobs 4
+```
+
+- `--clean-home [DIR]` は、試行ごとに空の HOME（既定 `/tmp/tsumi-eval-home/<run>/<お題>/<試行>`）で CLI を起動する。渡す環境変数は PATH、言語、`CURSOR_API_KEY` など認証に要るものだけ。保存済みのログインは使えないので、`CURSOR_API_KEY` がないとエラーにする。
+- tsumi と pstack 以外のパスを読んだお題には `warn: read outside tsumi/pstack` を出し、summary の `outside_reads` に残す。
+
 pstack は自動で更新されるので、版を固定しないと、pstack 側の変化が tsumi の回帰に見える（inferred）。比べる2回は同じ pstack の版で回す。
 
 ### Claude Code

@@ -2,6 +2,7 @@ id: insights-session-insights-002
 title: 好みと開発の傾向を拾い、根拠つきで具体的なファイルへの差分案にする
 targets: [session-insights]
 tags: [insights, ja]
+# or_dropped: 既にリポジトリにある内容を、反映済みという理由で dropped に回しても合格にする。
 source: tsumi 開発の会話（2026-10-18）の実例を、顧客情報なしで書き直した。description の質、無関係な会社名を出さない、Claude Code 中心の使い方、評価が長い不満
 trials: 3
 prompt: |
@@ -27,8 +28,10 @@ checks:
     match: "description"
     kind: [repeated-correction, preference]
     target: "SKILL|skill|check-skills|authoring|eval"
+    or_dropped: "反映済|既に|すでに|already|移済|書いてある|記載"
   - type: insight_match
     match: "Claude Code|/tsumi:"
     kind: [preference, tendency]
   - type: insight_match
     match: "長|45分|時間|速|並列"
+    or_dropped: "反映済|既に|すでに|already|移済|書いてある|記載"

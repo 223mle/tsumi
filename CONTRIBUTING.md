@@ -8,7 +8,7 @@
 ## スキルを変えたとき
 
 1. `scripts/check-skills` を実行します。PR を出すと、GitHub Actions も同じ検査を回します。name の形、description の長さ、いつ使うかの記述、本文の行数、リンク切れを確かめます。
-2. description を変えたら、`evals/cases/trigger-*.yaml` のお題で、読むべき依頼で読み、読むべきでない依頼で読まないことを確かめます。回し方は `evals/README.md` の「回し方」にあります。作業の途中では関わるお題だけを1回ずつ回し、全件を3回ずつ回すのは PR を仕上げる最後の1回だけにします。
+2. description を変えたら、`evals/cases/trigger-*.yaml` のお題で、読むべき依頼で読み、読むべきでない依頼で読まないことを確かめます。回し方は `evals/README.md` の「回し方」にあります。変更ごとには `evals/bin/run-trigger --changed --early-stop` で関わるお題だけを回し、PR 前に `--full` で全件を3回ずつ回します。評価は box で `--clean-home` を付けて回し、個人のスキルやルールを混ぜません（`CURSOR_API_KEY` が要ります。手順は `evals/README.md`）。
 3. 本文を変えたら、変更前と変更後で同じお題を回し、結果を比べます。
 
 スキルを足したら、`skills/tsumi-mode/SKILL.md` の Non-negotiables に「状況 → `../<名前>/SKILL.md`」の1行を足します。足し忘れると `scripts/check-skills` が落ちます。
