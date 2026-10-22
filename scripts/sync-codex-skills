@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+import argparse
+import datetime
+import fcntl
+import io
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tarfile
+import tempfile
+import uuid
+
+
+def git(cache, *args):
+    return subprocess.check_output(
+        ["/usr/bin/git", "--git-dir", str(cache), *args],
+        stderr=subprocess.PIPE,
+        timeout=20,
+        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+    )
+
+
+def sync(state, source, ref):
+    state.mkdir(parents=True, exist_ok=True)
+    with (state / "update.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return "skip: another update is running"
+        cache = state / "cache.git"
+        if not (cache / "HEAD").exists():
+            git(cache, "init", "--bare", "--initial-branch=codex-cache", str(cache))
+        git(cache, "fetch", "--depth=1", "--no-tags", source, ref)
+        commit = git(cache, "rev-parse", "FETCH_HEAD^{commit}").decode().strip()
+        versions = state / "versions"
+        versions.mkdir(exist_ok=True)
+        version = versions / commit
+        if not version.exists():
+            archive = git(cache, "archive", "--format=tar", commit)
+            with tempfile.TemporaryDirectory(prefix=".staging-", dir=versions) as tmp:
+                with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+                    for member in tar.getmembers():
+                        path = Path(member.name)
+                        if path.is_absolute() or ".." in path.parts or not (member.isfile() or member.isdir()):
+                            raise ValueError("unsupported archive member: " + member.name)
+                    tar.extractall(tmp)
+                for name in ("clear-japanese", "agent-design-review", "tsumi-mode"):
+                    if not (Path(tmp) / "skills" / name / "SKILL.md").is_file():
+                        raise ValueError("missing skill: " + name)
+                os.rename(tmp, version)
+        current = state / "current"
+        if current.is_symlink() and current.resolve() == version:
+            return "unchanged: " + commit
+        if current.exists() and not current.is_symlink():
+            raise ValueError("current must be a managed symlink")
+        link = state / (".current-" + uuid.uuid4().hex)
+        try:
+            link.symlink_to(version, target_is_directory=True)
+            os.replace(link, current)
+        finally:
+            link.unlink(missing_ok=True)
+        return "updated: " + commit
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Update Codex's tsumi snapshot without changing a main branch.")
+    parser.add_argument("--state-dir", type=Path, default=Path.home() / ".codex" / "tsumi")
+    parser.add_argument("--source", default="https://github.com/223mle/tsumi.git")
+    parser.add_argument("--ref", default="refs/heads/main")
+    args = parser.parse_args()
+    state = args.state_dir.expanduser().resolve()
+    status = 0
+    try:
+        result = sync(state, args.source, args.ref)
+    except (OSError, ValueError, tarfile.TarError, subprocess.SubprocessError) as error:
+        if isinstance(error, subprocess.TimeoutExpired):
+            result = "failed: Git operation timed out"
+        elif isinstance(error, subprocess.CalledProcessError):
+            result = "failed: Git exited with code " + str(error.returncode)
+        else:
+            result = "failed: " + str(error)
+        print(result, file=sys.stderr)
+        status = 1
+    state.mkdir(parents=True, exist_ok=True)
+    with (state / "update.log").open("a") as log:
+        log.write(datetime.datetime.now().astimezone().isoformat() + " " + result + "\n")
+    return status
+
+
+if __name__ == "__main__":
+    sys.exit(main())

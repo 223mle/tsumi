@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+import json
+import os
+from pathlib import Path
+import shlex
+import subprocess
+import tempfile
+
+
+def write_atomic(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as tmp:
+        tmp.write(data)
+    try:
+        os.replace(tmp.name, path)
+    finally:
+        Path(tmp.name).unlink(missing_ok=True)
+
+
+def main():
+    home = Path.home()
+    state = home / ".codex" / "tsumi"
+    script = state / "sync-codex-skills"
+    hooks_path = home / ".codex" / "hooks.json"
+    config = json.loads(hooks_path.read_text()) if hooks_path.exists() else {}
+    names = ("clear-japanese", "agent-design-review", "tsumi-mode")
+    links = {home / ".agents" / "skills" / name: state / "current" / "skills" / name for name in names}
+    previous = {}
+    for path, target in links.items():
+        if path.exists() or path.is_symlink():
+            if not path.is_symlink() or os.readlink(path) not in (str(target), str(home / "tsumi" / "skills" / path.name)):
+                raise SystemExit("Refusing to replace an unrelated skill: " + str(path))
+            previous[str(path)] = os.readlink(path)
+    hook = {
+        "type": "command",
+        "command": "/usr/bin/python3 " + shlex.quote(str(script)),
+        "timeout": 30,
+        "statusMessage": "Checking tsumi skill updates",
+    }
+    groups = config.setdefault("hooks", {}).setdefault("SessionStart", [])
+    if not any(h.get("command") == hook["command"] for g in groups for h in g.get("hooks", [])):
+        groups.append({"matcher": "^(startup|resume)$", "hooks": [hook]})
+    state.mkdir(parents=True, exist_ok=True)
+    backup = state / "install-backup.json"
+    if not backup.exists():
+        write_atomic(backup, json.dumps({"links": previous, "hooks": hooks_path.read_text() if hooks_path.exists() else None}, ensure_ascii=False, indent=2) + "\n")
+    source = Path(__file__).resolve().with_name("sync-codex-skills")
+    write_atomic(script, source.read_text())
+    subprocess.run(["/usr/bin/python3", str(script)], check=True)
+    for path, target in links.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_symlink() and os.readlink(path) == str(target):
+            continue
+        with tempfile.TemporaryDirectory(dir=path.parent) as tmp:
+            link = Path(tmp) / path.name
+            link.symlink_to(target, target_is_directory=True)
+            os.replace(link, path)
+    write_atomic(hooks_path, json.dumps(config, ensure_ascii=False, indent=2) + "\n")
+    print("Installed and updated. Review and trust the new hook in Codex Hooks settings.")
+    print("Update log: " + str(state / "update.log"))
+
+
+if __name__ == "__main__":
+    main()
