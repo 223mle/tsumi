@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical checks for skills/*/SKILL.md frontmatter and layout, and for the two plugin manifests.
+"""Mechanical checks for skills/*/SKILL.md frontmatter and layout, the two plugin manifests, and the prose eval cases.
 
 Rules follow the Agent Skills docs (see docs/skill-authoring.md).
 Exit 1 if any error. Warnings do not fail.
@@ -116,6 +116,25 @@ if router.exists():
         n = path.parent.name
         if n != ROUTER and f"../{n}/SKILL.md" not in rtext:
             errors.append(f"skills/tsumi-mode/SKILL.md: no route to tsumi skill '{n}' (add a Non-negotiables line with ../{n}/SKILL.md)")
+
+# The cap forces retiring a case before adding one; the retirement rule is in evals/prose/README.md.
+PROSE_CASE_CAP = 6
+prose_requests = root / "evals" / "prose" / "requests.json"
+prose_rubric = root / "evals" / "prose" / "rubric.md"
+if prose_requests.exists() and prose_rubric.exists():
+    try:
+        case_ids = [case["id"] for case in json.loads(prose_requests.read_text(encoding="utf-8"))]
+    except (ValueError, KeyError, TypeError) as e:
+        errors.append(f"evals/prose/requests.json: not a list of cases with an id ({e})")
+        case_ids = None
+    if case_ids is not None:
+        if len(case_ids) > PROSE_CASE_CAP:
+            errors.append(f"evals/prose/requests.json: {len(case_ids)} cases (cap {PROSE_CASE_CAP}); retire one as evals/prose/README.md describes")
+        rubric_ids = re.findall(r"(?m)^- ([a-z0-9-]+): ", prose_rubric.read_text(encoding="utf-8"))
+        for missing in sorted(set(case_ids) - set(rubric_ids)):
+            errors.append(f"evals/prose/rubric.md: no case condition for '{missing}'")
+        for stale in sorted(set(rubric_ids) - set(case_ids)):
+            errors.append(f"evals/prose/rubric.md: condition for '{stale}' has no case in requests.json")
 
 for w in warnings:
     print(f"warn: {w}")
