@@ -25,6 +25,8 @@ evals/
   runs/                # 実行結果。git に入れない
 ```
 
+日本語清書の出力評価は [prose/README.md](prose/README.md) に分けてある。トリガー評価だけでは、説明量・意味の保持・構成の品質は確認できない。
+
 ## お題の形式
 
 `cases/<id>.yaml`。`schemas/case.schema.json` で検査する。お題ファイル自体をスキーマで縛るのは tsumi-mode の Order of fixes の1段目を、評価そのものにも当てたもの。
@@ -126,7 +128,7 @@ tsumi は pstack の上に乗るので、pstack を入れた状態で回す。�
 | smoke | 2 | `--plugin-dir` で tsumi が読まれるか。pstack の `poteto-mode/SKILL.md` と `tsumi-mode/SKILL.md` の両方を読むか（`must_read`） |
 | トリガー | 10 | 各スキルの description で、読むべき依頼で読み、近いが違う依頼で読まないか（作成済み） |
 | 修正の段 | 4 | 2回目の修正を、プロンプトではなく道具、スキーマ、テンプレート、評価に移すか |
-| clear-japanese の清書 | 3 | 条件・数値・限定語が残り、原文にない因果を足さないか（clear-japanese の preservation.md の例を使う） |
+| clear-japanese の清書 | 5 | 説明量、条件の保持、段落と列挙、用語の導入順、ADRの比較軸。入力と判定基準は prose/ に作成済み。採点は出力を読んで行う |
 | 振り分け | 3 | 依頼文から `playbooks/new-agent.md`、`review-triage.md`、`eval.md`（上書き）を読むか |
 | 上書きファイルの読み込み | 1 | `/technical-writing` を tsumi-mode で使ったとき、pstack 本体のあとに `overlays/technical-writing.md` を読むか |
 | pstack 不在 | 1 | pstack を外した環境で、作業を始めずに `/add-plugin pstack` を案内して止まるか |
