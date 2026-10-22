@@ -1,0 +1,372 @@
+[
+  {
+    "label": "文書01",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "fail",
+      "5": "na"
+    },
+    "failures": [
+      "観点4: 「削除は取り消せない。利用者は必要なファイルを期限前にダウンロードする。」に続けて、「移行作業は不要だが、保存期間と削除の条件を利用者に周知する必要がある。」まで同じ段落にまとめている。不可逆な削除に対する利用者の対応と、移行・周知の運用要件を分けていない。"
+    ]
+  },
+  {
+    "label": "文書02",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "fail",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": [
+      "観点2: 本文のない「## 選択肢」がそのまま残っている。display-label の必須条件である、空の選択肢の削除または短い省略理由の記載を満たしていない。"
+    ]
+  },
+  {
+    "label": "文書03",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "fail",
+      "5": "na"
+    },
+    "failures": [
+      "観点4: 「承認済みの申請だけを翌営業日に処理する。監査のため、処理記録は1年間保存する。」が一つの段落になっている。申請の処理条件・処理日と、監査目的の記録保存という独立した案内を分けていない。"
+    ]
+  },
+  {
+    "label": "文書04",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書05",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書06",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書07",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "fail",
+      "5": "na"
+    },
+    "failures": [
+      "観点4: 「未承認の申請は処理せず、承認済みの申請だけを翌営業日に処理する。監査のため、処理記録は1年間保存する。」が一つの段落になっている。申請の処理条件・処理日と、監査目的の記録保存という独立した案内を分けていない。"
+    ]
+  },
+  {
+    "label": "文書08",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "fail",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": [
+      "観点2: 本文のない「## 選択肢」がそのまま残っている。display-label の必須条件である、空の選択肢の削除または短い省略理由の記載を満たしていない。"
+    ]
+  },
+  {
+    "label": "文書09",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書10",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書11",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書12",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書13",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書14",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書15",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書16",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書17",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書18",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書19",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書20",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書21",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書22",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書23",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書24",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書25",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書26",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書27",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書28",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "na"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書29",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass"
+    },
+    "failures": []
+  },
+  {
+    "label": "文書30",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass"
+    },
+    "failures": []
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-22",
+  "baseline_commit": "4af8299",
+  "model": "gpt-6-astra",
+  "reasoning_effort": "xhigh",
+  "trials_per_version": 3,
+  "cases_per_trial": 5,
+  "pstack_version": "0.15.25",
+  "pstack_loaded_by_candidates": false,
+  "candidate_context": "clear-japanese skill and requests only; fresh agent per version and trial",
+  "snapshots": {
+    "baseline": {
+      "SKILL.md": "a77b48944a976a5b823f76bd9cbf8ddfc1d54136fdf8297ab561b3d17544a6b1",
+      "references/ai-smell.md": "efff967591e2dfcddc0e95b8e191488110396bec53273163fc65bb8ca97945c2",
+      "references/cohesion.md": "a4486e572d5f36f37f2a875994f2bb882f4f6a6ed188042b64b9b8c841e88a18",
+      "references/preservation.md": "5b38b042dedf53b5499888675424a61df04ca303fb607d4cfd7844fe8ba7d8bb",
+      "references/sentence.md": "af0dddbb8e8215de382b422702a9b27175d47f3bce6f35bc3048f16e515dfb9b",
+      "references/structure.md": "f69f5c260d63388fe4f55c1bea2168655c12378ab1ede5dd2416cf1d6c82bc0e",
+      "references/vocabulary.md": "a07c7ae797073ed73f2340a11cd3db9eaa8bb5882d60b53c5e1d32711ccf4bb0",
+      "references/worked-example.md": "357c6f654e5e40a8a85775a71603701af83f674107ce2d12d95ef95a59f59bde"
+    },
+    "revised": {
+      "SKILL.md": "bf4f6fd824326521b440d2903c6a8653b2636d6181e9d9fdfc1fe8a6ce0b3d25",
+      "references/adr.md": "0e553ce671cfc1c3854aedaf955cdfd439cfe245e02baa89859b40bef9df04f6",
+      "references/ai-smell.md": "efff967591e2dfcddc0e95b8e191488110396bec53273163fc65bb8ca97945c2",
+      "references/cohesion.md": "7b6224cc4d265b24172e0addaf3c7291cb0d5eafe88c7f21633ced15a8b4113c",
+      "references/preservation.md": "a58f2b56dafd47a7d555062f08817c681192b5e6d94dae42b73e237d48cd0571",
+      "references/sentence.md": "af0dddbb8e8215de382b422702a9b27175d47f3bce6f35bc3048f16e515dfb9b",
+      "references/structure.md": "1bc16249198d769f40bd8ba349090408ba3e13d2f54838db22350fe46a0b2c69",
+      "references/vocabulary.md": "adcd6347e8e0646e342e92371a6911240e6b779a070f247ff9dda4940fcf8925",
+      "references/worked-example.md": "1a84cde2b93e9e7630bcc1b139a0f6c6caf31ec0934114b7f86a09cfe848d947"
+    }
+  }
+}
