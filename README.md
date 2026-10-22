@@ -98,6 +98,25 @@ tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-desig
 
 tsumi を直すときは、読み込まれているコピーは直しません。`~/tsumi` から worktree を切って直し、PR を出します。
 
+## Codexだけでスキルを自動更新する
+
+macOSでは、作業ブランチで次を実行する。
+
+```bash
+python3 scripts/install-codex-sync
+```
+
+マージ済みの最新版を取得し、Codexが読む3つのtsumiスキルを専用コピーへのリンクに切り替える。`~/.codex/hooks.json`には、チャット開始・再開時に更新するフックを追加する。既存のフックは残す。設定後、CodexのHooks設定でこのフックを一度確認して信頼する。信頼するまでは自動実行されない。
+
+更新用コピーは`~/.codex/tsumi/current`に置く。GitHubのmainを読み取るだけで、`~/tsumi`、Cursor用のコピー、ローカル・リモートのmainブランチは変更しない。更新完了後に読み込み先を切り替え、取得や検査に失敗した場合は旧版を維持する。実行中の会話に読み込み済みの指示を取り消すものではない。
+
+- 更新ログは`~/.codex/tsumi/update.log`に残る。
+- 導入前のリンクとフック設定は`~/.codex/tsumi/install-backup.json`に保存する。
+- Codexが変更を検知しない場合は再起動する。自動更新を停止する場合はHooks設定で対象フックを無効にする。
+- 更新スクリプト自体は自動更新しない。スクリプトを更新する場合はインストーラーを再実行する。
+
+この設定はClaude Codeの起動に依存しない。既存のClaude Code・Cursor向け同期設定は変更しない。
+
 ## 使い方
 
 Cursor では、スキルを `/スキル名` で呼びます。Claude Code では、`/tsumi:tsumi-mode` のようにプラグイン名を付けます。
