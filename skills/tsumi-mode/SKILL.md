@@ -25,7 +25,7 @@ Match the request against every line before you answer, even when it looks like 
 - Writing or rewriting a Japanese document others will read (README, design doc, ADR, how-to, PR description, Japanese SKILL.md, customer-facing text) → tsumi's **unslop** skill (`../unslop/SKILL.md`), before you write the first draft. Not for commit messages or your chat reply.
 - pstack calls for **unslop** or **technical-writing** (a Non-negotiable or a playbook step, your reply included) → for a Japanese document, read tsumi's `../unslop/SKILL.md`. For a commit message or your chat reply, read neither. Never read pstack's own `unslop` or `technical-writing` unless the user invokes one by name: Daiki does not write English prose. Write your chat reply per pstack's Writing the reply.
 - Repeated mistakes in repo code (not agent output) → pstack's **correct** plus [overlays/correct.md](overlays/correct.md).
-- The user says reflect → pstack's **reflect** plus [overlays/reflect.md](overlays/reflect.md).
+- The user says reflect, or asks to feed this conversation back into tsumi → the **tsumi-reflect** skill (`../tsumi-reflect/SKILL.md`). It reads pstack's reflect itself.
 - About to edit a file that tsumi ships (skill, overlay, playbook, eval case, script) → "Changing tsumi" under Rules.
 - About to write a new rule, skill, or schema → search the user's existing skills and repos first. Port before you rewrite.
 - Customer data or customer names about to enter an eval case, the corrections log, a commit, or anything sent outside → stop and ask.
@@ -65,7 +65,9 @@ When the same class of correction appears a second time, do not add another prom
 
 ### Corrections log
 
-Add one row per user correction to `corrections.tsv` at the root of the repo you are working in. Columns: [references/corrections-template.tsv](references/corrections-template.tsv). In a customer project, do not commit the log until the user says where it lives.
+Add one row per user correction to `corrections.tsv` at the root of the repo you are working in, with `source` set to `correction`. Columns: [references/corrections-template.tsv](references/corrections-template.tsv). In a customer project, do not commit the log until the user says where it lives.
+
+Outside tsumi, this log only holds rows until the user reflects: tsumi-reflect moves them into tsumi's `corrections.tsv`. Count a class across this repo's log and `~/tsumi/corrections.tsv`.
 
 ### Changing tsumi
 
@@ -81,7 +83,7 @@ Where pstack says to use `poteto-agent`, use `tsumi-agent` (`tsumi:tsumi-agent` 
 
 ## Not yet written down
 
-These are Daiki's calls and are not captured yet. Do not fill them by guessing. Use pstack's default and say so, or ask.
+These are Daiki's calls and are not captured yet. They get filled from patterns in tsumi's corrections log, which tsumi-reflect builds. Do not fill them by guessing. Use pstack's default and say so, or ask.
 
 - TODO(Daiki): pass criteria and trial count for agent evals.
 - TODO(Daiki): which signals mark output as suspicious enough for human review.

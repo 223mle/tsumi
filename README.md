@@ -30,6 +30,15 @@ pstack は、principle、プレイブック、返信の書き方といった開�
 
 この順番は投資の順番です。4段階を順に終わらせる計画ではありません。
 
+### トップの実践と対話の記録から育てる
+
+tsumi は、2つの材料から育てます。
+
+- **トップの実践。** 考え方は、poteto の投稿や pstack のような、トップの開発者の実践を起点にしています。今後もトップのブログやスキルから取り込みます。
+- **Daiki とエージェントの対話の記録。** 会話の最後に「reflect して」と言うと、`tsumi-reflect` がその会話から学びを拾い、スキルの修正と修正ログの行を1つの PR にまとめます。材料にするのは、reflect をしたスレッドだけです。修正ログには、顧客名や顧客データを書きません。
+
+修正ログに同じ種類の行が2つたまったら、プロンプトに書き足さずに仕組みへ移します。まだ決まっていない評価の合否基準や、人に回す出力の目印も、この記録の傾向から決めます。
+
 ## スキル
 
 入口は `tsumi-mode` です。`/tsumi-mode <依頼>`（Claude Code では `/tsumi:tsumi-mode <依頼>`）と打つと、tsumi の全スキルと pstack のスキルを、状況に合わせて使い分けます。
@@ -40,6 +49,7 @@ pstack は、principle、プレイブック、返信の書き方といった開�
 | 業務エージェントを新しく作る | New agent プレイブック（`agent-design-review` も読む） |
 | エージェントの出力の失敗、評価の失敗、エージェントへの修正 | `agent-design-review` |
 | 動かして証拠を取る手段がないエージェントを作る・直す | pstack の `create-verification-skill`（tsumi の overlay 付き） |
+| reflect と言われた、この会話の学びを tsumi に戻す | `tsumi-reflect`（pstack の `reflect` に tsumi の追加分を当てる） |
 | スキル、プロンプト、ツール定義、スキーマを変えた | Eval プレイブック（回帰評価）。description を変えたら `scripts/check-skills` とトリガーお題も |
 | 人に回す出力を決める、人の修正が届く | Review triage プレイブック |
 | 日本語の文書を書く・直す（README、設計書、ADR、手順書、PR 説明など。コミット文は除く） | `unslop` |
@@ -47,13 +57,14 @@ pstack は、principle、プレイブック、返信の書き方といった開�
 
 pstack の `unslop` と `technical-writing` は使いません。pstack がこの2つを呼ぶ場面では、人が読む日本語の文書なら tsumi の `unslop` を使い、コミット文とチャットの返信にはどれも使いません。tsumi の `unslop` は、pstack の `technical-writing` の考え方のうち日本語にも当てはまるもの（文書の種類を先に決める、コードの名前をそのまま書く、など）を取り込んでいます。
 
-tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-design-review` と `unslop` は単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
+tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-design-review`、`unslop`、`tsumi-reflect` は単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
 
 | スキル | 単独で読まれる場面 |
 |---|---|
 | [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）と打ったときだけ。「tsumi で」と書くだけでは読まれません |
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき |
 | [`unslop`](skills/unslop/SKILL.md) | 日本語の文書を書くとき、「日本語を直して」「分かりやすくして」と頼んだとき |
+| [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | 会話の最後に「reflect して」と言ったとき。週報や振り返りの文書を書く依頼では読まれません |
 
 `agent-design-review` と `unslop`（移したときの名前は `clear-japanese`）は [223mle/skills](https://github.com/223mle/skills) から移しました。正本は tsumi で、223mle/skills には残しません。
 

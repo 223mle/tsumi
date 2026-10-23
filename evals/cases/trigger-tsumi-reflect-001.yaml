@@ -1,0 +1,13 @@
+id: trigger-tsumi-reflect-001
+title: tsumi-mode を使わずに reflect を頼むと tsumi-reflect と pstack の reflect を読む
+targets: [tsumi-reflect]
+tags: [trigger, ja, must-pass]
+source: 2026-10-23 の Daiki との対話。tsumi-mode を使っていない会話で reflect を打つと、tsumi の overlay が読まれなかった
+trials: 3
+prompt: |
+  reflect して。この会話で、エージェントが返す勘定科目の表記ゆれを私が2回直したので、次から同じことが起きないようにしたいです。
+checks:
+  - type: must_read
+    glob: "**/tsumi-reflect/SKILL.md"
+  - type: must_read
+    glob: "*/pstack/*/reflect/SKILL.md"
