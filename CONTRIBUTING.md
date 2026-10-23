@@ -17,4 +17,4 @@ description の書き方は [docs/skill-authoring.md](docs/skill-authoring.md) �
 
 ## 修正ログ
 
-tsumi 自体への指摘は、リポジトリ直下の `corrections.tsv` に1行ずつ足します。列は `skills/tsumi-mode/references/corrections-template.tsv` と同じです。同じ `class` が2行になったら、プロンプトへの書き足しではなく、スクリプトか評価のお題に移します。
+tsumi 自体への指摘は、リポジトリ直下の `corrections.tsv` に1行ずつ足します。列は `skills/tsumi-mode/references/corrections-template.tsv` と同じです。`source` 列には、人の訂正なら `correction`、`tsumi-reflect` で足した行なら `reflect` と書きます。同じ `class` が2行になったら、プロンプトへの書き足しではなく、スクリプトか評価のお題に移します。

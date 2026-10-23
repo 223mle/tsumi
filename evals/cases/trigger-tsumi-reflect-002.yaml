@@ -1,0 +1,13 @@
+id: trigger-tsumi-reflect-002
+title: 週報のための振り返りを頼んでも tsumi-reflect と pstack の reflect を読まない
+targets: [tsumi-reflect]
+tags: [trigger, ja]
+source: 手書き。tsumi-reflect はサブエージェントを4つ動かす重い処理なので、明示的に reflect と言ったときだけ読む
+trials: 3
+prompt: |
+  今週やった作業を振り返って、上司に送る週報にまとめてください。月曜に請求書チェックのエージェントの表記ゆれを直し、水曜に評価のお題を3件足し、金曜に PR を2本出しました。
+checks:
+  - type: must_not_read
+    glob: "**/tsumi-reflect/SKILL.md"
+  - type: must_not_read
+    glob: "*/pstack/*/reflect/SKILL.md"

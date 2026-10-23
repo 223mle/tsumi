@@ -26,6 +26,8 @@
   3. 仕組みにできない判断だけをプロンプトに最小限書く。同じ修正が2回出たら1か2へ移す。
   4. 人のレビューは最後で、怪しいものだけ。修正はログに残す。
 - 作業は評価から始める（2026-10-23 の Daiki の決定。4.5）。作る・直す・変える作業すべてで、先に合格の定義（A）を書き、次に実物を動かして証拠を取る仕組み（B）を用意する。4段とは軸が違う。4段は修正を置く場所の順番で、こちらは作業の順番である。
+- tsumi は、トップの実践と、Daiki とエージェントの対話の記録から育てる（同日の Daiki の決定。4.6）。当面は poteto の投稿と pstack を起点にし、今後もトップのブログやスキルから取り込む。
+- 対話の記録が tsumi に入る入口は `tsumi-reflect` だけにする（同日の Daiki の決定。4.6）。材料は reflect をしたスレッドだけで、複数のスレッドをまとめて読み直すことはしない。
 
 ## 1. 読んだもの
 
@@ -61,6 +63,7 @@
 | `tsumi-mode` | 全スキルの入口となるルーター。pstack の poteto-mode を読ませ、Non-negotiables で状況ごとに tsumi と pstack のスキルを割り当てる。4段の順番と規則を足す | 新規 | 読まれない。`/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）で呼んだときだけ |
 | `agent-design-review` | エージェントやスキルの設計と改善。4段の中身（呼び出し側からの道具設計、モデルと道具の契約、再発した修正の追い方） | 223mle/skills から移した | 読まれる |
 | `unslop` | 日本語の文書の起草と清書。pstack の `technical-writing` と `unslop` の代わり | 223mle/skills から移した `clear-japanese` を改名して広げた | 読まれる |
+| `tsumi-reflect` | pstack の `reflect` に tsumi の追加分を当てる。対話の記録が tsumi に入る唯一の入口 | 新規。`overlays/reflect.md` の中身を移した | 読まれる |
 
 ### 4.0 tsumi-mode をルーターにした理由
 
@@ -174,6 +177,17 @@ Daiki の考えは、「最初に評価を作って正しい方向を決める�
 - B が実行コマンドと証拠の置き場所だけで済まないときは、pstack の `create-verification-skill` を tsumi の overlay 付きで使う。tsumi に別のスキルを作らないのは、pstack を土台に足りない分だけ足す方針に合い、pstack の更新もそのまま取り込めるため。poteto-mode とそのプレイブックは、このスキルをどこからも呼んでいない（measured、2026-10-23）。そのため、tsumi-mode の Non-negotiables に割り当ての行を足した。
 - 原則の正本は `agent-design-review` の「Start from evals」節に置き、tsumi-mode と README には短く書く。`agent-design-review` は tsumi-mode を通さずに読まれるので、tsumi-mode だけに書くと、単独で使ったときに伝わらない。4段の0段目にしなかったのは、軸の違う2つの順番が混ざり、評価が0段目と2段目の両方に出てくるため。
 
+### 4.6 対話の記録から育てる仕組み
+
+Daiki の狙いは、tsumi を、Daiki とエージェントの対話の記録をもとに更新していくこと。TODO(Daiki) の4項目（評価の合否基準と試行回数など）は数値ですぐに答えられないので、実際の作業で多かったことから埋める。2026-10-23 に、次のことを Daiki と決めた。
+
+- 材料は、reflect をしたスレッドだけにする。一定期間のスレッドをまとめて読み直す案（pstack の `automate-me` など）も検討したが、Daiki がやめると決めた。reflect をすること自体が、そのスレッドを読んでよいという意思表示になる。顧客案件のスレッドをどこまで読むかという問題も起きない。
+- reflect の結果は記録に残す。pstack の reflect は、採用・却下・保留の一覧を画面に出すだけで、保留はチームのトラッカーに起票する（measured）。tsumi にはトラッカーがなく、記録しないと傾向を拾えない。
+- 記録は `corrections.tsv` にまとめ、出どころを書く `source` 列（`correction` か `reflect`）を足す。ファイルを分けると、同じ間違いが訂正と reflect の両方で1回目に見え、「同じ修正が2回」の数え方が働かない。記録するのは採用と保留だけで、却下は残さない。`evidence` には、リポジトリ名、顧客名、顧客データ、原文の引用を書かない。顧客案件では、リポジトリ名が顧客名になっていることがある。
+- 作業中は、今のとおり作業中のリポジトリの `corrections.tsv` に書く。reflect のときに抽象化して tsumi の `corrections.tsv` に移し、スキルの修正と同じ PR に入れる。訂正のたびに tsumi へ PR を作ると作業が中断され、抽象化と確認も毎回要る。reflect をしなかったスレッドの訂正は tsumi に届かないが、材料を reflect のスレッドに絞る決定から出る結果として受け入れた。
+- reflect は `tsumi-reflect` という別の名前の子スキルにし、`overlays/reflect.md` は中身を移して消した。overlay は tsumi-mode の Non-negotiables からしか読まれないので、tsumi-mode を使っていない会話で `/pstack:reflect` を打つと、tsumi の追加分が働かなかった。pstack と同じ名前にしなかったのは、同じ名前のスキルの動きを Cursor では確かめておらず、Codex では同じ名前のスキルを1つしか置けないため（4.2）。子スキルなので `disable-model-invocation` は付けない（`scripts/check-skills` が強制する）。頼んでいないのに動く恐れは、description に「明示的に reflect と言ったとき」と書き、読むべきでない依頼のお題（tsumi-reflect-002）で見張る。
+- pstack の reflect の手順4は、lint やスクリプトで強制したほうが確実なものを保留に移す（measured）。tsumi はこれを変え、PR に収まる小さな仕組みの対策（評価のお題、`check-skills` の検査、スキーマの1項目など）は、Daiki の承認を得てスキルの修正と同じ PR に入れる。収まらないものだけを保留として記録する。仕組みで直すことを最優先にする4段の考え方と、pstack の手順4が逆を向いていたため。
+
 ## 5. pstack への上書き（脇役）
 
 dyl-stack の同名プレイブック上書きと同じ仕組みを使う。pstack のスキルを使うとき、`tsumi-mode/overlays/<スキル名>.md` があれば本体のあとに読む。食い違ったら overlay が勝つ。
@@ -181,10 +195,9 @@ dyl-stack の同名プレイブック上書きと同じ仕組みを使う。psta
 | pstack のスキル | overlay |
 |---|---|
 | `/correct` | エージェントの出力の誤りは agent-design-review に回す |
-| `/reflect` | Accepted の各行に評価お題の欄を足す |
 | `/create-verification-skill` | 作る相手を業務エージェントと読み替える。出力がそのまま証拠になるなら、スキルを作らない（4.5） |
 
-`/unslop` と `/technical-writing` には overlay を置かない。tsumi-mode の Non-negotiables で、日本語の文書を tsumi の `unslop` に回す（0章）。前の版の `overlays/technical-writing.md` は 2026-10-22 に消した。
+`/reflect` の overlay は、2026-10-23 に `tsumi-reflect` スキルへ移して消した（4.6）。`/unslop` と `/technical-writing` には overlay を置かない。tsumi-mode の Non-negotiables で、日本語の文書を tsumi の `unslop` に回す（0章）。前の版の `overlays/technical-writing.md` は 2026-10-22 に消した。
 
 プレイブックの上書きは `playbooks/eval.md` だけ。前の版の Harden プレイブックは消した。中身が agent-design-review の「Choose and validate a change」と重なるため。
 
@@ -200,13 +213,15 @@ tsumi/
   skills/
     tsumi-mode/
       SKILL.md
-      overlays/      correct.md reflect.md create-verification-skill.md
+      overlays/      correct.md create-verification-skill.md
       playbooks/     new-agent.md review-triage.md eval.md
       references/    requirements.md corrections-template.tsv
     agent-design-review/
       SKILL.md  references/  assets/
     unslop/
       SKILL.md  references/
+    tsumi-reflect/
+      SKILL.md
   scripts/
     check-skills          # name、description、manifest の機械的な検査
     install-hooks
@@ -221,8 +236,9 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 
 ## 7. 修正ログ
 
-- 形は `skills/tsumi-mode/references/corrections-template.tsv`。
+- 形は `skills/tsumi-mode/references/corrections-template.tsv`。`source` 列は、人の訂正なら `correction`、`tsumi-reflect` で足した行なら `reflect`。
 - tsumi 自体への指摘は、リポジトリ直下の `corrections.tsv` に書き、コミットする。顧客データを含まないため。
+- 他のリポジトリでの訂正は、作業中はそのリポジトリの `corrections.tsv` に書く。reflect のときに、`tsumi-reflect` が抽象化して tsumi の `corrections.tsv` に移す（4.6）。
 - 顧客案件の修正ログは、置き場所をユーザーが決めるまでコミットしない（tsumi-mode の規則）。
 
 ## 8. 評価
@@ -230,14 +246,14 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - 設計は `evals/README.md`。
 - description と2つの manifest の機械的な検査は `scripts/check-skills`。PR ごとに GitHub Actions で回す。
 - Claude Code で評価するとき、評価中のエージェントが読めるのは pstack と tsumi の `skills/`、`agents/` だけにする。お題や設計文書を読ませないため。
-- トリガーのお題は14件。子スキルの単独での発動7件と、`/tsumi-mode` からの振り分け7件（001、003〜008）。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
+- トリガーのお題は16件。子スキルの単独での発動9件と、`/tsumi-mode` からの振り分け7件（001、003〜008）。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
 
 ## 9. 作る順番
 
 1. PR #1 をマージし、手元を0章の置き方に切り替える。個人のコピーはこのときに消す。
 2. 未決事項の上位を決める。
 3. TODO(Daiki) を埋める。
-4. reflect の Backlog の行き先、他のリポジトリで出た指摘の戻し方、修正ログの `class` の数え方を決める（別 PR）。
+4. 修正ログの `class` の数え方を決める。reflect の保留の行き先と、他のリポジトリで出た指摘の戻し方は決めた（4.6）。
 5. 変更前後を比べる仕組みを作り、baseline を取る。
 
 ## 10. 未決事項（重要な順）
@@ -263,6 +279,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - README から無関係な話題とフックの詳細を外した。フックは CONTRIBUTING.md に移した。
 - `clear-japanese` を `unslop` に改名し、起草の手順と pstack の `technical-writing` の考え方を足した。`overlays/technical-writing.md` を消した（2026-10-22、4.2）。
 - `agent-design-review` に「Start from evals」節を足し、New agent プレイブックを評価から始める順番に入れ替えた。`create-verification-skill` の overlay を足した（2026-10-23、4.5）。
+- `overlays/reflect.md` を `tsumi-reflect` スキルに移し、修正ログに `source` 列を足した（2026-10-23、4.6）。
 
 ## 12. 限界
 
@@ -273,6 +290,8 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - 同じ条件で、`/poteto-mode` を直接使う依頼を、一時的なお題で3回ずつ測った（20261022-222202-926297d-dirty-claude）。手順書の執筆を頼むと、3回とも tsumi の `unslop` を Skill で読み、pstack の `unslop` と `technical-writing` は読まなかった。返信だけで済む質問では、3回とも `unslop` を読まなかった。そのうち1回は、計算機のスリープで応答が途中で切れた。
 - 清書と起草の出力の評価は [evals/prose/results.md](evals/prose/results.md) にある。
 - 「Start from evals」節を足した版（d0ba2a0。コミット前に回し始めたので、結果の名前は e19e3dc-dirty）で、同じ条件で14件を各3回回し、42回すべて合格した（20261023-132734-e19e3dc-dirty-claude）。足したお題 tsumi-mode-008 は、変更前の版（e19e3dc にお題だけを足したもの）では1回回して落ちた。このとき読んだのは poteto-mode、Investigation プレイブック、agent-design-review で、`create-verification-skill` は読まなかった。
+- `tsumi-reflect` を足した版（e503d8f）で、同じ条件で16件を各3回回し、48回すべて合格した（20261023-133228-e503d8f-claude）。足したお題のうち tsumi-reflect-001 は、変更前の版（e19e3dc にお題だけを足したもの）では1回回して落ちた。このとき読んだのは `agent-design-review` だけで、reflect は読まなかった。tsumi-reflect-002 は読むべきでない依頼なので、変更前の版でも通る。
+- Codex の同期（`scripts/install-codex-sync` と `scripts/sync-codex-skills`）は、`tsumi-reflect` を扱っていない。Codex では `tsumi-reflect` は読まれない。
 - main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。同じ理由で、CI の検査は結果を出すだけで、マージを止められない。
 
 ## 13. 引用元の著作権表示
