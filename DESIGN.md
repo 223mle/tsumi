@@ -272,6 +272,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - `clear-japanese` を `unslop` に改名した前後で、同じ条件（Claude Code、Opus 5.5、effort medium、pstack 0.15.25）で13件を各3回回した。旧版（926297d。お題の glob は旧版の名前に読み替えた）は39回中32回、新版は39回すべて合格した（20261022-215517-926297d-dirty-claude と 20261022-222145-926297d-dirty-claude）。旧版で落ちたのは、メモから手順書を書く依頼で `clear-japanese` を読まなかった3回（unslop-003）、tsumi-mode で README の節を書く依頼で `technical-writing` を読んだ3回（tsumi-mode-007）、tsumi-mode で清書を頼む依頼で `technical-writing` を読んだ1回（tsumi-mode-003）である。新版で `unslop` を読んだ回は、すべて tsumi のコピーだった。
 - 同じ条件で、`/poteto-mode` を直接使う依頼を、一時的なお題で3回ずつ測った（20261022-222202-926297d-dirty-claude）。手順書の執筆を頼むと、3回とも tsumi の `unslop` を Skill で読み、pstack の `unslop` と `technical-writing` は読まなかった。返信だけで済む質問では、3回とも `unslop` を読まなかった。そのうち1回は、計算機のスリープで応答が途中で切れた。
 - 清書と起草の出力の評価は [evals/prose/results.md](evals/prose/results.md) にある。
+- 「Start from evals」節を足した版（d0ba2a0。コミット前に回し始めたので、結果の名前は e19e3dc-dirty）で、同じ条件で14件を各3回回し、42回すべて合格した（20261023-132734-e19e3dc-dirty-claude）。足したお題 tsumi-mode-008 は、変更前の版（e19e3dc にお題だけを足したもの）では1回回して落ちた。このとき読んだのは poteto-mode、Investigation プレイブック、agent-design-review で、`create-verification-skill` は読まなかった。
 - main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。同じ理由で、CI の検査は結果を出すだけで、マージを止められない。
 
 ## 13. 引用元の著作権表示
