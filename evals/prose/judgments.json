@@ -1,6 +1,123 @@
 [
   {
-    "label": "L102",
+    "label": "L201",
+    "case": "coined-term-draft",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "pass",
+      "7": "pass"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L202",
+    "case": "pr-brief",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L203",
+    "case": "pr-brief",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L204",
+    "case": "decision-detail",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "fail",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "pass",
+      "7": "対象外"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "観点2・ケース条件: 細部を折りたたみや短い補足にまとめず、「### 表示の形式と細かな動作」の節に5項目を本文と同じ重さで並べている",
+      "ケース条件: ネットワークの細部が本文の箇条に残っている: 「ネットワークにはアクセスしない。」"
+    ]
+  },
+  {
+    "label": "L205",
+    "case": "retention",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L206",
+    "case": "notice",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "fail",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "観点4・ケース条件: 独立した案内（処理の条件と処理記録の保存期間）を1つの段落に詰めている: 「承認済みの申請だけを翌営業日に処理し、未承認の申請は処理しない。監査のため、処理記録は1年間保存する。」"
+    ]
+  },
+  {
+    "label": "L207",
+    "case": "retention",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L208",
     "case": "notice",
     "pass": true,
     "criteria": {
@@ -9,133 +126,15 @@
       "3": "pass",
       "4": "pass",
       "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L105",
-    "case": "decision-detail",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "pass"
-    },
-    "case_conditions": "fail: 本文に残すべき「確認時の値へ戻すと再表示する」が、<details>（詳細な動作）の中の「反映した項目は表示しないが、確認時の値へ戻すと再び表示する。」に移っている。本文には「確認済みテンプレートを更新するのは `tmpl ack` だけとする。」しか残っていない",
-    "failures": [
-      "必須項目の一部を折りたたみに入れている: 「反映した項目は表示しないが、確認時の値へ戻すと再び表示する。」が <details> の中にある"
-    ]
-  },
-  {
-    "label": "L149",
-    "case": "coined-term",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "pass"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L158",
-    "case": "coined-term",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "pass"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L160",
-    "case": "decision-detail",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "fail: 決定事項の本文に「各項目には、変化の種類（追加、削除、変更）とキーの位置を表示し…」「比較できない場合は、…起動を続ける。ネットワークにはアクセスしない。」などの細部を要点と同じ重さで残し、判断に必要な要点で止めていない",
-      "3": "fail: 懸念事項・影響範囲が「通知は起動直後に表示する。」、セキュリティ境界への影響が「**秘密情報**: なし。」、互換性が「**旧バージョン**: 旧バージョンは通知せず…」から始まり、どの節も要点から入っていない",
-      "4": "pass",
-      "5": "対象外",
-      "6": "pass"
-    },
-    "case_conditions": "fail: 表の後の項目を、折りたたみも短い補足もなく同じ重さの箇条書きで並べたままにしている（表示形式・`theme` の理由・記録前に表示する理由・自動記録の条件・比較できない場合・ネットワークがすべて本文に並ぶ）。懸念事項・影響範囲、セキュリティ境界への影響、互換性のどの節も、最初の文で結論を示していない",
-    "failures": [
-      "細部を要点と同じ重さで並べたまま: 決定事項の箇条書きに表示形式や「ネットワークにはアクセスしない。」まで並ぶ",
-      "懸念事項・影響範囲の最初の文が結論でない: 「通知は起動直後に表示する。」",
-      "セキュリティ境界への影響の最初が結論でない: 「**秘密情報**: なし。」",
-      "互換性の最初が結論でない: 「**旧バージョン**: 旧バージョンは通知せず、`tmpl ack` も使えない。」"
-    ]
-  },
-  {
-    "label": "L163",
-    "case": "decision-detail",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "pass"
-    },
-    "case_conditions": "fail: 本文に残すべき「確認時の値へ戻すと再表示する」が、<details>（動作の詳細と理由）の中の「反映した項目は表示しないが、確認時の値へ戻すと再び表示する。」に移っている。本文には「確認済みテンプレートを更新するのは `tmpl ack` だけとする。」しか残っていない",
-    "failures": [
-      "必須項目の一部を折りたたみに入れている: 「反映した項目は表示しないが、確認時の値へ戻すと再び表示する。」が <details> の中にある"
-    ]
-  },
-  {
-    "label": "L166",
-    "case": "export-config",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "pass"
+      "6": "対象外",
+      "7": "対象外"
     },
     "case_conditions": "pass",
     "failures": []
   },
   {
     "label": "L209",
-    "case": "decision-detail",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "fail: 「**表示する内容**」「**通知の扱い**」「**比較できない場合**」など、細部を要点と同じ重さの項目として本文に残し、判断に必要な要点で止めていない",
-      "3": "fail: 懸念事項・影響範囲が「通知は起動直後に表示する。」、セキュリティ境界への影響が「**秘密情報**: なし。」、互換性が「**旧バージョン**: 通知せず、…」から始まり、どの節も要点から入っていない",
-      "4": "pass",
-      "5": "対象外",
-      "6": "pass"
-    },
-    "case_conditions": "fail: 表の後に「**表示する内容**」「**確認済みテンプレートの更新**」「**反映しない変更**」「**確認済みテンプレートがないプロジェクト**」「**通知の扱い**」「**比較できない場合**」の6項目を、同じ重さのラベル付き箇条書きで並べたままにしている。細部を折りたたみや短い補足にまとめていない。懸念事項・影響範囲、セキュリティ境界への影響、互換性のどの節も、最初の文で結論を示していない",
-    "failures": [
-      "6項目を同じ重さで並べたまま: 「**表示する内容**」〜「**比較できない場合**」のラベル付き箇条書き",
-      "懸念事項・影響範囲の最初の文が結論でない: 「通知は起動直後に表示する。」",
-      "セキュリティ境界への影響の最初が結論でない: 「**秘密情報**: なし。」",
-      "互換性の最初が結論でない: 「**旧バージョン**: 通知せず、`tmpl ack` も使えない。」"
-    ]
-  },
-  {
-    "label": "L210",
-    "case": "minor-impact",
+    "case": "coined-term-draft",
     "pass": true,
     "criteria": {
       "1": "pass",
@@ -143,14 +142,132 @@
       "3": "pass",
       "4": "pass",
       "5": "対象外",
-      "6": "対象外"
+      "6": "pass",
+      "7": "pass"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L210",
+    "case": "retention",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L211",
+    "case": "pr-brief",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L212",
+    "case": "howto-draft",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "pass"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L213",
+    "case": "howto-draft",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "pass"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "ケース条件: 10人以上の承認と仮予約を予約の操作より後に書いている: 「4. 「予約する」を押します。」の後に「10人以上の部屋は総務の承認が必要です。承認待ちの間は仮予約になります。」",
+      "ケース条件: 見出しが作業の名前ではない: 「# 会議室の予約手順」"
+    ]
+  },
+  {
+    "label": "L214",
+    "case": "coined-term-draft",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "pass",
+      "7": "pass"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L215",
+    "case": "notice",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "fail",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "観点4・ケース条件: 独立した案内（処理の条件と処理記録の保存期間）を1つの段落に詰めている: 「承認済みの申請だけを翌営業日に処理し、未承認の申請は処理しない。監査のため、処理記録は1年間保存する。」"
+    ]
+  },
+  {
+    "label": "L216",
+    "case": "coined-term-draft",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "pass",
+      "7": "pass"
     },
     "case_conditions": "pass",
     "failures": []
   },
   {
     "label": "L217",
-    "case": "display-label",
+    "case": "notice",
     "pass": true,
     "criteria": {
       "1": "pass",
@@ -158,14 +275,31 @@
       "3": "pass",
       "4": "pass",
       "5": "対象外",
-      "6": "対象外"
+      "6": "対象外",
+      "7": "対象外"
     },
     "case_conditions": "pass",
     "failures": []
   },
   {
     "label": "L218",
-    "case": "export-config",
+    "case": "howto-draft",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "pass"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L219",
+    "case": "pr-brief",
     "pass": true,
     "criteria": {
       "1": "pass",
@@ -173,14 +307,273 @@
       "3": "pass",
       "4": "pass",
       "5": "pass",
-      "6": "pass"
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L220",
+    "case": "decision-detail",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "pass",
+      "7": "対象外"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "判断に必要な「確認時の値へ戻すと再表示する」が本文になく折りたたみの中にある: 「反映した項目を確認時の値へ戻すと、再び表示する。」（<details>内）"
+    ]
+  },
+  {
+    "label": "L221",
+    "case": "retention",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L222",
+    "case": "coined-term-draft",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "pass",
+      "7": "pass"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L223",
+    "case": "decision-detail",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "pass",
+      "7": "対象外"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "判断に必要な「確認時の値へ戻すと再表示する」が本文になく折りたたみの中にある: 「反映した項目は表示しないが、確認時の値へ戻すと再び表示する。」（<details>内）"
+    ]
+  },
+  {
+    "label": "L224",
+    "case": "decision-detail",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "fail",
+      "5": "対象外",
+      "6": "pass",
+      "7": "対象外"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "判断に必要な「確認時の値へ戻すと再表示する」が本文になく折りたたみの中にある: 「反映した項目は表示しないが、確認時の値へ戻すと再び表示する。」（<details>内）",
+      "観点4: 冒頭の懸念に対する補足を独立した箇条に切り離し、関係が切れている: 「- ただし、通知は反映するか `tmpl ack` するまで毎回表示する。」"
+    ]
+  },
+  {
+    "label": "L225",
+    "case": "retention",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L226",
+    "case": "notice",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "fail",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "観点4・ケース条件: 独立した案内（処理の条件と処理記録の保存期間）を1つの段落に詰めている: 「承認済みの申請だけを翌営業日に処理し、未承認の申請は処理しない。監査のため、処理記録は1年間保存する。」"
+    ]
+  },
+  {
+    "label": "L227",
+    "case": "decision-detail",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "fail",
+      "4": "pass",
+      "5": "対象外",
+      "6": "pass",
+      "7": "対象外"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "判断に必要な「確認時の値へ戻すと再表示する」が本文になく折りたたみの中にある: 「反映した項目は表示しないが、確認時の値へ戻すと再び表示する。」（<details>内）",
+      "観点3・ケース条件: 懸念事項・影響範囲の最初の文が結論ではなく分類の説明になっている: 「懸念は、通知を表示する時点と条件に関わるものと、プログラムのほかの部分に関わるものに分かれる。」"
+    ]
+  },
+  {
+    "label": "L228",
+    "case": "howto-draft",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "pass"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L229",
+    "case": "coined-term-draft",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "pass",
+      "7": "pass"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L230",
+    "case": "retention",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L231",
+    "case": "notice",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
+    },
+    "case_conditions": "pass",
+    "failures": []
+  },
+  {
+    "label": "L232",
+    "case": "howto-draft",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "pass"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "ケース条件: 10人以上の承認と仮予約を予約の操作より後に書いている: 「4. 「予約する」を押します。」の後に「10人以上の部屋を予約するには、総務の承認が必要です。承認待ちの間は仮予約になります。」",
+      "ケース条件: 見出しが作業の名前ではない: 「# 会議室の予約手順」"
+    ]
+  },
+  {
+    "label": "L233",
+    "case": "pr-brief",
+    "pass": true,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "pass",
+      "6": "対象外",
+      "7": "対象外"
     },
     "case_conditions": "pass",
     "failures": []
   },
   {
     "label": "L234",
-    "case": "coined-term",
+    "case": "decision-detail",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "pass",
+      "7": "対象外"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "判断に必要な「確認時の値へ戻すと再表示する」が本文になく折りたたみの中にある: 「反映した項目は表示しないが、確認時の値へ戻すと再び表示する。」（<details>内）",
+      "ケース条件: 細部に回すべき自動記録の条件を本文の箇条に置いている: 「差分がなければ、何も表示せずに確認済みテンプレートを記録する。`tmpl ack` 以外で記録するのは、この場合だけである。」"
+    ]
+  },
+  {
+    "label": "L235",
+    "case": "pr-brief",
     "pass": true,
     "criteria": {
       "1": "pass",
@@ -188,13 +581,33 @@
       "3": "pass",
       "4": "pass",
       "5": "pass",
-      "6": "pass"
+      "6": "対象外",
+      "7": "対象外"
     },
     "case_conditions": "pass",
     "failures": []
   },
   {
-    "label": "L244",
+    "label": "L236",
+    "case": "howto-draft",
+    "pass": false,
+    "criteria": {
+      "1": "pass",
+      "2": "pass",
+      "3": "pass",
+      "4": "pass",
+      "5": "対象外",
+      "6": "対象外",
+      "7": "pass"
+    },
+    "case_conditions": "fail",
+    "failures": [
+      "ケース条件: 10人以上の承認と仮予約を予約の操作より後に書いている: 「4. 「予約する」を押します。」の後に「10人以上の部屋は、総務の承認が必要です。承認待ちの間は仮予約になります。」",
+      "ケース条件: 見出しが作業の名前ではない: 「# 会議室の予約手順」"
+    ]
+  },
+  {
+    "label": "L301",
     "case": "notice",
     "pass": true,
     "criteria": {
@@ -203,14 +616,15 @@
       "3": "pass",
       "4": "pass",
       "5": "対象外",
-      "6": "対象外"
+      "6": "対象外",
+      "7": "対象外"
     },
     "case_conditions": "pass",
     "failures": []
   },
   {
-    "label": "L250",
-    "case": "retention",
+    "label": "L302",
+    "case": "notice",
     "pass": true,
     "criteria": {
       "1": "pass",
@@ -218,313 +632,14 @@
       "3": "pass",
       "4": "pass",
       "5": "対象外",
-      "6": "対象外"
+      "6": "対象外",
+      "7": "対象外"
     },
     "case_conditions": "pass",
     "failures": []
-  },
-  {
-    "label": "L251",
-    "case": "display-label",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L253",
-    "case": "retention",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L276",
-    "case": "pr-brief",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "fail: 「`make fmt`、`make lint`、`make test`（412件）が成功した。」どのPRでも同じ検証を残しており、判断に必要な要点で止めていない",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "対象外"
-    },
-    "case_conditions": "fail: 冒頭の「起動時に共有テンプレートとプロジェクトの設定ファイルを比べ、…通知する。設定ファイルは書き換えない。」は解決策だけで、イシュー（古い `theme` のまま残る）は背景節に回っている。「`make fmt`、`make lint`、`make test`（412件）が成功した。」が残っている。レビューしてほしい点は「…変更が1行で済むため、オプションを有効にした。」のように決定と理由を述べるだけで、確認してほしいことを問いの形で示していない",
-    "failures": [
-      "冒頭1〜2文にイシューがない: 概要は解決策だけで、古い `theme` が残る問題は背景節まで出てこない",
-      "どのPRでも同じ検証を残している: 「`make fmt`、`make lint`、`make test`（412件）が成功した。」",
-      "レビューしてほしい点を問いの形で示していない: 「`rules` の下はキーの順序も比べる。…この理由で比べることにした。」"
-    ]
-  },
-  {
-    "label": "L298",
-    "case": "display-label",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "fail: セキュリティへの影響の節が「認証、権限、通信先は変えない。セキュリティへの影響はない。」の順のまま。節の要点（影響はない）が2文目の詳細の後に来ており、要点から詳細へ進んでいない",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": [
-      "観点3: セキュリティへの影響の節で、要点「セキュリティへの影響はない。」が詳細「認証、権限、通信先は変えない。」の後に置かれている"
-    ]
   },
   {
     "label": "L303",
-    "case": "coined-term-draft",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "fail: 1行目の「Option2「既読テンプレートと比べ、未反映の更新を通知する」を採用する。」で、定義（直後の文）より前に「既読テンプレート」を使っている。定義の「`tmpl ack` の実行時に保存する、その時点の共有テンプレートのコピーである」には、利用者が変更を見て反映するかを判断することが含まれない"
-    },
-    "case_conditions": "fail: 採用を示す1行目の選択肢名で、定義より前に「既読テンプレート」を使っている。定義には判断の要素がなく、判断の説明は末尾の「利用者は、…判断し終えたら `tmpl ack` を実行する。」に離れている",
-    "failures": [
-      "定義前に呼び名を使っている: 1行目「Option2「既読テンプレートと比べ、未反映の更新を通知する」を採用する。」",
-      "定義に判断の要素がない: 「既読テンプレートは、`tmpl ack` の実行時に保存する、その時点の共有テンプレートのコピーである。」"
-    ]
-  },
-  {
-    "label": "L321",
-    "case": "minor-impact",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L329",
-    "case": "coined-term",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "pass"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L335",
-    "case": "display-label",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L340",
-    "case": "retention",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L347",
-    "case": "coined-term-draft",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "fail: 1行目の「Option2「既読テンプレートと比べ、未反映の更新を通知する」を採用する。」で、定義（直後の文）より前に「既読テンプレート」を使っている。定義の「`tmpl ack` を実行したときに保存する、その時点の共有テンプレートのコピーである」には、利用者が変更を見て反映するかを判断することが含まれない"
-    },
-    "case_conditions": "fail: 採用を示す1行目の選択肢名で、定義より前に「既読テンプレート」を使っている。定義には判断の要素がなく、判断の説明は末尾の「利用者は、…判断し終えたら、`tmpl ack` を実行する。」に離れている",
-    "failures": [
-      "定義前に呼び名を使っている: 1行目「Option2「既読テンプレートと比べ、未反映の更新を通知する」を採用する。」",
-      "定義に判断の要素がない: 「既読テンプレートは、`tmpl ack` を実行したときに保存する、その時点の共有テンプレートのコピーである。」"
-    ]
-  },
-  {
-    "label": "L389",
-    "case": "export-config",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "pass"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L415",
-    "case": "retention",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L441",
-    "case": "coined-term-draft",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "pass"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L456",
-    "case": "minor-impact",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L461",
-    "case": "retention",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L476",
-    "case": "retention",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L561",
-    "case": "coined-term",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "pass"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L568",
-    "case": "notice",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "fail: 互いに独立した処理条件と記録保存を「承認済みの申請だけを翌営業日に処理し、未承認の申請は処理しない。監査のため、処理記録は1年間保存する。」と1段落に詰めている",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "fail: 独立した案内（処理条件と処理記録の保存期間）を1段落に詰めている",
-    "failures": [
-      "観点4: 独立した処理条件と記録保存を1段落に詰めている",
-      "ケース別の必須条件: 「承認済みの申請だけを…監査のため、処理記録は1年間保存する。」が1段落に収まっている"
-    ]
-  },
-  {
-    "label": "L586",
-    "case": "pr-brief",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L620",
     "case": "notice",
     "pass": true,
     "criteria": {
@@ -533,98 +648,15 @@
       "3": "pass",
       "4": "pass",
       "5": "対象外",
-      "6": "対象外"
+      "6": "対象外",
+      "7": "対象外"
     },
     "case_conditions": "pass",
     "failures": []
   },
   {
-    "label": "L625",
-    "case": "decision-detail",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "pass"
-    },
-    "case_conditions": "fail: 本文に残すべき「確認時の値へ戻すと再表示する」が、<details>（表示と記録の細部）の中の「反映した項目は表示しないが、確認時の値へ戻すと再び表示する。」に移っている。本文には「確認済みテンプレートを更新するのは `tmpl ack` だけとする。」しか残っていない",
-    "failures": [
-      "必須項目の一部を折りたたみに入れている: 「反映した項目は表示しないが、確認時の値へ戻すと再び表示する。」が <details> の中にある"
-    ]
-  },
-  {
-    "label": "L659",
-    "case": "pr-brief",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "fail: 「`make fmt`、`make lint`、`make test`（412件）が成功した。」どのPRでも同じ検証を残しており、判断に必要な要点で止めていない",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "対象外"
-    },
-    "case_conditions": "fail: 冒頭の「起動時に共有テンプレートとプロジェクトの設定ファイルを読み込んで比べ、…通知する処理を追加した。設定ファイルは書き換えない。」は解決策だけで、古い `theme` のまま残るというイシューは2節目の背景まで出てこない。「`make fmt`、`make lint`、`make test`（412件）が成功した。」が残っている。レビューしてほしい点は「**`rules` のキーの順序も比べる。** …この理由で比べることにした。」のように決定を述べるだけで、確認してほしいことを問いの形で示していない",
-    "failures": [
-      "冒頭1〜2文にイシューがない: 概要は「…通知する処理を追加した。設定ファイルは書き換えない。」で、古い `theme` が残る問題は背景節まで出てこない",
-      "どのPRでも同じ検証を残している: 「`make fmt`、`make lint`、`make test`（412件）が成功した。」",
-      "レビューしてほしい点を問いの形で示していない: 「…変更が1行で済むため有効にした。」で終わり、確認してほしいことがない"
-    ]
-  },
-  {
-    "label": "L676",
-    "case": "pr-brief",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L693",
+    "label": "L304",
     "case": "notice",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "fail: 互いに独立した処理条件と記録保存を「未承認の申請は処理せず、承認済みの申請だけを翌営業日に処理する。監査のため、処理記録は1年間保存する。」と1段落に詰めている",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "fail: 独立した案内（処理条件と処理記録の保存期間）を1段落に詰めている",
-    "failures": [
-      "観点4: 独立した処理条件と記録保存を1段落に詰めている",
-      "ケース別の必須条件: 「未承認の申請は処理せず、…監査のため、処理記録は1年間保存する。」が1段落に収まっている"
-    ]
-  },
-  {
-    "label": "L698",
-    "case": "export-config",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "pass"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L703",
-    "case": "coined-term-draft",
     "pass": true,
     "criteria": {
       "1": "pass",
@@ -632,146 +664,31 @@
       "3": "pass",
       "4": "pass",
       "5": "対象外",
-      "6": "pass"
+      "6": "対象外",
+      "7": "対象外"
     },
     "case_conditions": "pass",
     "failures": []
   },
   {
-    "label": "L704",
-    "case": "pr-brief",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L737",
-    "case": "coined-term",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "pass"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L754",
+    "label": "L305",
     "case": "notice",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "fail: 互いに独立した処理条件と記録保存を「承認済みの申請だけを翌営業日に処理し、未承認の申請は処理しない。監査のため、処理記録は1年間保存する。」と1段落に詰めている。一方、連続する操作は「1. 申請一覧を開く。2. 対象の申請を選ぶ。3. 内容を確認する。」と番号付きリストに分解し、文章にしていない",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "fail: 独立した案内（処理条件と処理記録の保存期間）を1段落に詰めている。操作の連続を自然な文にまとめず、番号付きリストにしている",
-    "failures": [
-      "観点4: 独立した処理条件と記録保存を1段落に詰め、連続する操作を番号付きリストに分解している",
-      "ケース別の必須条件: 「承認済みの申請だけを…処理しない。監査のため、処理記録は1年間保存する。」が1段落。操作は「1. 申請一覧を開く。」以下の番号付きリストで、自然な文になっていない"
-    ]
-  },
-  {
-    "label": "L773",
-    "case": "pr-brief",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "fail: 「`make fmt`、`make lint`、`make test`（412件）が成功した。」どのPRでも同じ検証を残しており、判断に必要な要点で止めていない",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "対象外"
-    },
-    "case_conditions": "fail: 冒頭の「起動時に共有テンプレートとプロジェクトの設定ファイルを読み込んで比べ、…通知する。設定ファイルは書き換えない。」は解決策だけで、イシュー（古い `theme` のまま残る）は背景節に回っている。「`make fmt`、`make lint`、`make test`（412件）が成功した。」が残っている。レビューしてほしい点は「…変更が1行で済むため、オプションを有効にした。」のように決定と理由を述べるだけで、確認してほしいことを問いの形で示していない",
-    "failures": [
-      "冒頭1〜2文にイシューがない: 概要は解決策だけで、古い `theme` が残る問題は背景節まで出てこない",
-      "どのPRでも同じ検証を残している: 「`make fmt`、`make lint`、`make test`（412件）が成功した。」",
-      "レビューしてほしい点を問いの形で示していない: 「`rules` の下はキーの順序も比べる。…この理由で比べることにした。」"
-    ]
-  },
-  {
-    "label": "L796",
-    "case": "display-label",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "fail: セキュリティへの影響の節が「認証、権限、通信先は変えない。セキュリティへの影響はない。」の順のまま。節の要点（影響はない）が2文目の詳細の後に来ており、要点から詳細へ進んでいない",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": [
-      "観点3: セキュリティへの影響の節で、要点「セキュリティへの影響はない。」が詳細「認証、権限、通信先は変えない。」の後に置かれている"
-    ]
-  },
-  {
-    "label": "L818",
-    "case": "export-config",
     "pass": true,
     "criteria": {
       "1": "pass",
       "2": "pass",
       "3": "pass",
       "4": "pass",
-      "5": "pass",
-      "6": "pass"
+      "5": "対象外",
+      "6": "対象外",
+      "7": "対象外"
     },
     "case_conditions": "pass",
     "failures": []
   },
   {
-    "label": "L830",
-    "case": "export-config",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "pass",
-      "6": "pass"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L857",
-    "case": "coined-term-draft",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "fail: 1行目の「Option2「既読テンプレートと比べ、未反映の更新を通知する」を採用する。」で、定義より前に「既読テンプレート」を使っている。定義の「利用者が `tmpl ack` を実行したときに保存される、その時点の共有テンプレートのコピー」には、利用者が変更を見て反映するかを判断することが含まれない"
-    },
-    "case_conditions": "fail: 採用を示す1行目の選択肢名「既読テンプレートと比べ、未反映の更新を通知する」で、定義より前に呼び名を使っている。定義には「利用者が共有テンプレートの変更を見て反映するかを判断し」の要素がなく、判断の説明は末尾の段落「利用者は、…判断し終えたら、`tmpl ack` を実行する。」に離れている",
-    "failures": [
-      "定義前に呼び名を使っている: 1行目「Option2「既読テンプレートと比べ、未反映の更新を通知する」を採用する。」",
-      "定義に判断の要素がない: 「利用者が `tmpl ack` を実行したときに保存される、その時点の共有テンプレートのコピー」"
-    ]
-  },
-  {
-    "label": "L874",
-    "case": "display-label",
+    "label": "L306",
+    "case": "notice",
     "pass": true,
     "criteria": {
       "1": "pass",
@@ -779,87 +696,8 @@
       "3": "pass",
       "4": "pass",
       "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L943",
-    "case": "decision-detail",
-    "pass": false,
-    "criteria": {
-      "1": "pass",
-      "2": "fail: 「### 各項目の表示」を独立した小見出しにして表示形式と `theme` の理由を本文に置き、「### 通知の扱い」に「比較できない場合は…」「ネットワークにはアクセスしない。」を並べている。細部を本文に残し、判断に必要な要点で止めていない",
-      "3": "fail: 懸念事項・影響範囲が「通知は起動直後に表示する。」、セキュリティ境界への影響が「**秘密情報**: なし。」、互換性が「**旧バージョン**: 旧バージョンは通知せず…」から始まり、どの節も要点から入っていない",
-      "4": "pass",
-      "5": "対象外",
-      "6": "pass"
-    },
-    "case_conditions": "fail: 表示形式・`theme` の理由・記録前に表示する理由・自動記録の条件・比較できない場合・ネットワークを、折りたたみや短い補足にせず小見出し付きで本文に残している。表示形式は「### 各項目の表示」として要点より先に置かれ、要点と同じかそれ以上の重さになっている。懸念事項・影響範囲、セキュリティ境界への影響、互換性のどの節も、最初の文で結論を示していない",
-    "failures": [
-      "細部を折りたたみや短い補足にまとめていない: 「### 各項目の表示」「### 通知の扱い」として本文に展開",
-      "懸念事項・影響範囲の最初の文が結論でない: 「通知は起動直後に表示する。」",
-      "セキュリティ境界への影響の最初が結論でない: 「**秘密情報**: なし。」",
-      "互換性の最初が結論でない: 「**旧バージョン**: 旧バージョンは通知せず、`tmpl ack` も使えない。」"
-    ]
-  },
-  {
-    "label": "L945",
-    "case": "minor-impact",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L949",
-    "case": "minor-impact",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L953",
-    "case": "coined-term-draft",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "pass"
-    },
-    "case_conditions": "pass",
-    "failures": []
-  },
-  {
-    "label": "L974",
-    "case": "minor-impact",
-    "pass": true,
-    "criteria": {
-      "1": "pass",
-      "2": "pass",
-      "3": "pass",
-      "4": "pass",
-      "5": "対象外",
-      "6": "対象外"
+      "6": "対象外",
+      "7": "対象外"
     },
     "case_conditions": "pass",
     "failures": []

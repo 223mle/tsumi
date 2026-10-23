@@ -1,0 +1,13 @@
+id: trigger-unslop-004
+title: コミットメッセージを書く依頼では unslop を読まない
+targets: [unslop]
+tags: [trigger, ja]
+source: 2026-10-22 の Daiki の決定。コミットメッセージは unslop の対象に含めない
+trials: 3
+prompt: |
+  次の変更のコミットメッセージを書いてください。
+
+  ログイン画面に、パスワードの表示と非表示を切り替えるボタンを足した。ボタンの状態は、画面を閉じると元に戻る。
+checks:
+  - type: must_not_read
+    glob: "**/unslop/SKILL.md"

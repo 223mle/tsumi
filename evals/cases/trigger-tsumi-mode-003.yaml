@@ -1,8 +1,8 @@
 id: trigger-tsumi-mode-003
-title: /tsumi-mode で日本語の文書の清書を頼むと tsumi-mode から clear-japanese を読み、unslop は読まない
-targets: [tsumi-mode, clear-japanese]
+title: /tsumi-mode で日本語の文書の清書を頼むと tsumi の unslop を読み、pstack の unslop と technical-writing は読まない
+targets: [tsumi-mode, unslop]
 tags: [trigger, routing, ja, must-pass]
-source: 手書き。tsumi-mode の Non-negotiables「日本語の文書 → clear-japanese」と「pstack の unslop は読まない」（2026-10-18 の Daiki の決定）
+source: 手書き。tsumi-mode の Non-negotiables「日本語の文書 → unslop」と「pstack の unslop と technical-writing は読まない」（2026-10-18 と 2026-10-22 の Daiki の決定）
 trials: 3
 prompt: |
   /tsumi-mode 次の設計メモを、チームに共有できる日本語に整えてください。
@@ -10,6 +10,8 @@ prompt: |
   問い合わせ分類エージェントの出力はJSONにする。分類は請求、解約、その他の3つ。その他が多い。担当者が毎朝その他を手で見ている。分類の理由も出す。理由は100字以内。
 checks:
   - type: must_read
-    glob: "**/clear-japanese/SKILL.md"
-  - type: must_not_read
     glob: "**/unslop/SKILL.md"
+  - type: must_not_read
+    glob: "*/pstack/*/unslop/SKILL.md"
+  - type: must_not_read
+    glob: "**/technical-writing/SKILL.md"

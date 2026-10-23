@@ -1,0 +1,13 @@
+id: trigger-unslop-003
+title: メモから日本語の手順書を書く依頼で unslop を読む
+targets: [unslop]
+tags: [trigger, ja, must-pass]
+source: 2026-10-22 の Daiki の要望。文書の執筆を unslop に集約する。清書ではなく起草の依頼でも読むか
+trials: 3
+prompt: |
+  新しく入った人向けに、社内 VPN のつなぎ方の手順書を書いてください。材料は次のメモです。
+
+  VPN アプリ「Connect」を IT ポータルから入れる。サーバー名は vpn.acme.example。社員番号とパスワードでログイン。初回だけスマホの認証アプリで承認が必要。つながらないときは Slack の #it-help に書く。
+checks:
+  - type: must_read
+    glob: "**/unslop/SKILL.md"
