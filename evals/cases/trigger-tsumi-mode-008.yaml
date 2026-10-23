@@ -1,0 +1,13 @@
+id: trigger-tsumi-mode-008
+title: /tsumi-mode で動かして確かめる手段がないエージェントを直す相談をすると create-verification-skill と tsumi の overlay を読む
+targets: [tsumi-mode, agent-design-review]
+tags: [trigger, routing, ja]
+source: 2026-10-23 の Daiki との対話。評価から始める。B（実物を動かして証拠を取る仕組み）がなければ pstack の create-verification-skill を tsumi の overlay 付きで使う
+trials: 3
+prompt: |
+  /tsumi-mode 経費精算のエージェントを直したいです。Slack に領収書の画像を送ると、勘定科目を判定して会計システムに仕訳を登録します。ときどき登録される金額が領収書と違います。今は手で Slack に送って、会計システムの画面を目で見るしか確かめ方がありません。直し方を決めたいです。
+checks:
+  - type: must_read
+    glob: "**/create-verification-skill/SKILL.md"
+  - type: must_read
+    glob: "**/tsumi-mode/overlays/create-verification-skill.md"

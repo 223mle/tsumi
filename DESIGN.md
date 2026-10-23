@@ -1,6 +1,6 @@
 # tsumi 設計
 
-更新 2026-10-22（JST）。
+更新 2026-10-23（JST）。
 
 ラベルの意味は次の通り。
 
@@ -25,6 +25,7 @@
   2. 自動チェックと回帰評価（スキルを変えるたびに、変更に見合った数のお題を回す）。
   3. 仕組みにできない判断だけをプロンプトに最小限書く。同じ修正が2回出たら1か2へ移す。
   4. 人のレビューは最後で、怪しいものだけ。修正はログに残す。
+- 作業は評価から始める（2026-10-23 の Daiki の決定。4.5）。作る・直す・変える作業すべてで、先に合格の定義（A）を書き、次に実物を動かして証拠を取る仕組み（B）を用意する。4段とは軸が違う。4段は修正を置く場所の順番で、こちらは作業の順番である。
 
 ## 1. 読んだもの
 
@@ -85,6 +86,7 @@ tsumi に書いた Daiki の考えは、次から取った（measured）。
 - 再発した修正を「失敗の証拠 → 防ぐ境界 → 強制する資源 → 確かめるお題 → 残る判断」で追う。`agent-design-review` の「Choose and validate a change」。
 - 新しいチェックは、過去の実際の失敗で落ちることを示してから入れる。同じ出典。
 - 評価では成功基準を実行するエージェントに見せず、成果物と観察した行動で判定する。同じ出典。
+- 評価から始める。2026-10-23 の Daiki との対話（4.5）。
 
 読める資料がなかったものは、tsumi-mode の「Not yet written down」に TODO(Daiki) として残した。評価の合否基準と試行回数、人に回す出力の目印、FDE の顧客案件との対応、役割ごとのモデル選び。推測で埋めていない。
 
@@ -160,6 +162,18 @@ tsumi に書いた Daiki の考えは、次から取った（measured）。
 
 コマンドで呼んでも、会話が進むと tsumi-mode の効き目は薄れる。pstack の poteto-help も、Enter で付けたスキルは会話が進むと薄れると書いている（measured）。Cursor では Custom Mode で毎ターン読み込める。Claude Code には同じ仕組みがないので、毎ターン短い注意書きを差し込む hook を別の PR で検討する。
 
+### 4.5 評価から始める理由
+
+Daiki の考えは、「最初に評価を作って正しい方向を決めることは、どのエージェントにも要る」というもの。pstack の Eval プレイブックも、回す前に成功の条件と採点基準を書かせる（measured）。2026-10-23 に、次のことを Daiki と決めた。
+
+- 評価を2つに分け、A を先に書く。A は合格の定義（実際の入力と、合格になる出力の組）、B は実物を動かして証拠を取る仕組み。A がなければ目指す方向が決まらず、B がなければ A は誰も回さない文書になる。
+- 定量か定性かは、A と B の違いではなく、判定のしかた（コード、別のモデル、人）の違いとして扱う。スライドのはみ出しは定量的な検査だが、描画した画像（B）がないと判定できない。
+- 作る・直す・変える作業すべてに当てる。直す作業では、新しいチェックが過去の失敗で落ちると示す規則が、すでに同じ役割を果たしている。
+- New agent プレイブックでは、タスクの流れと A を一緒に書く（2番）。流れを先に机上で書くと実際の入力に合わない想定になりやすく、A だけを先に書くと、出力の使い手が決まらず判定のしかたも決まらない。
+- 3番で証拠の取り方を決め、手で作った正しい出力と、わざと壊した出力で判定を確かめる。4番で最初の道具ができたら、すぐ1件を流す。判定が壊れていると、7番の合否がすべて信用できなくなる。
+- B が実行コマンドと証拠の置き場所だけで済まないときは、pstack の `create-verification-skill` を tsumi の overlay 付きで使う。tsumi に別のスキルを作らないのは、pstack を土台に足りない分だけ足す方針に合い、pstack の更新もそのまま取り込めるため。poteto-mode とそのプレイブックは、このスキルをどこからも呼んでいない（measured、2026-10-23）。そのため、tsumi-mode の Non-negotiables に割り当ての行を足した。
+- 原則の正本は `agent-design-review` の「Start from evals」節に置き、tsumi-mode と README には短く書く。`agent-design-review` は tsumi-mode を通さずに読まれるので、tsumi-mode だけに書くと、単独で使ったときに伝わらない。4段の0段目にしなかったのは、軸の違う2つの順番が混ざり、評価が0段目と2段目の両方に出てくるため。
+
 ## 5. pstack への上書き（脇役）
 
 dyl-stack の同名プレイブック上書きと同じ仕組みを使う。pstack のスキルを使うとき、`tsumi-mode/overlays/<スキル名>.md` があれば本体のあとに読む。食い違ったら overlay が勝つ。
@@ -168,6 +182,7 @@ dyl-stack の同名プレイブック上書きと同じ仕組みを使う。psta
 |---|---|
 | `/correct` | エージェントの出力の誤りは agent-design-review に回す |
 | `/reflect` | Accepted の各行に評価お題の欄を足す |
+| `/create-verification-skill` | 作る相手を業務エージェントと読み替える。出力がそのまま証拠になるなら、スキルを作らない（4.5） |
 
 `/unslop` と `/technical-writing` には overlay を置かない。tsumi-mode の Non-negotiables で、日本語の文書を tsumi の `unslop` に回す（0章）。前の版の `overlays/technical-writing.md` は 2026-10-22 に消した。
 
@@ -185,7 +200,7 @@ tsumi/
   skills/
     tsumi-mode/
       SKILL.md
-      overlays/      correct.md reflect.md
+      overlays/      correct.md reflect.md create-verification-skill.md
       playbooks/     new-agent.md review-triage.md eval.md
       references/    requirements.md corrections-template.tsv
     agent-design-review/
@@ -215,7 +230,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - 設計は `evals/README.md`。
 - description と2つの manifest の機械的な検査は `scripts/check-skills`。PR ごとに GitHub Actions で回す。
 - Claude Code で評価するとき、評価中のエージェントが読めるのは pstack と tsumi の `skills/`、`agents/` だけにする。お題や設計文書を読ませないため。
-- トリガーのお題は13件。子スキルの単独での発動7件と、`/tsumi-mode` からの振り分け6件（001、003〜007）。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
+- トリガーのお題は14件。子スキルの単独での発動7件と、`/tsumi-mode` からの振り分け7件（001、003〜008）。実行は `evals/bin/run-trigger` で、`--harness cursor` か `--harness claude` を選ぶ。
 
 ## 9. 作る順番
 
@@ -247,6 +262,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - 全スキルの description を書き直し、`disable-model-invocation` を外した。
 - README から無関係な話題とフックの詳細を外した。フックは CONTRIBUTING.md に移した。
 - `clear-japanese` を `unslop` に改名し、起草の手順と pstack の `technical-writing` の考え方を足した。`overlays/technical-writing.md` を消した（2026-10-22、4.2）。
+- `agent-design-review` に「Start from evals」節を足し、New agent プレイブックを評価から始める順番に入れ替えた。`create-verification-skill` の overlay を足した（2026-10-23、4.5）。
 
 ## 12. 限界
 
