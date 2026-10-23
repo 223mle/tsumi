@@ -17,20 +17,33 @@ def write_atomic(path, data):
         Path(tmp.name).unlink(missing_ok=True)
 
 
+def is_tsumi_link(path, home, state):
+    return path.is_symlink() and os.readlink(path) in (str(state / "current" / "skills" / path.name), str(home / "tsumi" / "skills" / path.name))
+
+
+def is_pstack_unslop(path):
+    parts = Path(os.readlink(path)).parts if path.is_symlink() else ()
+    return path.name == "unslop" and parts[-2:] == ("skills", "unslop") and "pstack" in parts
+
+
 def main():
     home = Path.home()
     state = home / ".codex" / "tsumi"
     script = state / "sync-codex-skills"
     hooks_path = home / ".codex" / "hooks.json"
     config = json.loads(hooks_path.read_text()) if hooks_path.exists() else {}
-    names = ("clear-japanese", "agent-design-review", "tsumi-mode")
+    names = ("unslop", "agent-design-review", "tsumi-mode")
+    retired = ("clear-japanese",)
     links = {home / ".agents" / "skills" / name: state / "current" / "skills" / name for name in names}
+    stale = [path for path in (home / ".agents" / "skills" / name for name in retired) if is_tsumi_link(path, home, state)]
     previous = {}
     for path, target in links.items():
         if path.exists() or path.is_symlink():
-            if not path.is_symlink() or os.readlink(path) not in (str(target), str(home / "tsumi" / "skills" / path.name)):
+            if not is_tsumi_link(path, home, state) and not is_pstack_unslop(path):
                 raise SystemExit("Refusing to replace an unrelated skill: " + str(path))
             previous[str(path)] = os.readlink(path)
+    for path in stale:
+        previous[str(path)] = os.readlink(path)
     hook = {
         "type": "command",
         "command": "/usr/bin/python3 " + shlex.quote(str(script)),
@@ -42,11 +55,15 @@ def main():
         groups.append({"matcher": "^(startup|resume)$", "hooks": [hook]})
     state.mkdir(parents=True, exist_ok=True)
     backup = state / "install-backup.json"
-    if not backup.exists():
-        write_atomic(backup, json.dumps({"links": previous, "hooks": hooks_path.read_text() if hooks_path.exists() else None}, ensure_ascii=False, indent=2) + "\n")
+    saved = json.loads(backup.read_text()) if backup.exists() else {"links": {}, "hooks": hooks_path.read_text() if hooks_path.exists() else None}
+    if not backup.exists() or any(path not in saved["links"] for path in previous):
+        saved["links"] = {**previous, **saved["links"]}
+        write_atomic(backup, json.dumps(saved, ensure_ascii=False, indent=2) + "\n")
     source = Path(__file__).resolve().with_name("sync-codex-skills")
     write_atomic(script, source.read_text())
     subprocess.run(["/usr/bin/python3", str(script)], check=True)
+    for path in stale:
+        path.unlink()
     for path, target in links.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.is_symlink() and os.readlink(path) == str(target):

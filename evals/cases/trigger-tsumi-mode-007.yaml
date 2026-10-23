@@ -1,0 +1,17 @@
+id: trigger-tsumi-mode-007
+title: /tsumi-mode で README の節の執筆を頼むと tsumi の unslop を読み、technical-writing と pstack の unslop は読まない
+targets: [tsumi-mode, unslop]
+tags: [trigger, routing, ja, must-pass]
+source: 2026-10-22 の Daiki の指摘。文書の執筆で clear-japanese と pstack の technical-writing がぶつかっていた。pstack の poteto-mode は Docs と README を technical-writing に回す
+trials: 3
+prompt: |
+  /tsumi-mode 請求書の PDF を作る CLI の README に、「使い方」の節を書いてください。材料は次のメモです。
+
+  コマンドは `invoice-gen`。`invoice-gen orders.csv` で、CSV の1行ごとに PDF を1つ out/ に作る。`--month 2026-10` で対象月を絞る。会社名とロゴは設定ファイル invoice.toml から読む。invoice.toml がないと止まる。
+checks:
+  - type: must_read
+    glob: "**/unslop/SKILL.md"
+  - type: must_not_read
+    glob: "**/technical-writing/SKILL.md"
+  - type: must_not_read
+    glob: "*/pstack/*/unslop/SKILL.md"

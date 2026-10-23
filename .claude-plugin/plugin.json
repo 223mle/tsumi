@@ -1,7 +1,7 @@
 {
 	"name": "tsumi",
-	"version": "0.3.0",
-	"description": "Requires pstack. Daiki Tsutsumi's agent-development approach as skills: fix agent failures in order - tools, JSON schemas, and templates first; automated checks and regression evals second; prompt rules only for judgment that cannot be encoded; human review only for suspicious output. Includes tsumi-mode (router over pstack's poteto-mode), agent-design-review, and clear-japanese.",
+	"version": "0.4.0",
+	"description": "Requires pstack. Daiki Tsutsumi's agent-development approach as skills: fix agent failures in order - tools, JSON schemas, and templates first; automated checks and regression evals second; prompt rules only for judgment that cannot be encoded; human review only for suspicious output. Includes tsumi-mode (router over pstack's poteto-mode), agent-design-review, and unslop (writing and rewriting Japanese documents, in place of pstack's technical-writing and unslop).",
 	"author": {
 		"name": "Daiki Tsutsumi"
 	},

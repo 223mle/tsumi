@@ -5,7 +5,7 @@ and judge which skill and playbook .md files the agent read, from its stream-jso
 Usage:
   evals/bin/run-trigger --pstack <pstack plugin dir> [--harness cursor|claude]
                         [--trials 3] [--model M] [--effort E]
-                        [--case trigger-clear-japanese-001] [--timeout 300]
+                        [--case trigger-unslop-001] [--timeout 300]
 Results go to evals/runs/<JST time>-<git sha>/ (git-ignored).
 cursor: needs a logged-in CLI (`agent status`).
 claude: loads only pstack and this repo (--setting-sources project), so personal

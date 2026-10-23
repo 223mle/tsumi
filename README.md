@@ -30,21 +30,20 @@ pstack は、principle、プレイブック、返信の書き方といった開�
 | エージェントの出力の失敗、評価の失敗、エージェントへの修正 | `agent-design-review` |
 | スキル、プロンプト、ツール定義、スキーマを変えた | Eval プレイブック（回帰評価）。description を変えたら `scripts/check-skills` とトリガーお題も |
 | 人に回す出力を決める、人の修正が届く | Review triage プレイブック |
-| 日本語の文書（README、設計書、PR 説明、コミット文など） | `clear-japanese` |
-| 文書の構成を決める（日本語、英語とも） | pstack の `technical-writing` |
+| 日本語の文書を書く・直す（README、設計書、ADR、手順書、PR 説明など。コミット文は除く） | `unslop` |
 | それ以外（コード、設計、デバッグ、検証、PR） | pstack の `poteto-mode` の規則のまま |
 
-pstack の `unslop` は使いません。pstack が `unslop` を呼ぶ場面では、人が読む日本語の文書なら `clear-japanese` を使い、チャットの返信にはどちらも使いません。
+pstack の `unslop` と `technical-writing` は使いません。pstack がこの2つを呼ぶ場面では、人が読む日本語の文書なら tsumi の `unslop` を使い、コミット文とチャットの返信にはどれも使いません。tsumi の `unslop` は、pstack の `technical-writing` の考え方のうち日本語にも当てはまるもの（文書の種類を先に決める、コードの名前をそのまま書く、など）を取り込んでいます。
 
-tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-design-review` と `clear-japanese` は単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
+tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-design-review` と `unslop` は単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
 
 | スキル | 単独で読まれる場面 |
 |---|---|
 | [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）と打ったときだけ。「tsumi で」と書くだけでは読まれません |
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき |
-| [`clear-japanese`](skills/clear-japanese/SKILL.md) | 「日本語を直して」「分かりやすくして」と頼んだとき、日本語の文書を整えるとき |
+| [`unslop`](skills/unslop/SKILL.md) | 日本語の文書を書くとき、「日本語を直して」「分かりやすくして」と頼んだとき |
 
-`agent-design-review` と `clear-japanese` は [223mle/skills](https://github.com/223mle/skills) から移しました。正本は tsumi で、223mle/skills には残しません。
+`agent-design-review` と `unslop`（移したときの名前は `clear-japanese`）は [223mle/skills](https://github.com/223mle/skills) から移しました。正本は tsumi で、223mle/skills には残しません。
 
 ## 入れ方
 
@@ -114,6 +113,7 @@ python3 scripts/install-codex-sync
 - 導入前のリンクとフック設定は`~/.codex/tsumi/install-backup.json`に保存する。
 - Codexが変更を検知しない場合は再起動する。自動更新を停止する場合はHooks設定で対象フックを無効にする。
 - 更新スクリプト自体は自動更新しない。スクリプトを更新する場合はインストーラーを再実行する。
+- `clear-japanese` を `unslop` に改名した版は、古い更新スクリプトでは取り込めず、旧版のままになる。インストーラーを一度実行し直す。このとき、pstack の `unslop` を指す `~/.agents/skills/unslop` は tsumi の `unslop` へのリンクに置き換わり、`~/.agents/skills/clear-japanese` は消える。置き換え前のリンクは `install-backup.json` に残る。
 
 この設定はClaude Codeの起動に依存しない。既存のClaude Code・Cursor向け同期設定は変更しない。
 
@@ -127,7 +127,7 @@ Cursor では、スキルを `/スキル名` で呼びます。Claude Code で�
 
 - 会話が長くなると、tsumi-mode の効き目は薄れます。新しい作業を始めるときは、もう一度コマンドで呼びます。Cursor では、`/` メニューで tsumi-mode を選んで Option+Enter（Windows は Alt+Enter）を押すと、毎ターン読み込まれる Custom Mode になります。
 - 「このエージェントが毎回ちがう表記で返してくる。どう直すのがいい？」と相談すると、tsumi-mode を通さずに `agent-design-review` が読まれます。
-- 日本語の文章を貼って「読みにくいので直して」と頼むと、`clear-japanese` が清書した本文を返します。
+- 日本語の文章を貼って「読みにくいので直して」と頼むと、`unslop` が清書した本文を返します。メモを渡して「手順書を書いて」と頼んだときも、`unslop` が読まれます。
 
 
 ## 開発に参加するとき

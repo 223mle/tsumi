@@ -1,8 +1,8 @@
-id: trigger-clear-japanese-001
-title: 読みにくい日本語のお知らせを直す依頼で clear-japanese を読む
-targets: [clear-japanese]
+id: trigger-unslop-001
+title: 読みにくい日本語のお知らせを直す依頼で unslop を読む
+targets: [unslop]
 tags: [trigger, ja, must-pass]
-source: 手書き。clear-japanese の description にある「日本語を直して」系の依頼
+source: 手書き。unslop の description にある「日本語を直して」系の依頼（clear-japanese-001 から改名）
 trials: 3
 prompt: |
   次の社内向けのお知らせが読みにくいので直してください。
@@ -10,4 +10,4 @@ prompt: |
   来月から経費精算のシステムが新しくなります。新しいシステムでは申請はスマホからもできるようになります。申請の締め切りは毎月25日です。25日を過ぎた申請は翌月の処理になります。古いシステムは今月末で使えなくなります。
 checks:
   - type: must_read
-    glob: "**/clear-japanese/SKILL.md"
+    glob: "**/unslop/SKILL.md"
