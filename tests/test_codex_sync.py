@@ -2,6 +2,7 @@ import fcntl
 import importlib.machinery
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -11,7 +12,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 SYNC = ROOT / "scripts" / "sync-codex-skills"
 INSTALL = ROOT / "scripts" / "install-codex-sync"
-NAMES = ("clear-japanese", "agent-design-review", "tsumi-mode")
+NAMES = ("unslop", "agent-design-review", "tsumi-mode")
 
 
 class CodexSyncTest(unittest.TestCase):
@@ -48,14 +49,14 @@ class CodexSyncTest(unittest.TestCase):
         self.assertEqual(self.run_sync().returncode, 0)
         self.assertEqual(current.resolve(), first)
         self.assertEqual(self.git("show-ref"), refs)
-        skill = self.repo / "skills" / "clear-japanese" / "SKILL.md"
+        skill = self.repo / "skills" / "unslop" / "SKILL.md"
         skill.write_text("version two\n")
         commit = self.commit()
         refs = self.git("show-ref")
         self.assertEqual(self.run_sync().returncode, 0)
         self.assertEqual(current.resolve().name, commit)
-        self.assertEqual((current / "skills/clear-japanese/SKILL.md").read_text(), "version two\n")
-        self.assertEqual((first / "skills/clear-japanese/SKILL.md").read_text(), "version one\n")
+        self.assertEqual((current / "skills/unslop/SKILL.md").read_text(), "version two\n")
+        self.assertEqual((first / "skills/unslop/SKILL.md").read_text(), "version one\n")
         self.assertEqual(self.git("show-ref"), refs)
         cache_refs = subprocess.run(["git", "--git-dir", str(self.state / "cache.git"), "show-ref"], capture_output=True)
         self.assertEqual(cache_refs.stdout, b"")
@@ -76,7 +77,7 @@ class CodexSyncTest(unittest.TestCase):
     def test_incomplete_release_preserves_current(self):
         self.assertEqual(self.run_sync().returncode, 0)
         previous = (self.state / "current").resolve()
-        (self.repo / "skills/clear-japanese/SKILL.md").unlink()
+        (self.repo / "skills/unslop/SKILL.md").unlink()
         self.commit()
         self.assertNotEqual(self.run_sync().returncode, 0)
         self.assertEqual((self.state / "current").resolve(), previous)
@@ -142,6 +143,42 @@ class CodexSyncTest(unittest.TestCase):
             self.assertEqual((self.home / ".agents/skills" / name / "SKILL.md").read_text(), "version one\n")
         backup = json.loads((self.state / "install-backup.json").read_text())
         self.assertEqual(json.loads(backup["hooks"]), existing)
+
+    def run_installer(self):
+        loader = importlib.machinery.SourceFileLoader("installer", str(INSTALL))
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        module = importlib.util.module_from_spec(spec)
+        loader.exec_module(module)
+        run = subprocess.run
+
+        def local_source(command, **kwargs):
+            return run([*command, "--state-dir", str(self.state), "--source", str(self.repo), "--ref", "refs/heads/fixture"], **kwargs)
+
+        with patch.object(module.Path, "home", return_value=self.home), patch.object(module.subprocess, "run", side_effect=local_source):
+            module.main()
+
+    def link(self, name, target):
+        path = self.home / ".agents/skills" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.symlink_to(target)
+        return path
+
+    def test_installer_takes_over_pstack_unslop_and_drops_clear_japanese(self):
+        pstack = self.home / ".claude/plugins/cache/cursor-plugins/pstack/0.15.25/skills/unslop"
+        unslop = self.link("unslop", pstack)
+        retired = self.link("clear-japanese", self.state / "current/skills/clear-japanese")
+        self.run_installer()
+        self.assertEqual(os.readlink(unslop), str(self.state / "current/skills/unslop"))
+        self.assertFalse(retired.is_symlink())
+        backup = json.loads((self.state / "install-backup.json").read_text())
+        self.assertEqual(backup["links"][str(unslop)], str(pstack))
+        self.assertEqual(backup["links"][str(retired)], str(self.state / "current/skills/clear-japanese"))
+
+    def test_installer_refuses_unrelated_unslop(self):
+        unslop = self.link("unslop", self.home / "elsewhere/unslop")
+        with self.assertRaises(SystemExit):
+            self.run_installer()
+        self.assertEqual(os.readlink(unslop), str(self.home / "elsewhere/unslop"))
 
 
 if __name__ == "__main__":

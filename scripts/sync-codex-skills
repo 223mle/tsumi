@@ -45,7 +45,7 @@ def sync(state, source, ref):
                         if path.is_absolute() or ".." in path.parts or not (member.isfile() or member.isdir()):
                             raise ValueError("unsupported archive member: " + member.name)
                     tar.extractall(tmp)
-                for name in ("clear-japanese", "agent-design-review", "tsumi-mode"):
+                for name in ("unslop", "agent-design-review", "tsumi-mode"):
                     if not (Path(tmp) / "skills" / name / "SKILL.md").is_file():
                         raise ValueError("missing skill: " + name)
                 os.rename(tmp, version)
