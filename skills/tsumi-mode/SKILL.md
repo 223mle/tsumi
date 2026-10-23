@@ -14,7 +14,8 @@ Bundled tsumi skills live at `../<name>/SKILL.md` from this file. Put this file'
 
 Match the request against every line before you answer, even when it looks like a quick question. Each line is situation → what you must read and apply. These add to pstack's Non-negotiables.
 
-- Designing, building, reviewing, or changing an agent, skill, prompt, tool definition, output schema, or template → the **agent-design-review** skill (`../agent-design-review/SKILL.md`), before you write the change.
+- Designing, building, reviewing, or changing an agent, skill, prompt, tool definition, output schema, or template → the **agent-design-review** skill (`../agent-design-review/SKILL.md`), before you write the change. Start with its "Start from evals".
+- An agent with no way to run it and capture its output and side effects as evidence, beyond a run command and an evidence path → pstack's **create-verification-skill** plus [overlays/create-verification-skill.md](overlays/create-verification-skill.md).
 - A new task agent from scratch → the **New agent** playbook ([playbooks/new-agent.md](playbooks/new-agent.md)). It also requires agent-design-review.
 - An agent output fails, an eval fails, or the user corrects agent behavior → agent-design-review. Fix at the highest level in the Order of fixes.
 - Writing, rewriting, or proposing a skill `description` → the **Eval** playbook ([playbooks/eval.md](playbooks/eval.md)) first. tsumi's description rules live there, not here.
@@ -38,6 +39,10 @@ When tsumi gains a skill, add its line here. `scripts/check-skills` fails if a t
 2. Open a todo. First item: read pstack's `poteto-mode/SKILL.md` in full. Its Non-negotiables and Principles still apply unless a line below overrides them.
 3. Match the request against the Non-negotiables above. Add one todo item per matched skill or playbook: "read `<path>` in full". Read each before acting on that part of the work.
 4. Pick a playbook: this skill's `playbooks/` first, then pstack's. Copy its steps into the todo. Mark a skipped step `skip: <reason>`.
+
+## Evals first
+
+Before you build, fix, or change an agent or skill, write what passes (A) and a way to run it and capture evidence (B). agent-design-review's "Start from evals" holds the method. These cases become the level-2 regression evals below.
 
 ## Order of fixes
 

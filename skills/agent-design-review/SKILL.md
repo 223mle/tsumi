@@ -5,7 +5,18 @@ description: Designs or improves agents and skills by moving decisions the model
 
 # Agent Design Review
 
-Make the easiest supported operation produce a valid result. First improve the environment and tools so the model has fewer mechanical decisions to repeat. Preserve the judgment and expressive choices needed for the user's task.
+Make the easiest supported operation produce a valid result. Start by deciding how you will know it works. Then improve the environment and tools so the model has fewer mechanical decisions to repeat. Preserve the judgment and expressive choices needed for the user's task.
+
+## Start from evals
+
+Before you build, fix, or change an agent or skill, set the direction with evals. Size them to the change: a small change needs one or two cases.
+
+1. **Define passing (A).** Write cases from real task inputs: the input, the output that passes, who uses that output and how, and what a wrong output costs. A criterion being quantitative or qualitative only decides who judges it: code, a second model, or a person.
+2. **Make it observable (B).** Decide what evidence each case produces and where it goes: the output itself, side effects such as sent messages or written rows, or a rendered artifact such as slide images. When the output is the evidence, a run command and an evidence path are enough. When more is needed, generate a verification skill with pstack's `create-verification-skill`, read with [tsumi's overlay](../tsumi-mode/overlays/create-verification-skill.md).
+3. **Prove the judge.** Show that each check passes a hand-made correct output and fails a deliberately broken one, as for any new check (see "Choose and validate a change"). For a fix, the real past failure is the broken one.
+4. **Run one case end to end early.** As soon as the first tool exists, run one case through B and confirm the evidence lands. Do not wait for the full build.
+
+These cases become the regression evals of level 2 below. Evals set the direction of the work; the Improvement order decides where each fix goes.
 
 ## Improvement order
 
