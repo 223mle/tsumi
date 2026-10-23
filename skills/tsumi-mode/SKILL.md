@@ -1,6 +1,6 @@
 ---
 name: tsumi-mode
-description: Router for every tsumi skill, layered on pstack's poteto-mode, for building agents the way Daiki Tsutsumi does. Routes agent and skill design to agent-design-review, skill, prompt, tool, and schema changes to the regression-eval playbook, Japanese documents to clear-japanese, and everything else to pstack. Applies Daiki's order of fixes - tools, schemas, and templates first; automated checks and evals second; prompt rules only for judgment that cannot be encoded; human review only for suspicious output. Use when the user starts a task with /tsumi-mode (Cursor) or /tsumi:tsumi-mode (Claude Code). Requires the pstack plugin.
+description: Router for every tsumi skill, layered on pstack's poteto-mode, for building agents the way Daiki Tsutsumi does. Routes agent and skill design to agent-design-review, skill, prompt, tool, and schema changes to the regression-eval playbook, writing and rewriting Japanese documents to unslop, and everything else to pstack. Applies Daiki's order of fixes - tools, schemas, and templates first; automated checks and evals second; prompt rules only for judgment that cannot be encoded; human review only for suspicious output. Use when the user starts a task with /tsumi-mode (Cursor) or /tsumi:tsumi-mode (Claude Code). Requires the pstack plugin.
 disable-model-invocation: true
 ---
 
@@ -21,9 +21,8 @@ Match the request against every line before you answer, even when it looks like 
 - Changing a skill, prompt, tool definition, schema, or template → the **Eval** playbook before calling it done.
 - Deciding which outputs a human reviews, or human corrections arrive → the **Review triage** playbook ([playbooks/review-triage.md](playbooks/review-triage.md)).
 - The user corrects you → add a row to the corrections log (see Rules). Second row of the same class → "Same correction twice".
-- Japanese document or prose others will read (README, design doc, PR description, commit message, Japanese SKILL.md, customer-facing text) → the **clear-japanese** skill (`../clear-japanese/SKILL.md`) on your draft before you hand it over.
-- pstack calls for **unslop** (a Non-negotiable or a playbook step, your reply included) → do not read unslop. Daiki does not write English prose. Use clear-japanese where the line above applies. Write your chat reply per pstack's Writing the reply, with neither skill.
-- Docs in either language → pstack's **technical-writing** plus [overlays/technical-writing.md](overlays/technical-writing.md).
+- Writing or rewriting a Japanese document others will read (README, design doc, ADR, how-to, PR description, Japanese SKILL.md, customer-facing text) → tsumi's **unslop** skill (`../unslop/SKILL.md`), before you write the first draft. Not for commit messages or your chat reply.
+- pstack calls for **unslop** or **technical-writing** (a Non-negotiable or a playbook step, your reply included) → for a Japanese document, read tsumi's `../unslop/SKILL.md`. For a commit message or your chat reply, read neither. Never read pstack's own `unslop` or `technical-writing` unless the user invokes one by name: Daiki does not write English prose. Write your chat reply per pstack's Writing the reply.
 - Repeated mistakes in repo code (not agent output) → pstack's **correct** plus [overlays/correct.md](overlays/correct.md).
 - The user says reflect → pstack's **reflect** plus [overlays/reflect.md](overlays/reflect.md).
 - About to edit a file that tsumi ships (skill, overlay, playbook, eval case, script) → "Changing tsumi" under Rules.
