@@ -30,3 +30,4 @@ ts	target	class	wrong	correction	moved_to	evidence	source
 2026-10-27	skills/unslop	prose-independent-facts	既存ルールを読んでも構成の失敗が再発した	ルール追加だけで済ませず起草出力を旧新版で比較する	eval: adr-structure and decision-detail	2026-10-27 文書初稿とレビュー反映の会話を一般化	reflect
 2026-10-27	skills/unslop	prose-ambiguous-enumeration	読み手が対象を特定できない表現が提出時に残った	候補検出と意味判断を組み合わせる	tool: find-ambiguous.py; tests/test_unslop_ambiguous.py; eval: reader-scope	2026-10-27 文書初稿とレビュー反映の会話を一般化	reflect
 2026-10-27	skills/unslop	prose-verification-evidence	形式検査を文章の意味と構成の検査から区別できなかった	生成物と判定根拠を保存し検査範囲を明記する	evals/prose/results.md; docs/unslop-checks.md	2026-10-27 文書初稿とレビュー反映の会話を一般化	reflect
+2026-10-27	skills/unslop	domain-words-as-ambiguity	直前の失敗に出た分野固有の名詞を機械的な検出語にした	指示語・列挙・判断条件に分けて問いを付け定義済み専門語を残す	tool: find-ambiguous.py; eval: reader-scope; tests: generic terms vs domain terms	2026-10-27 汎用的な語彙点検への訂正を一般化	correction

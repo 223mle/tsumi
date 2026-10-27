@@ -25,7 +25,8 @@ class EvidenceTests(unittest.TestCase):
     def test_saved_evidence_is_complete(self):
         result = self.run_summary()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('calibration: 4/4', result.stdout)
+        controls = json.loads((self.root / 'evals/prose/controls.json').read_text())
+        self.assertIn(f'calibration: {len(controls)}/{len(controls)}', result.stdout)
 
     def test_missing_trial_is_rejected(self):
         path = self.root / 'evals/prose/outputs.json'

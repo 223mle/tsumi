@@ -5,7 +5,14 @@ import json
 import re
 from pathlib import Path
 
-PATTERN = re.compile(r'など|等(?=[をにがはも、。])|同梱|共有ファイル|接続先|起動ファイル|適切|大幅')
+RULES = (
+    ('scope', re.compile(r'など|その他'),
+     '列挙の範囲は何か。全件を挙げるか、例と範囲・確認先を示せるか。'),
+    ('referent', re.compile(r'(?<![ぁ-んァ-ヶ])(?:これ|それ|あれ|そちら)(?=[はがをにへとも、。！？\s]|で(?!も)|$)'),
+     'どの名詞を指すか。一つに決まるか。戻って探す必要があれば対象の名詞を添える。'),
+    ('criterion', re.compile(r'適宜|適切に|所定の|一定の|大幅に|さまざまな|様々な'),
+     '動作・条件・程度は何か。材料にある具体的な操作や基準を示せるか。'),
+)
 
 
 def findings(text):
@@ -23,8 +30,12 @@ def findings(text):
             continue
         # Identifiers, destinations and URLs are not prose to rewrite.
         prose = re.sub(r'`[^`]*`|https?://\S+|\]\([^)]*\)', '', line)
-        for match in PATTERN.finditer(prose):
-            yield {'line': line_no, 'term': match.group(), 'text': line.strip()}
+        matches = [(match.start(), kind, question, match.group())
+                   for kind, pattern, question in RULES
+                   for match in pattern.finditer(prose)]
+        for _, kind, question, term in sorted(matches):
+            yield {'line': line_no, 'term': term, 'kind': kind,
+                   'question': question, 'text': line.strip()}
 
 
 def main():
