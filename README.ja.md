@@ -2,111 +2,131 @@
 
 [English](README.md) | **日本語**
 
-tsumi は、堤 大樹（Daiki Tsutsumi）のエージェント開発の考え方と tips を、エージェントが使えるスキルにしたプラグインです。Cursor と Claude Code で使えます。[pstack](https://github.com/cursor/plugins/tree/main/pstack) を土台にして、足りない分だけを足します。名前は「積み上げる」から取りました。
+## これは何？
 
-業務エージェントを作るとき、間違いをプロンプトの注意書きで防ごうとすると、注意書きが増えるだけで同じ間違いが戻ってきます。tsumi は、エージェントを作る・直す作業を評価から始め、修正を置く場所を順番に決めます。エージェントにこの順番を守らせ、同じ修正を二度しないようにします。
+tsumi は、[223mle](https://github.com/223mle) がエージェント開発で使っている考え方と tips をまとめたスキル集です。Cursor と Claude Code のプラグインとして使えます。[pstack](https://github.com/cursor/plugins/tree/main/pstack) を土台にしていて、エージェント開発に必要な部分だけを足しています。名前は「積み上げる」から取りました。
 
-pstack は、principle、プレイブック、返信の書き方といった開発作業全般の土台を持っています。tsumi は pstack をそのまま使い、エージェント開発の部分だけを足します。
+業務エージェントの間違いをプロンプトの注意書きで防ごうとすると、注意書きが増えるばかりで、同じ間違いはまた起きます。tsumi は、エージェントを作る・直すときに最初に評価を用意させ、修正をどこに置くかを決まった順番で決めさせます。同じ修正を二度しないためです。
 
-## 入れ方
+pstack は、principle、プレイブック、返信の書き方など、開発作業全般の土台を持っています。tsumi は pstack をそのまま使い、その上にエージェント開発の部分を足します。
 
-本体は、`~/tsumi` に置いた git の作業コピーの main です。Claude Code はこの作業コピーを直接読み、Cursor は別に置いた clone を読みます。
+## インストール
 
-1. pstack を入れます。
+tsumi は pstack の上で動くため、先に pstack をインストールしてください。
 
-   - Cursor では `/add-plugin pstack` を実行します。
-   - Claude Code では `/plugin marketplace add cursor/plugins` を実行し、続けて `/plugin install pstack@cursor-plugins` を実行します。
+```text
+# Cursor
+/add-plugin pstack
 
-2. tsumi を `~/tsumi` に clone します。
+# Claude Code
+/plugin marketplace add cursor/plugins
+/plugin install pstack@cursor-plugins
+```
 
-   ```bash
-   git clone https://github.com/223mle/tsumi.git ~/tsumi
-   ```
+tsumi の本体は、`~/tsumi` に clone した作業コピーの main です。Claude Code はこの作業コピーをそのまま読み込み、Cursor は別の場所に clone したコピーを読み込みます。
 
-3. Claude Code では、`~/.claude/skills/tsumi` に `~/tsumi` へのシンボリックリンクを張ります。Claude Code は、`~/.claude/skills/` にあるプラグインをコピーせずにその場で読みます。
+```bash
+git clone https://github.com/223mle/tsumi.git ~/tsumi
+```
 
-   ```bash
-   ln -s ~/tsumi ~/.claude/skills/tsumi
-   ```
+### Claude Code
 
-4. Cursor では、`~/.cursor/plugins/local/tsumi` にもう一つ clone します。Cursor は、このフォルダの外を指すシンボリックリンクを読みません。
+`~/.claude/skills/` にシンボリックリンクを作成します。Claude Code は、このディレクトリにあるプラグインをコピーせずにそのまま読み込みます。
 
-   ```bash
-   git clone https://github.com/223mle/tsumi.git ~/.cursor/plugins/local/tsumi
-   ```
+```bash
+ln -s ~/tsumi ~/.claude/skills/tsumi
+```
 
-5. Claude Code の `~/.claude/settings.json` に、セッション開始時のフックを足します。新しいセッションを始めるたびに `scripts/sync-installs` が動き、`~/tsumi` と `~/.cursor/plugins/local/tsumi` を main の最新にします。
+新しいセッションを開き、スキル一覧に tsumi のスキルが表示されればインストール完了です。
 
-   ```json
-   "hooks": {
-     "SessionStart": [
-       {
-         "matcher": "startup",
-         "hooks": [
-           {
-             "type": "command",
-             "command": "[ -x \"$HOME/tsumi/scripts/sync-installs\" ] && \"$HOME/tsumi/scripts/sync-installs\"; exit 0",
-             "timeout": 30
-           }
-         ]
-       }
-     ]
-   }
-   ```
+### Cursor
 
-   取り込むのは、main にいて未コミットの変更がない作業コピーだけです。結果は `~/Library/Logs/tsumi-sync.log` に残ります。Claude Code を開かずに Cursor だけを使うときは、Cursor 側は更新されません。
+Cursor はプラグインのフォルダの外を指すシンボリックリンクを読み込まないため、`~/.cursor/plugins/local/` にもう1つ clone します。
 
-6. Claude Code では新しいセッションを始めます。Cursor では、再起動するか Developer: Reload Window を実行します。スキル一覧に tsumi のスキルが出ていれば入っています。
+```bash
+git clone https://github.com/223mle/tsumi.git ~/.cursor/plugins/local/tsumi
+```
 
-tsumi を直すときは、読み込まれているコピーは直しません。`~/tsumi` から worktree を切って直し、PR を出します。
+Cursor を再起動するか、コマンドパレットから「Developer: Reload Window」を実行してください。スキル一覧に tsumi のスキルが表示されればインストール完了です。
 
-### Codex だけでスキルを自動更新する
+### 自動で最新版に更新する
 
-macOS では、作業ブランチで次を実行します。
+Claude Code の `~/.claude/settings.json` に次のフックを追加すると、セッションを開くたびに `scripts/sync-installs` が実行され、`~/tsumi` と `~/.cursor/plugins/local/tsumi` が main の最新版に更新されます。
+
+```json
+"hooks": {
+  "SessionStart": [
+    {
+      "matcher": "startup",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "[ -x \"$HOME/tsumi/scripts/sync-installs\" ] && \"$HOME/tsumi/scripts/sync-installs\"; exit 0",
+          "timeout": 30
+        }
+      ]
+    }
+  ]
+}
+```
+
+更新されるのは、main ブランチにいて未コミットの変更がない作業コピーだけです。実行結果は `~/Library/Logs/tsumi-sync.log` に記録されます。Cursor 用のコピーもこのフックで更新されるため、Claude Code を開かずに Cursor だけを使っている間は更新されません。
+
+### Codex
+
+macOS では、作業ブランチで次のコマンドを実行すると、Codex 用の自動更新を設定できます。この設定は、Claude Code・Cursor 向けの設定とは独立しています。
 
 ```bash
 python3 scripts/install-codex-sync
 ```
 
-インストーラーは、マージ済みの最新版を取得し、Codex が読む3つの tsumi スキルを専用コピーへのリンクに切り替えます。`~/.codex/hooks.json` には、チャット開始・再開時に更新するフックを追加します。既存のフックは残します。設定後、Codex の Hooks 設定でこのフックを一度確認して信頼してください。信頼するまでは自動実行されません。
+インストーラーは次の2つを行います。
 
-更新用コピーは `~/.codex/tsumi/current` に置きます。フックは GitHub の main を読み取るだけで、`~/tsumi`、Cursor 用のコピー、ローカル・リモートの main ブランチは変更しません。更新が終わってから読み込み先を切り替え、取得や検査に失敗した場合は旧版を維持します。実行中の会話に読み込み済みの指示は取り消しません。
+- マージ済みの最新版を `~/.codex/tsumi/current` に取得し、Codex が読み込む3つの tsumi スキルを、そこへのリンクに切り替えます。
+- `~/.codex/hooks.json` に、チャットの開始・再開時に更新するフックを追加します。既存のフックはそのまま残ります。
 
-- 更新ログは `~/.codex/tsumi/update.log` に残ります。
-- 導入前のリンクとフック設定は `~/.codex/tsumi/install-backup.json` に保存します。
-- Codex が変更を検知しない場合は再起動します。自動更新を止める場合は、Hooks 設定で対象のフックを無効にします。
-- 更新スクリプト自体は自動更新しません。スクリプトを更新する場合は、インストーラーを実行し直します。
-- `clear-japanese` を `unslop` に改名した版は、古い更新スクリプトでは取り込めず、旧版のままになります。インストーラーを一度実行し直してください。このとき、pstack の `unslop` を指す `~/.agents/skills/unslop` は tsumi の `unslop` へのリンクに置き換わり、`~/.agents/skills/clear-japanese` は消えます。置き換え前のリンクは `install-backup.json` に残ります。
+設定が終わったら、Codex の Hooks 設定でこのフックを一度確認し、信頼してください。信頼するまでは自動で実行されません。
 
-この設定は Claude Code の起動に依存しません。既存の Claude Code・Cursor 向けの同期設定も変更しません。
+フックは GitHub の main を読み取るだけで、`~/tsumi`、Cursor 用のコピー、ローカル・リモートの main ブランチには触れません。更新が終わってから読み込み先を切り替えるため、取得や検査に失敗したときは旧版のまま動きます。実行中の会話には、更新は反映されません。
+
+<details>
+<summary>Codex の自動更新についての補足</summary>
+
+- 更新ログは `~/.codex/tsumi/update.log` に記録されます。
+- 導入前のリンクとフック設定は `~/.codex/tsumi/install-backup.json` に保存されます。
+- Codex が変更を検知しないときは、Codex を再起動してください。自動更新を止めるときは、Hooks 設定でこのフックを無効にします。
+- 更新スクリプト自体は自動では更新されません。スクリプトを新しくしたいときは、インストーラーを再実行してください。
+- `clear-japanese` を `unslop` に改名した版は、古い更新スクリプトでは取り込めず、旧版のままになります。インストーラーを一度再実行してください。このとき、pstack の `unslop` を指す `~/.agents/skills/unslop` は tsumi の `unslop` へのリンクに置き換わり、`~/.agents/skills/clear-japanese` は削除されます。置き換え前のリンクは `install-backup.json` に残ります。
+
+</details>
 
 ## 使い方
 
-作業の最初に `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）を打ちます。tsumi-mode は依頼を読み、tsumi のスキルと pstack のスキルを状況に合わせて使い分けます。
+作業を始めるときに、依頼の前に `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）を付けます。tsumi-mode が依頼の内容を読み、tsumi と pstack のスキルから必要なものを選んで使います。
 
 ```text
 /tsumi-mode 問い合わせメールを「請求」「解約」「その他」に分類するエージェントを作りたい
 ```
 
-- 会話が長くなると、tsumi-mode の効き目は薄れます。新しい作業を始めるときは、もう一度コマンドで呼びます。Cursor では、`/` メニューで tsumi-mode を選んで Option+Enter（Windows は Alt+Enter）を押すと、毎ターン読み込まれる Custom Mode になります。
-- 「このエージェントが毎回ちがう表記で返してくる。どう直すのがいい？」と相談すると、tsumi-mode を通さずに `agent-design-review` が読まれます。
-- 日本語の文章を貼って「読みにくいので直して」と頼むと、`unslop` が清書した本文を返します。メモを渡して「手順書を書いて」と頼んだときも、`unslop` が読まれます。
+- 会話が長くなると、tsumi-mode の指示が効きにくくなります。新しい作業を始めるときは、もう一度 `/tsumi-mode` を付けて依頼してください。Cursor では、`/` メニューで tsumi-mode を選んで Option+Enter（Windows は Alt+Enter）を押すと、毎ターン読み込まれる Custom Mode になります。
+- 「このエージェントが毎回ちがう表記で返してくる。どう直すのがいい？」と相談すると、tsumi-mode を付けなくても `agent-design-review` が読み込まれます。
+- 日本語の文章を貼って「読みにくいので直して」と頼むと、`unslop` が清書した本文を返します。メモを渡して「手順書を書いて」と頼んだときも、`unslop` が読み込まれます。
 
-## スキル
+## スキル一覧
 
-入口は `tsumi-mode` で、コマンドで呼んだときだけ動きます。残りの3つは単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
+入口は `tsumi-mode` で、コマンドで呼んだときだけ動きます。残りの3つは単独でも動き、tsumi-mode を付けなくても、依頼の内容に合えばエージェントが自分で読み込みます。
 
-| スキル | 単独で読まれる場面 |
+| スキル | 単独で読み込まれる場面 |
 |---|---|
-| [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）と打ったときだけ。「tsumi で」と書くだけでは読まれません |
+| [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）と打ったときだけ。「tsumi で」と書くだけでは読み込まれません |
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき |
 | [`unslop`](skills/unslop/SKILL.md) | 日本語の文書を書くとき、「日本語を直して」「分かりやすくして」と頼んだとき |
-| [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | 会話の最後に「reflect して」と言ったとき。週報や振り返りの文書を書く依頼では読まれません |
+| [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | 会話の最後に「reflect して」と言ったとき。週報や振り返りの文書を書く依頼では読み込まれません |
 
 <details>
-<summary>状況ごとに tsumi-mode が読むもの</summary>
+<summary>状況ごとに tsumi-mode が読み込むもの</summary>
 
-| 状況 | tsumi-mode が読むもの |
+| 状況 | tsumi-mode が読み込むもの |
 |---|---|
 | エージェント、スキル、プロンプト、ツール定義、出力スキーマを設計する・直す | `agent-design-review` |
 | 業務エージェントを新しく作る | New agent プレイブック（`agent-design-review` も読む） |
@@ -122,7 +142,7 @@ python3 scripts/install-codex-sync
 
 pstack の `unslop` と `technical-writing` は使いません。pstack がこの2つを呼ぶ場面では、人が読む日本語の文書なら tsumi の `unslop` を使い、コミット文とチャットの返信にはどれも使いません。tsumi の `unslop` は、pstack の `technical-writing` の考え方のうち日本語にも当てはまるもの（文書の種類を先に決める、コードの名前をそのまま書く、など）を取り込んでいます。unslop の候補検出コマンドと hook の役割は、[文書の検査](docs/unslop-checks.md)を参照してください。
 
-`agent-design-review` と `unslop`（移したときの名前は `clear-japanese`）は [223mle/skills](https://github.com/223mle/skills) から移しました。正本は tsumi で、223mle/skills には残しません。
+`agent-design-review` と `unslop`（移したときの名前は `clear-japanese`）は [223mle/skills](https://github.com/223mle/skills) から移しました。正本は tsumi で、223mle/skills には残していません。
 
 ## 考え方
 
@@ -151,10 +171,12 @@ pstack の `unslop` と `technical-writing` は使いません。pstack がこ�
 tsumi は、2つの材料から育てます。
 
 - **トップの実践。** 考え方は、poteto の投稿や pstack のような、トップの開発者の実践を起点にしています。今後もトップのブログやスキルから取り込みます。
-- **Daiki とエージェントの対話の記録。** 会話の最後に「reflect して」と言うと、`tsumi-reflect` がその会話から学びを拾い、スキルの修正と修正ログの行を1つの PR にまとめます。材料にするのは、reflect をしたスレッドだけです。修正ログには、顧客名や顧客データを書きません。
+- **223mle とエージェントの対話の記録。** 会話の最後に「reflect して」と言うと、`tsumi-reflect` がその会話から学びを拾い、スキルの修正と修正ログの行を1つの PR にまとめます。材料にするのは、reflect をしたスレッドだけです。修正ログには、顧客名や顧客データを書きません。
 
 修正ログに同じ種類の行が2つたまったら、プロンプトに書き足さずに仕組みへ移します。まだ決まっていない評価の合否基準や、人に回す出力の目印も、この記録の傾向から決めます。
 
-## 開発に参加するとき
+## コントリビュート
 
 [CONTRIBUTING.md](CONTRIBUTING.md) を読んでください。設計の判断は [DESIGN.md](DESIGN.md)、評価の設計は [evals/README.md](evals/README.md) にあります。
+
+tsumi を修正するときは、読み込まれているコピーを直接編集しないでください。`~/tsumi` から worktree を作って修正し、PR を出してください。
