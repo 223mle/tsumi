@@ -1,103 +1,41 @@
 # tsumi
 
-tsumi は、堤 大樹（Daiki Tsutsumi）のエージェント開発の考え方と tips を、エージェントが使えるスキルにしたプラグインです。Cursor と Claude Code で使えます。[pstack](https://github.com/cursor/plugins/tree/main/pstack) を土台にして、足りない分だけを足します。名前は「積み上げる」から取りました。
+**English** | [日本語](README.ja.md)
 
-## 何のためのものか
+tsumi packages how Daiki Tsutsumi builds agents into skills an agent can use. It runs in Cursor and Claude Code, and sits on top of [pstack](https://github.com/cursor/plugins/tree/main/pstack): it keeps pstack as the base and adds only what agent development needs. The name comes from the Japanese 積み上げる (*tsumiageru*), "to stack up."
 
-業務エージェントを作るとき、間違いをプロンプトの注意書きで防ごうとすると、注意書きが増えるだけで同じ間違いが戻ってきます。tsumi は、エージェントを作る・直す作業を評価から始め、修正を置く場所を順番に決めます。エージェントにこの順番を守らせ、同じ修正を二度しないようにします。
+When you build a business agent and try to prevent mistakes with warnings in the prompt, the warnings pile up and the same mistakes come back. tsumi makes the agent start every build or fix from an eval, then decide where the fix belongs in a fixed order, so the same fix never has to be made twice.
 
-pstack は、principle、プレイブック、返信の書き方といった開発作業全般の土台を持っています。tsumi は pstack をそのまま使い、エージェント開発の部分だけを足します。
+pstack already covers general engineering work: principles, playbooks, and how to write replies. tsumi uses pstack as is and adds the agent-development layer.
 
-## 考え方
+## Install
 
-### 最初に評価を用意する
+The source of truth is the `main` branch of a git checkout at `~/tsumi`. Claude Code reads that checkout directly. Cursor reads a separate clone.
 
-エージェントを作る・直す・変えるときは、最初に評価を用意して、目指す方向を決めます。先に合格の定義（A）を書き、次に実物を動かして証拠を取る仕組み（B）を用意します。
+1. Install pstack.
 
-- **A 合格の定義。** 実際の入力ごとに、合格になる出力、その出力を誰がどう使うか、間違えたときに何が起きるかを書きます。定量的か定性的かは、誰が判定するか（コード、別のモデル、人）の違いとして扱います。
-- **B 実物を動かして証拠を取る仕組み。** 出力そのもの、送ったメールや書き込んだ行などの副作用、スライドの画像のような描画結果を証拠として残します。出力がそのまま証拠になるなら、実行コマンドと証拠の置き場所を決めれば足ります。それ以上が要るときは、pstack の `create-verification-skill` を tsumi の overlay 付きで使います。
+   - In Cursor, run `/add-plugin pstack`.
+   - In Claude Code, run `/plugin marketplace add cursor/plugins`, then `/plugin install pstack@cursor-plugins`.
 
-判定は、手で作った正しい出力を通し、わざと壊した出力を落とすと確かめてから使います。ここで作った評価は、そのまま次の節の2段目の回帰評価になります。
-
-### 修正はできるだけ上の段に置く
-
-修正は、次の順で、できるだけ上の段に置きます。
-
-1. **環境と道具で間違いを起こせなくする。** 選択肢が決まっているものは、自由に書かせず部品や ID から選ばせます。コードが読む出力は JSON スキーマで縛り、合わないものは受け取る側で弾きます。ID、日付、金額、宛先、定型文はテンプレートに入れ、コードで埋めます。
-2. **自動チェックと回帰評価で捕まえる。** 残った間違いは、決まった検査と評価のお題で見つけます。スキルやプロンプトを変えるたびに、変更に見合った数のお題を回して前の版と比べます。
-3. **プロンプトには、仕組みにできない判断だけを書く。** 依頼の意図の読み取りや、どの部品を選ぶかといった判断です。同じ修正が2回出たら、プロンプトに書き足さずに1か2へ移します。
-4. **人のレビューは最後に、怪しいものだけに絞る。** 人が直した内容は修正ログに残し、次の修正の材料にします。
-
-この順番は投資の順番です。4段階を順に終わらせる計画ではありません。
-
-### トップの実践と対話の記録から育てる
-
-tsumi は、2つの材料から育てます。
-
-- **トップの実践。** 考え方は、poteto の投稿や pstack のような、トップの開発者の実践を起点にしています。今後もトップのブログやスキルから取り込みます。
-- **Daiki とエージェントの対話の記録。** 会話の最後に「reflect して」と言うと、`tsumi-reflect` がその会話から学びを拾い、スキルの修正と修正ログの行を1つの PR にまとめます。材料にするのは、reflect をしたスレッドだけです。修正ログには、顧客名や顧客データを書きません。
-
-修正ログに同じ種類の行が2つたまったら、プロンプトに書き足さずに仕組みへ移します。まだ決まっていない評価の合否基準や、人に回す出力の目印も、この記録の傾向から決めます。
-
-## スキル
-
-入口は `tsumi-mode` です。`/tsumi-mode <依頼>`（Claude Code では `/tsumi:tsumi-mode <依頼>`）と打つと、tsumi の全スキルと pstack のスキルを、状況に合わせて使い分けます。
-
-| 状況 | tsumi-mode が読むもの |
-|---|---|
-| エージェント、スキル、プロンプト、ツール定義、出力スキーマを設計する・直す | `agent-design-review` |
-| 業務エージェントを新しく作る | New agent プレイブック（`agent-design-review` も読む） |
-| エージェントの出力の失敗、評価の失敗、エージェントへの修正 | `agent-design-review` |
-| 動かして証拠を取る手段がないエージェントを作る・直す | pstack の `create-verification-skill`（tsumi の overlay 付き） |
-| reflect と言われた、この会話の学びを tsumi に戻す | `tsumi-reflect`（pstack の `reflect` に tsumi の追加分を当てる） |
-| スキル、プロンプト、ツール定義、スキーマを変えた | Eval プレイブック（回帰評価）。description を変えたら `scripts/check-skills` とトリガーお題も |
-| 人に回す出力を決める、人の修正が届く | Review triage プレイブック |
-| 日本語の文書を書く・直す（README、設計書、ADR、手順書、PR 説明など。コミット文は除く） | `unslop` |
-| それ以外（コード、設計、デバッグ、検証、PR） | pstack の `poteto-mode` の規則のまま |
-
-pstack の `unslop` と `technical-writing` は使いません。pstack がこの2つを呼ぶ場面では、人が読む日本語の文書なら tsumi の `unslop` を使い、コミット文とチャットの返信にはどれも使いません。tsumi の `unslop` は、pstack の `technical-writing` の考え方のうち日本語にも当てはまるもの（文書の種類を先に決める、コードの名前をそのまま書く、など）を取り込んでいます。
-
-unslop の候補検出コマンドと hook の役割は、[文書の検査](docs/unslop-checks.md)を参照してください。
-
-tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-design-review`、`unslop`、`tsumi-reflect` は単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
-
-| スキル | 単独で読まれる場面 |
-|---|---|
-| [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）と打ったときだけ。「tsumi で」と書くだけでは読まれません |
-| [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき |
-| [`unslop`](skills/unslop/SKILL.md) | 日本語の文書を書くとき、「日本語を直して」「分かりやすくして」と頼んだとき |
-| [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | 会話の最後に「reflect して」と言ったとき。週報や振り返りの文書を書く依頼では読まれません |
-
-`agent-design-review` と `unslop`（移したときの名前は `clear-japanese`）は [223mle/skills](https://github.com/223mle/skills) から移しました。正本は tsumi で、223mle/skills には残しません。
-
-## 入れ方
-
-本体は、`~/tsumi` に置いた git の作業コピーの main です。Claude Code はこの作業コピーを直接読み、Cursor は別に置いた clone を読みます。
-
-1. pstack を入れます。
-
-   - Cursor では `/add-plugin pstack` を実行します。
-   - Claude Code では `/plugin marketplace add cursor/plugins` を実行し、続けて `/plugin install pstack@cursor-plugins` を実行します。
-
-2. tsumi を `~/tsumi` に clone します。
+2. Clone tsumi to `~/tsumi`.
 
    ```bash
    git clone https://github.com/223mle/tsumi.git ~/tsumi
    ```
 
-3. Claude Code では、`~/.claude/skills/tsumi` に `~/tsumi` へのシンボリックリンクを張ります。Claude Code は、`~/.claude/skills/` にあるプラグインをコピーせずにその場で読みます。
+3. For Claude Code, symlink `~/.claude/skills/tsumi` to `~/tsumi`. Claude Code reads plugins under `~/.claude/skills/` in place, without copying them.
 
    ```bash
    ln -s ~/tsumi ~/.claude/skills/tsumi
    ```
 
-4. Cursor では、`~/.cursor/plugins/local/tsumi` にもう一つ clone します。Cursor は、このフォルダの外を指すシンボリックリンクを読みません。
+4. For Cursor, clone a second copy to `~/.cursor/plugins/local/tsumi`. Cursor does not follow symlinks that point outside this folder.
 
    ```bash
    git clone https://github.com/223mle/tsumi.git ~/.cursor/plugins/local/tsumi
    ```
 
-5. Claude Code の `~/.claude/settings.json` に、セッション開始時のフックを足します。新しいセッションを始めるたびに `scripts/sync-installs` が動き、`~/tsumi` と `~/.cursor/plugins/local/tsumi` を main の最新にします。
+5. Add a session-start hook to Claude Code's `~/.claude/settings.json`. Every new session runs `scripts/sync-installs`, which brings `~/tsumi` and `~/.cursor/plugins/local/tsumi` up to the latest `main`.
 
    ```json
    "hooks": {
@@ -116,45 +54,107 @@ tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-desig
    }
    ```
 
-   取り込むのは、main にいて未コミットの変更がない作業コピーだけです。結果は `~/Library/Logs/tsumi-sync.log` に残ります。Claude Code を開かずに Cursor だけを使うときは、Cursor 側は更新されません。
+   The hook only updates a checkout that is on `main` with no uncommitted changes. Results go to `~/Library/Logs/tsumi-sync.log`. If you use only Cursor and never open Claude Code, the Cursor copy is not updated.
 
-6. Claude Code では新しいセッションを始めます。Cursor では、再起動するか Developer: Reload Window を実行します。スキル一覧に tsumi のスキルが出ていれば入っています。
+6. In Claude Code, start a new session. In Cursor, restart or run **Developer: Reload Window**. tsumi is installed when its skills appear in the skill list.
 
-tsumi を直すときは、読み込まれているコピーは直しません。`~/tsumi` から worktree を切って直し、PR を出します。
+To change tsumi, do not edit the loaded copies. Cut a worktree from `~/tsumi`, make the change there, and open a PR.
 
-## Codexだけでスキルを自動更新する
+### Codex only: keep the skills up to date
 
-macOSでは、作業ブランチで次を実行する。
+On macOS, run this from a working branch:
 
 ```bash
 python3 scripts/install-codex-sync
 ```
 
-マージ済みの最新版を取得し、Codexが読む3つのtsumiスキルを専用コピーへのリンクに切り替える。`~/.codex/hooks.json`には、チャット開始・再開時に更新するフックを追加する。既存のフックは残す。設定後、CodexのHooks設定でこのフックを一度確認して信頼する。信頼するまでは自動実行されない。
+The installer fetches the latest merged version and points the three tsumi skills that Codex reads at a dedicated copy. It adds a hook to `~/.codex/hooks.json` that updates the copy when a chat starts or resumes, and keeps your existing hooks. After setup, open Codex's Hooks settings and trust the hook once. It does not run until you trust it.
 
-更新用コピーは`~/.codex/tsumi/current`に置く。GitHubのmainを読み取るだけで、`~/tsumi`、Cursor用のコピー、ローカル・リモートのmainブランチは変更しない。更新完了後に読み込み先を切り替え、取得や検査に失敗した場合は旧版を維持する。実行中の会話に読み込み済みの指示を取り消すものではない。
+The dedicated copy lives at `~/.codex/tsumi/current`. The hook only reads `main` from GitHub. It never changes `~/tsumi`, the Cursor copy, or any local or remote `main` branch. It switches the skills to the new version only after the update finishes, and keeps the old version if the fetch or the checks fail. It does not take back instructions already loaded into a running chat.
 
-- 更新ログは`~/.codex/tsumi/update.log`に残る。
-- 導入前のリンクとフック設定は`~/.codex/tsumi/install-backup.json`に保存する。
-- Codexが変更を検知しない場合は再起動する。自動更新を停止する場合はHooks設定で対象フックを無効にする。
-- 更新スクリプト自体は自動更新しない。スクリプトを更新する場合はインストーラーを再実行する。
-- `clear-japanese` を `unslop` に改名した版は、古い更新スクリプトでは取り込めず、旧版のままになる。インストーラーを一度実行し直す。このとき、pstack の `unslop` を指す `~/.agents/skills/unslop` は tsumi の `unslop` へのリンクに置き換わり、`~/.agents/skills/clear-japanese` は消える。置き換え前のリンクは `install-backup.json` に残る。
+- The update log is at `~/.codex/tsumi/update.log`.
+- The links and hook settings from before the install are saved in `~/.codex/tsumi/install-backup.json`.
+- If Codex does not pick up a change, restart it. To stop auto-updates, disable the hook in Hooks settings.
+- The update script does not update itself. To update the script, run the installer again.
+- The version that renamed `clear-japanese` to `unslop` cannot be pulled by the old update script, which stays on the old version. Run the installer once more. This replaces `~/.agents/skills/unslop`, which points at pstack's `unslop`, with a link to tsumi's `unslop`, and removes `~/.agents/skills/clear-japanese`. The links from before the replacement stay in `install-backup.json`.
 
-この設定はClaude Codeの起動に依存しない。既存のClaude Code・Cursor向け同期設定は変更しない。
+This setup does not depend on Claude Code starting, and it leaves the Claude Code and Cursor sync setup unchanged.
 
-## 使い方
+## Usage
 
-Cursor では、スキルを `/スキル名` で呼びます。Claude Code では、`/tsumi:tsumi-mode` のようにプラグイン名を付けます。
+Start a task with `/tsumi-mode` (in Claude Code, `/tsumi:tsumi-mode`). It reads your request and picks from tsumi's skills and pstack's skills as the task needs them.
 
 ```text
-/tsumi-mode 問い合わせメールを「請求」「解約」「その他」に分類するエージェントを作りたい
+/tsumi-mode I want an agent that sorts support emails into "billing", "cancellation", and "other".
 ```
 
-- 会話が長くなると、tsumi-mode の効き目は薄れます。新しい作業を始めるときは、もう一度コマンドで呼びます。Cursor では、`/` メニューで tsumi-mode を選んで Option+Enter（Windows は Alt+Enter）を押すと、毎ターン読み込まれる Custom Mode になります。
-- 「このエージェントが毎回ちがう表記で返してくる。どう直すのがいい？」と相談すると、tsumi-mode を通さずに `agent-design-review` が読まれます。
-- 日本語の文章を貼って「読みにくいので直して」と頼むと、`unslop` が清書した本文を返します。メモを渡して「手順書を書いて」と頼んだときも、`unslop` が読まれます。
+- tsumi-mode fades as a conversation grows long. Invoke it again when you start new work. In Cursor, pick tsumi-mode from the `/` menu and press Option+Enter (Alt+Enter on Windows) to make it a Custom Mode that loads every turn.
+- Ask "This agent returns a different spelling every time. How should I fix it?" and `agent-design-review` loads on its own, without tsumi-mode.
+- Paste Japanese text and ask "this is hard to read, fix it," and `unslop` returns the cleaned-up text. Hand it notes and ask for a how-to, and `unslop` loads too.
 
+## Skills
 
-## 開発に参加するとき
+The entry point is `tsumi-mode`. It runs only when you invoke it by command. The other three skills also work alone: the agent loads them when your request matches, with or without tsumi-mode.
 
-[CONTRIBUTING.md](CONTRIBUTING.md) を読んでください。設計の判断は [DESIGN.md](DESIGN.md)、評価の設計は [evals/README.md](evals/README.md) にあります。
+| skill | loads on its own when |
+|---|---|
+| [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | you type `/tsumi-mode` (`/tsumi:tsumi-mode` in Claude Code). Writing "use tsumi" is not enough. |
+| [`agent-design-review`](skills/agent-design-review/SKILL.md) | you design an agent or skill, review a design, or keep seeing the same mistake or drifting output. |
+| [`unslop`](skills/unslop/SKILL.md) | you write a Japanese document, or ask to fix or clarify Japanese text. |
+| [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | you say "reflect" at the end of a conversation. Not for weekly reports or retrospectives. |
+
+<details>
+<summary>what tsumi-mode reads in each situation</summary>
+
+| situation | tsumi-mode reads |
+|---|---|
+| designing or fixing an agent, skill, prompt, tool definition, or output schema | `agent-design-review` |
+| building a new business agent | the New agent playbook (plus `agent-design-review`) |
+| a failing agent output, a failing eval, or a correction to an agent | `agent-design-review` |
+| building or fixing an agent with no way to run it and capture evidence | pstack's `create-verification-skill`, with tsumi's overlay |
+| you said reflect, or want this conversation's lessons fed back into tsumi | `tsumi-reflect` (pstack's `reflect` plus tsumi's additions) |
+| a skill, prompt, tool definition, or schema changed | the Eval playbook (regression evals). If a description changed, also `scripts/check-skills` and the trigger cases |
+| deciding which outputs go to a human, or a human correction arrives | the Review triage playbook |
+| writing or fixing a Japanese document (README, design doc, ADR, how-to, PR description; not commit messages) | `unslop` |
+| anything else (code, design, debugging, verification, PRs) | pstack's `poteto-mode` rules, unchanged |
+
+</details>
+
+tsumi does not use pstack's `unslop` or `technical-writing`. Where pstack would call them, tsumi uses its own `unslop` for Japanese documents people read, and nothing for commit messages or chat replies. tsumi's `unslop` borrows the parts of pstack's `technical-writing` that also apply to Japanese, such as choosing the document type first and writing code names exactly as they are. For the candidate-detection command and the hooks behind `unslop`, see [document checks](docs/unslop-checks.md) (Japanese).
+
+`agent-design-review` and `unslop` (named `clear-japanese` when it moved) came from [223mle/skills](https://github.com/223mle/skills). tsumi is now their only source; they are not kept in 223mle/skills.
+
+## How tsumi thinks
+
+### Start from an eval
+
+Before you build, fix, or change an agent, set up an eval to fix the direction. Write the definition of passing (A) first, then a way to run the real thing and capture evidence (B).
+
+- **A. The definition of passing.** For each real input, write the output that passes, who uses that output and how, and what happens when it is wrong. Quantitative versus qualitative is just a question of who judges: code, another model, or a person.
+- **B. A way to run it and capture evidence.** Keep the output itself, side effects such as a sent email or a written row, and rendered results such as slide images. If the output is already the evidence, deciding the run command and where the evidence goes is enough. If you need more, use pstack's `create-verification-skill` with tsumi's overlay.
+
+Before trusting a judge, check that it passes a hand-made correct output and fails a deliberately broken one. The eval you build here becomes the regression eval in layer 2 below.
+
+### Put each fix as high as it can go
+
+Place each fix in the highest layer that works, in this order:
+
+1. **Make the mistake impossible with the environment and tools.** When the choices are fixed, have the agent pick from components or IDs instead of writing freely. Constrain output that code reads with a JSON schema, and reject anything that does not match on the receiving side. Put IDs, dates, amounts, recipients, and boilerplate in templates and fill them with code.
+2. **Catch it with automated checks and regression evals.** Find remaining mistakes with fixed checks and eval cases. Every time a skill or prompt changes, run a number of cases proportional to the change and compare with the previous version.
+3. **Write only uncodeable judgment into the prompt.** Reading the intent of a request, or choosing which component to use. When the same fix shows up twice, move it to layer 1 or 2 instead of adding to the prompt.
+4. **Save human review for last, and only for suspicious output.** Record what people corrected in the correction log, and use it as material for the next fix.
+
+This is an order of investment, not a plan to finish four phases in sequence.
+
+### Grow from top practice and recorded dialogue
+
+tsumi grows from two sources.
+
+- **Top practice.** The approach starts from the practice of top developers, such as poteto's posts and pstack, and will keep pulling from their blogs and skills.
+- **Recorded dialogue between Daiki and agents.** Say "reflect" at the end of a conversation, and `tsumi-reflect` picks up the lessons and bundles the skill fixes and the correction-log rows into one PR. Only threads where reflect ran are used. The correction log never contains customer names or customer data.
+
+When two rows of the same kind collect in the correction log, the fix moves into structure instead of the prompt. Pass/fail criteria for evals that are not yet settled, and the signals for which outputs go to a human, are also decided from the trends in this record.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md). Design decisions are in [DESIGN.md](DESIGN.md), and the eval design is in [evals/README.md](evals/README.md). These documents are in Japanese.
