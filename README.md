@@ -57,6 +57,8 @@ tsumi は、2つの材料から育てます。
 
 pstack の `unslop` と `technical-writing` は使いません。pstack がこの2つを呼ぶ場面では、人が読む日本語の文書なら tsumi の `unslop` を使い、コミット文とチャットの返信にはどれも使いません。tsumi の `unslop` は、pstack の `technical-writing` の考え方のうち日本語にも当てはまるもの（文書の種類を先に決める、コードの名前をそのまま書く、など）を取り込んでいます。
 
+unslop の候補検出コマンドと hook の役割は、[文書の検査](docs/unslop-checks.md)を参照してください。
+
 tsumi-mode は、コマンドで呼んだときだけ動きます。`agent-design-review`、`unslop`、`tsumi-reflect` は単独でも動き、tsumi-mode を通さなくても、依頼の内容に合えばエージェントが自分で読みます。
 
 | スキル | 単独で読まれる場面 |

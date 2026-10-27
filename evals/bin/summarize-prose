@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Validate recorded prose evidence and summarize final, adjudicated results."""
+import json
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[2]
+folder = root / 'evals/prose'
+load = lambda name: json.loads((folder / name).read_text(encoding='utf-8'))
+requests = load('requests.json')
+outputs = load('outputs.json')
+judgments = load('judgments.json')
+run = load('run.json')
+controls = load('controls.json')
+ids = {r['id'] for r in requests}
+by_label = {j['label']: j for j in judgments}
+assert len(by_label) == len(judgments), 'duplicate judgment labels'
+assert set(by_label) == {o['label'] for o in outputs + controls}, 'missing or extra judgment'
+assert len({o['label'] for o in outputs + controls}) == len(outputs + controls), 'duplicate outputs'
+for item in outputs + controls:
+    judgment = by_label[item['label']]
+    assert judgment['case'] == item['case'], 'case mismatch'
+    assert type(judgment['pass']) is bool and judgment['reason'] and judgment['evidence'], 'incomplete judgment'
+for control in controls:
+    assert by_label[control['label']]['pass'] == control['expected'], 'calibration failed'
+for version in ('baseline', 'revised'):
+    rows = [o for o in outputs if o['version'] == version]
+    expected = {(case, trial) for case in ids for trial in range(1, run['trials_per_version'] + 1)}
+    assert len(rows) == len(expected), 'unexpected output count'
+    assert {(r['case'], r['trial']) for r in rows} == expected, 'missing/duplicate trial'
+for case in sorted(ids):
+    values = []
+    for version in ('baseline', 'revised'):
+        rows = [o for o in outputs if o['case'] == case and o['version'] == version]
+        values.append(f"{sum(by_label[o['label']]['pass'] for o in rows)}/{len(rows)}")
+    print(f"{case}: {' -> '.join(values)}")
+current = {str(p.relative_to(root / 'skills/unslop')): p.read_text(encoding='utf-8')
+           for p in (root / 'skills/unslop').rglob('*')
+           if p.is_file() and '__pycache__' not in p.parts}
+assert current == run['snapshots']['revised'], 'current skill differs from measured revision'
+print(f"calibration: {len(controls)}/{len(controls)}; measured skill matches current files")
