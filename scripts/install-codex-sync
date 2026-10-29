@@ -32,7 +32,7 @@ def main():
     script = state / "sync-codex-skills"
     hooks_path = home / ".codex" / "hooks.json"
     config = json.loads(hooks_path.read_text()) if hooks_path.exists() else {}
-    names = ("unslop", "agent-design-review", "tsumi-mode")
+    names = ("unslop", "agent-design-review", "tsumi-mode", "html-explainer")
     retired = ("clear-japanese",)
     links = {home / ".agents" / "skills" / name: state / "current" / "skills" / name for name in names}
     stale = [path for path in (home / ".agents" / "skills" / name for name in retired) if is_tsumi_link(path, home, state)]

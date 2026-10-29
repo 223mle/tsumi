@@ -82,7 +82,7 @@ python3 scripts/install-codex-sync
 
 The installer does two things:
 
-- It fetches the latest merged version into `~/.codex/tsumi/current` and points the three tsumi skills that Codex reads at that copy.
+- It fetches the latest merged version into `~/.codex/tsumi/current` and points the four tsumi skills that Codex reads at that copy.
 - It adds a hook to `~/.codex/hooks.json` that updates the copy when a chat starts or resumes. Your existing hooks stay as they are.
 
 After setup, open Codex's Hooks settings, review the hook once, and trust it. It does not run until you trust it.
@@ -121,6 +121,7 @@ The entry point is `tsumi-mode`, which runs only when you invoke it by command. 
 | [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | you type `/tsumi-mode` (`/tsumi:tsumi-mode` in Claude Code). Writing "use tsumi" is not enough. |
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | you design an agent or skill, review a design, or keep seeing the same mistake or drifting output. |
 | [`unslop`](skills/unslop/SKILL.md) | you write a Japanese document, or ask to fix or clarify Japanese text. |
+| [`html-explainer`](skills/html-explainer/SKILL.md) | you ask for a Japanese explanatory HTML document with diagrams. Uses unslop, reusable components, and browser verification. |
 | [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | you say "reflect" at the end of a conversation. Not for weekly reports or retrospectives. |
 
 <details>

@@ -1,0 +1,13 @@
+id: trigger-html-explainer-001
+title: 日本語の図解付きHTML資料の作成でhtml-explainerを読む
+targets: [html-explainer]
+tags: [trigger, ja, must-pass]
+source: 手書き。図と文章が明快な自己完結HTML資料を作りたいという依頼を匿名化。
+trials: 3
+prompt: |
+  書類を受け付け、内容を確認して保管する仕組みを、開発経験の浅い担当者向けに説明したいです。図解と日本語の文章を組み合わせた、見やすい単独HTML資料を作ってください。架空の例として説明し、外部公開は不要です。
+checks:
+  - type: must_read
+    glob: "**/html-explainer/SKILL.md"
+  - type: must_read
+    glob: "**/unslop/SKILL.md"

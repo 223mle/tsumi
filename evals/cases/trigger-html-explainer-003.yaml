@@ -1,0 +1,11 @@
+id: trigger-html-explainer-003
+title: Webアプリ実装を解説資料へ置き換えない
+targets: [html-explainer]
+tags: [trigger, ja, must-pass]
+source: 手書き。成果物がWebアプリの場合の境界。
+trials: 3
+prompt: |
+  Reactで、登録した書類を検索できるWebアプリを実装したいです。入力欄と検索結果を表示する画面を作ってください。仕組みを説明する資料は不要です。
+checks:
+  - type: must_not_read
+    glob: "**/html-explainer/SKILL.md"

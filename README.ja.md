@@ -74,6 +74,8 @@ Claude Code の `~/.claude/settings.json` に次のフックを追加すると�
 
 ### Codex
 
+`html-explainer`を追加した版へ更新した後は、インストーラーを一度再実行して新しいスキルのリンクを作成します。
+
 macOS では、作業ブランチで次のコマンドを実行すると、Codex 用の自動更新を設定できます。この設定は、Claude Code・Cursor 向けの設定とは独立しています。
 
 ```bash
@@ -82,7 +84,7 @@ python3 scripts/install-codex-sync
 
 インストーラーは次の2つを行います。
 
-- マージ済みの最新版を `~/.codex/tsumi/current` に取得し、Codex が読み込む3つの tsumi スキルを、そこへのリンクに切り替えます。
+- マージ済みの最新版を `~/.codex/tsumi/current` に取得し、Codex が読み込む4つの tsumi スキルを、そこへのリンクに切り替えます。
 - `~/.codex/hooks.json` に、チャットの開始・再開時に更新するフックを追加します。既存のフックはそのまま残ります。
 
 設定が終わったら、Codex の Hooks 設定でこのフックを一度確認し、信頼してください。信頼するまでは自動で実行されません。
@@ -121,6 +123,7 @@ python3 scripts/install-codex-sync
 | [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）と打ったときだけ。「tsumi で」と書くだけでは読み込まれません |
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき |
 | [`unslop`](skills/unslop/SKILL.md) | 日本語の文書を書くとき、「日本語を直して」「分かりやすくして」と頼んだとき |
+| [`html-explainer`](skills/html-explainer/SKILL.md) | 日本語の解説・設計説明を、図と本文のある単独HTML資料にするとき。unslopと組み合わせ、生成後に実描画を確認します |
 | [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | 会話の最後に「reflect して」と言ったとき。週報や振り返りの文書を書く依頼では読み込まれません |
 
 <details>

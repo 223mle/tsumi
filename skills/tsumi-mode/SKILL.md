@@ -22,6 +22,7 @@ Match the request against every line before you answer, even when it looks like 
 - Changing a skill, prompt, tool definition, schema, or template → the **Eval** playbook before calling it done.
 - Deciding which outputs a human reviews, or human corrections arrive → the **Review triage** playbook ([playbooks/review-triage.md](playbooks/review-triage.md)).
 - The user corrects you → add a row to the corrections log (see Rules). Second row of the same class → "Same correction twice".
+- Creating or improving a Japanese explanatory HTML document with diagrams → **html-explainer** (`../html-explainer/SKILL.md`), together with unslop. Not for websites, web apps, or slide decks.
 - Writing or rewriting a Japanese document others will read (README, design doc, ADR, how-to, PR description, Japanese SKILL.md, customer-facing text) → tsumi's **unslop** skill (`../unslop/SKILL.md`), before you write the first draft. Not for commit messages or your chat reply.
 - pstack calls for **unslop** or **technical-writing** (a Non-negotiable or a playbook step, your reply included) → for a Japanese document, read tsumi's `../unslop/SKILL.md`. For a commit message or your chat reply, read neither. Never read pstack's own `unslop` or `technical-writing` unless the user invokes one by name: Daiki does not write English prose. Write your chat reply per pstack's Writing the reply.
 - Repeated mistakes in repo code (not agent output) → pstack's **correct** plus [overlays/correct.md](overlays/correct.md).
