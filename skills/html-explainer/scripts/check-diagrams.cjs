@@ -5,6 +5,17 @@ async function inspect(page){return page.evaluate(()=>{
   function shown(el){for(let p=el;p&&p instanceof Element;p=p.parentElement){const s=getComputedStyle(p);if(s.display==='none'||s.visibility==='hidden'||Number(s.opacity)<.05)return false;}return true;}
   document.querySelectorAll('.dg-live svg').forEach(svg=>{
     const bounds=svg.getBoundingClientRect();if(!bounds.width)return;
+    // Any label must keep clear of shapes that are not its own: other nodes, actor boxes, tags and bars.
+    const shapes=[...svg.querySelectorAll('.dg-node>rect,.dg-actor>rect,.dg-mark>rect,rect.bar')].filter(shown);
+    svg.querySelectorAll('text[data-label]').forEach(t=>{if(!shown(t)||!t.textContent.trim())return;
+      const own=t.closest('.dg-node,.dg-actor,.dg-mark');const r=t.getBoundingClientRect();
+      const key=(t.dataset.key||'').replace(/^segment-label-/,'segment-').replace(/^row-value-/,'row-');
+      for(const sh of shapes){
+        if(own&&own.contains(sh))continue;
+        if(t.classList.contains('bar-label')&&sh.dataset.key===key)continue;  // a label inside its own bar
+        const q=sh.getBoundingClientRect();const w=Math.min(r.right,q.right)-Math.max(r.left,q.left),h=Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top);
+        if(w>3&&h>3){errors.push(`label on a shape: ${t.textContent.trim()}`);break;}
+      }});
     // A bar painted after a label hides it: the label's centre must not sit under a later filled bar.
     const bars=[...svg.querySelectorAll('rect.bar')].filter(shown);
     svg.querySelectorAll('text[data-label]').forEach(t=>{if(!shown(t)||!t.textContent.trim())return;const r=t.getBoundingClientRect();const cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
