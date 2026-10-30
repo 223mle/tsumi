@@ -246,8 +246,9 @@ def figure_html(fig: dict, source_titles: dict[str, str] | None = None) -> str:
         body = f'<div class="chart timeline">{rows}<div class="chart-axis"><span class="axis-spacer"></span><span class="axis-ticks">{axis}</span><span>{esc(fig["unit"])}</span></div></div>'
     else:
         head = ''.join(f'<th scope="col">{esc(c)}</th>' for c in fig["columns"])
-        rows = ''.join('<tr>' + ''.join((f'<th scope="row">{esc(c)}</th>' if j == 0 else f'<td>{esc(c)}</td>') for j, c in enumerate(row)) + '</tr>' for row in fig["rows"])
-        body = f'<p class="table-summary">{esc(fig["summary"])}</p><div class="table-wrap" tabindex="0" role="region" aria-label="表: {esc(fig["summary"])}。横にスクロールできます。"><p class="scroll-hint">横にスクロールして表全体を確認できます。</p><table><caption class="visually-hidden">{esc(fig["summary"])}</caption><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>'
+        # data-label lets a phone show each row as a card with its column names (style.css, .table-stack).
+        rows = ''.join('<tr>' + ''.join((f'<th scope="row">{esc(c)}</th>' if j == 0 else f'<td data-label="{esc(fig["columns"][j])}">{esc(c)}</td>') for j, c in enumerate(row)) + '</tr>' for row in fig["rows"])
+        body = f'<p class="table-summary">{esc(fig["summary"])}</p><div class="table-wrap" tabindex="0" role="region" aria-label="表: {esc(fig["summary"])}。横にスクロールできます。"><p class="scroll-hint">横にスクロールして表全体を確認できます。</p><table class="{"table-stack" if len(fig["columns"]) >= 4 else ""}"><caption class="visually-hidden">{esc(fig["summary"])}</caption><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>'
     source_titles = source_titles or {}
     status = esc(fig["status"]); refs = ''.join(f'<a class="source-ref" href="#{esc(x)}">{esc(source_titles.get(x, x))}</a>' for x in fig.get("source_ids", []))
     summary = f'<p class="summary">{esc(fig["summary"])}</p>' if kind != "table" else ""

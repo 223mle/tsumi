@@ -47,6 +47,6 @@
 - `flow`: `steps` に `label`・`detail` を順に並べ、最後以外に `to_next` を付ける
 - `bars`: `rows` に `label`・`value`。`unit` と必要なら `axis_max`
 - `timeline`: `rows` に `label`・`start`・`duration`。`unit` と必要なら `axis_max`。開始は0以上、期間は正数
-- `table`: `columns` と `rows`。各行のセル数を列数と一致させる
+- `table`: `columns` と `rows`。各行のセル数を列数と一致させる。4列以上の表は、幅600px以下で1行ずつのカード（左に列名）に変わる。1列目には行の名前（人数、案の名前）を置く
 
 数値の図は入力値から棒幅・軸・目盛りを算出する。値を座標へ直接書かない。往復・分岐・前後比較・重なりがある図は、基本図ではなく `diagram` を使う。

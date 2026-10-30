@@ -531,6 +531,7 @@ class EvalFiveTests(unittest.TestCase):
         p, html = render_doc(doc)
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn('<p class="table-summary">要約の文</p><div class="table-wrap"', html)
+        self.assertIn('<td data-label="b">2</td>', html)
 
 
 if __name__ == "__main__":
