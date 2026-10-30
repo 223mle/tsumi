@@ -550,5 +550,17 @@ class LineDotsAndKeyTests(unittest.TestCase):
             render_line({**spec, "series": [{"id": "d", "label": "x", "dots": True, "dashed": True, "points": [[1, 2], [5, 6]]}]})
 
 
+class TableCellTests(unittest.TestCase):
+    def test_markup_in_a_table_cell_is_refused(self):
+        sys.path.insert(0, str(Path(__file__).parents[1] / "skills/html-explainer/scripts"))
+        import render
+        fig = {"id": "t", "kind": "table", "title": "表", "summary": "比較。", "caption": "説明用。", "status": "illustrative",
+               "columns": ["案", "費用"], "rows": [["A", "**安い**"]]}
+        with self.assertRaisesRegex(ValueError, "plain text"):
+            render.validate_figure(fig, "f", set(), set())
+        fig["rows"] = [["A", "安い"]]
+        render.validate_figure(fig, "f", set(), set())
+
+
 if __name__ == "__main__":
     unittest.main()

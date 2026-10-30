@@ -209,6 +209,8 @@ def validate_figure(fig: object, where: str, source_ids: set[str], seen: set[str
         if not isinstance(rows, list) or not rows: fail(f"{where}.rows: non-empty array required")
         for i, row in enumerate(rows):
             if not isinstance(row, list) or len(row) != len(cols) or not all(isinstance(x, str) for x in row): fail(f"{where}.rows[{i}]: cell count/type mismatch")
+            # Cells print as plain text, so markup would show its asterisks and brackets to the reader.
+            if any(re.search(r'\*\*|\[\[|`|\]\(', x) for x in [*cols, *row]): fail(f"{where}.rows[{i}]: table cells are plain text; drop **, [[ ]], ` and links, and put the emphasis or link in the prose")
 
 def validate_numeric_rows(rows: object, where: str, key: str) -> None:
     if not isinstance(rows, list) or not rows: fail(f"{where}.rows: non-empty array required")
