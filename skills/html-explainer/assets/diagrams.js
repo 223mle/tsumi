@@ -98,10 +98,10 @@
       }frame(start);
     }
     function syncSteps(index){
-      if(!stepButtons.length)return;
-      stepButtons.forEach((b,i)=>{b.setAttribute('aria-current',i===index?'step':'false');b.classList.toggle('is-done',i<index);});
       const tpl=figure.querySelector(`template[data-step-text="${index}"]`);
       if(stepText&&tpl)stepText.replaceChildren(tpl.content.cloneNode(true));
+      if(!stepButtons.length)return;
+      stepButtons.forEach((b,i)=>{b.setAttribute('aria-current',i===index?'step':'false');b.classList.toggle('is-done',i<index);});
       if(stepCount)stepCount.textContent=`${index+1} / ${stepButtons.length}`;
       // On narrow screens the drawing scrolls sideways; bring the current step into view.
       panels.forEach(({svg})=>{

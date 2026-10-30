@@ -10,6 +10,12 @@ import html
 import re
 from typing import Any
 
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parent))  # loadable by file path as well as by name
+from jawrap import plain, units, wrap
+
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 TONES = {"blue", "teal", "violet", "amber", "rose", "slate", "red"}
 KINDS = {"call", "reply", "async"}
@@ -27,23 +33,14 @@ def _fail(path: str, message: str) -> None:
     raise ValueError(f"{path}: {message}")
 
 
-def _units(text: str) -> int:
-    return sum(2 if ord(ch) > 0x3000 else 1 for ch in text)
+def _units(text: str) -> float:
+    return units(text)
 
 
 def _wrap(text: str, max_units: int, path: str, max_lines: int = 2) -> list[str]:
-    if _units(text) <= max_units:
-        return [text]
-    lines, current = [], ""
-    for char in text:
-        if current and _units(current + char) > max_units:
-            lines.append(current)
-            current = ""
-        current += char
-    if current:
-        lines.append(current)
-    if len(lines) > max_lines:
-        _fail(path, f"label is too long ({len(lines)} lines); shorten it and move detail to the step text")
+    lines = wrap(text, max_units, max_lines)
+    if lines is None:
+        _fail(path, f"label is too long for {max_lines} lines; shorten it, mark the break with \\n, or move detail to the step text")
     return lines
 
 
@@ -156,7 +153,7 @@ def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
     for step in range(len(msgs)):
         vid = f"{safe}-s{step}"
         cur = msgs[step]
-        title = f"手順{step + 1}: {cur['label']}"
+        title = f"手順{step + 1}: {plain(cur['label'])}"
         parts = [f'<svg class="dg-sequence" viewBox="0 0 {WIDTH} {height:g}" role="img" aria-labelledby="{vid}-title {vid}-desc">',
                  f'<title id="{vid}-title">{_esc(title)}</title><desc id="{vid}-desc">{_esc(cur.get("text", cur["label"]))}</desc><defs>']
         for tone in sorted(TONES):
@@ -172,7 +169,7 @@ def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
             ty = HEAD_Y + HEAD_H / 2 - (len(lines) - 1) * 8
             tspans = "".join(f'<tspan x="{x:g}" dy="{0 if j == 0 else 16}">{_esc(line)}</tspan>' for j, line in enumerate(lines))
             w = min(gap - 16, 176)
-            parts.append(f'<g class="dg-actor dg-tone-{actor.get("tone", "slate")}{state}" data-key="{key}" data-ref="{_esc(actor["label"])}">'
+            parts.append(f'<g class="dg-actor dg-tone-{actor.get("tone", "slate")}{state}" data-key="{key}" data-ref="{_esc(plain(actor["label"]))}">'
                          f'<line class="dg-lifeline" data-key="{key}:life" x1="{x:g}" y1="{HEAD_Y + HEAD_H:g}" x2="{x:g}" y2="{height - 8:g}"/>'
                          f'<rect data-key="{key}:box" x="{x - w / 2:g}" y="{HEAD_Y}" width="{w:g}" height="{HEAD_H}" rx="8"/>'
                          f'<text data-key="{key}:label" class="dg-actor-label" data-label="true" x="{x:g}" y="{ty + 5:g}" text-anchor="middle">{tspans}</text></g>')
@@ -225,4 +222,4 @@ def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
 
 def sequence_steps(spec: dict[str, Any]) -> list[dict[str, str]]:
     """Default step labels and texts derived from the messages."""
-    return [{"label": m.get("step_label", m["label"]), "text": m.get("text", "")} for m in spec["messages"]]
+    return [{"label": m.get("step_label", plain(m["label"])), "text": m.get("text", "")} for m in spec["messages"]]

@@ -40,6 +40,8 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
           }));check(`${theme}/${id}: updated label text`,labels);
           const errors=await inspect(p);check(`${theme}/${id}: after geometry`,!errors.length,errors.join('; '));
           await f.screenshot({path:path.join(out,`${theme}-${id}-after.png`)});
+          // Keep one picture per variant so every state can be read, not only the second one.
+          for(let v=0;v<await radios.count();v++){await radios.nth(v).check();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);await f.screenshot({path:path.join(out,`${theme}-${id}-variant-${v+1}.png`)});}
           await radios.first().check();await radios.nth(1).check();await radios.first().check();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);check(`${theme}/${id}: rapid reversal`,await f.getAttribute('data-rendered-state')==='0');
         }
         const stepButtons=f.locator('[data-step]');
@@ -54,7 +56,7 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
           await stepButtons.nth(n-1).click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
           check(`${theme}/${id}: last step disables next`,await f.locator('[data-go="1"]').isDisabled());
           const errors=await inspect(p);check(`${theme}/${id}: step geometry`,!errors.length,errors.join('; '));
-          await f.screenshot({path:path.join(out,`${theme}-${id}-last-step.png`)});
+          for(let v=0;v<n;v++){await stepButtons.nth(v).click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);await f.screenshot({path:path.join(out,`${theme}-${id}-step-${v+1}.png`)});}
           await stepButtons.first().click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
         }
         const play=f.locator('.dg-play');if(await play.count()){

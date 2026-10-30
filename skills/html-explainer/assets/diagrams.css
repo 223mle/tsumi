@@ -22,3 +22,7 @@
 .dg-network .dg-edge.is-current{stroke-width:3.4}.dg-network .dg-edge-label.is-current text{font-weight:700}.dg-network .dg-edge-label.is-current rect{stroke:var(--line-strong,var(--line));stroke-width:1}
 .dg-tip{position:fixed;z-index:40;pointer-events:none;padding:6px 10px;border-radius:6px;background:var(--text);color:var(--bg);font-size:12.5px;line-height:1.5;box-shadow:0 2px 10px #0003;white-space:nowrap}.dg-tip[hidden]{display:none}.dg-live [data-tip]{cursor:default}.dg-live [data-tip]:hover{filter:brightness(1.12)}
 .dg-scroll .bar-label,.dg-scroll .external-label{pointer-events:none}
+.dg-note-bar .dg-step-text{min-height:0}.dg-note-bar{margin-top:0}
+@media(max-width:600px){.dg-figure[data-mode=steps].dg-enhanced{display:flex;flex-direction:column}.dg-figure[data-mode=steps].dg-enhanced>.dg-step-bar{order:10;position:sticky;bottom:10px;z-index:3;margin:10px 0 0;padding:10px 12px;gap:6px;background:color-mix(in srgb,var(--subtle) 94%,transparent);backdrop-filter:blur(6px);border:1px solid var(--line);box-shadow:0 4px 18px #0002}.dg-figure[data-mode=steps].dg-enhanced>figcaption{order:11}.dg-figure[data-mode=steps] .dg-step-text{font-size:13.5px;min-height:2.6em}.dg-step-nav button{height:30px}}
+@media(max-width:600px){.dg-steps b{min-width:22px;height:22px;font-size:10.5px}.dg-steps li+li::before{width:5px;margin-right:2px}.dg-steps{gap:2px}}
+.dg-network .dg-mark rect{fill:var(--tone);stroke:var(--surface);stroke-width:2}.dg-network .dg-mark text{fill:var(--diagram-on-tone);font-size:12px;font-weight:700}

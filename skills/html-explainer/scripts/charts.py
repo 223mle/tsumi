@@ -10,6 +10,12 @@ import math
 import re
 from typing import Any
 
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parent))  # loadable by file path as well as by name
+from jawrap import wrap
+
 TONES = {"blue", "teal", "violet", "amber", "rose", "slate", "red"}
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]*$")
 
@@ -209,14 +215,9 @@ def _svg_text(x: float, y: float, value: str, cls: str = "label", anchor: str = 
 
 
 def _svg_wrapped_text(x, y, value, cls, key, max_chars=18, anchor="start"):
-    # Width units approximate a 12px CJK glyph; Latin glyphs consume half a unit.
-    lines=[];line="";used=0
-    for char in value:
-        cost=1 if ord(char)>255 else .55
-        if used+cost>max_chars and line: lines.append(line);line="";used=0
-        line+=char;used+=cost
-    if line or not lines:lines.append(line)
-    if len(lines)>3: _fail(key,"label exceeds three lines; shorten it or move detail to the caption")
+    # max_chars counts 12px CJK glyphs; jawrap counts them as two units.
+    lines=wrap(value,max_chars*2,3) if value else [value]
+    if lines is None: _fail(key,"label exceeds three lines; shorten it, mark the break with \\n, or move detail to the caption")
     spans="".join(f'<tspan x="0" dy="{0 if i==0 else 15}">{_esc(line)}</tspan>' for i,line in enumerate(lines))
     return f'<text transform="translate({x:.2f},{y:.2f})" class="{cls}" text-anchor="{anchor}" data-label="true" data-key="{_esc(key)}">{spans}</text>'
 

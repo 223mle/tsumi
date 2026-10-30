@@ -32,14 +32,14 @@ def _steps(bundle,panels,count):
         out.append({'label':st['label'],'text':st.get('text','')})
     return out
 
-def _scene_name(labels,steps,j,n):
+def _scene_name(labels,steps,j,n,notes=None):
     if n<=1: return ''
     if steps:
         st=steps[j]; return f'{j+1}. {html.escape(st["label"])}'+(f'<span>{html.escape(st["text"])}</span>' if st['text'] else '')
-    return html.escape(labels[j])
+    return html.escape(labels[j])+(f'<span>{html.escape(notes[j])}</span>' if notes else '')
 
 def render_diagram(bundle):
-    if not isinstance(bundle,dict) or set(bundle)-{'id','title','caption','status','legend','panels','labels','motion','mode','steps'}:
+    if not isinstance(bundle,dict) or set(bundle)-{'id','title','caption','status','legend','panels','labels','motion','mode','steps','notes'}:
         raise ValueError('diagram: unknown fields or not an object')
     for key in ('id','title','caption'):
         if not isinstance(bundle.get(key),str) or not bundle[key].strip(): raise ValueError(f'diagram.{key}: text required')
@@ -63,6 +63,10 @@ def render_diagram(bundle):
     labels=bundle.get('labels',default_labels)
     if count>1 and (not isinstance(labels,list) or len(labels)!=count or not all(isinstance(x,str) and x.strip() for x in labels)): raise ValueError('labels: one label per scene required')
     if count==1: labels=labels or ['図']
+    notes=bundle.get('notes')
+    if notes is not None:
+        if steps: raise ValueError('notes: use steps[].text in steps mode')
+        if count<2 or not isinstance(notes,list) or len(notes)!=count or not all(isinstance(n,str) and n.strip() and len(n)<=160 for n in notes): raise ValueError('notes: one sentence (<= 160 characters) per variant required')
     if not isinstance(bundle.get('legend',[]),list): raise ValueError('legend: array required')
     if 'motion' in bundle and not isinstance(bundle['motion'],bool): raise ValueError('motion: boolean required')
     legends=[]
@@ -78,12 +82,15 @@ def render_diagram(bundle):
     output=[]
     for i,scenes in enumerate(variants):
         title=panels[i].get('title',''); heading=f'<h4 class="dg-panel-title">{html.escape(title)}</h4>' if title else ''
-        static=''.join(f'<div class="dg-static-scene" data-state="{j}"><p class="dg-scene-name">{_scene_name(labels,steps,j,len(scenes))}</p><div class="dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}">{svg}</div></div>' for j,svg in enumerate(scenes))
+        static=''.join(f'<div class="dg-static-scene" data-state="{j}"><p class="dg-scene-name">{_scene_name(labels,steps,j,len(scenes),notes)}</p><div class="dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}">{svg}</div></div>' for j,svg in enumerate(scenes))
         output.append(f'<div class="dg-panel">{heading}<div class="dg-live dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}"></div><div class="dg-static">{static}</div></div>')
     nav=''
     if steps:
         texts=''.join(f'<template data-step-text="{i}"><b>{i+1}. {html.escape(st["label"])}</b>{(" "+html.escape(st["text"])) if st["text"] else ""}</template>' for i,st in enumerate(steps))
         nav=f'<div class="dg-step-bar"><p class="dg-step-text" aria-live="polite"></p><div class="dg-step-nav"><button type="button" data-go="-1" aria-label="前の手順">←</button><span class="dg-step-count" aria-hidden="true">1 / {count}</span><button type="button" data-autoplay aria-pressed="false">自動で進める</button><button type="button" data-go="1" aria-label="次の手順">→</button></div>{texts}</div>'
+    if notes:
+        texts=''.join(f'<template data-step-text="{i}"><b>{html.escape(labels[i])}</b> {html.escape(n)}</template>' for i,n in enumerate(notes))
+        nav=f'<div class="dg-step-bar dg-note-bar"><p class="dg-step-text" aria-live="polite"></p>{texts}</div>'
     if steps:
         nav+='<ol class="dg-step-notes">'+''.join(f'<li><b>{html.escape(st["label"])}</b>{(" "+html.escape(st["text"])) if st["text"] else ""}</li>' for st in steps)+'</ol>'
     mode_attr=' data-mode="steps"' if steps else ''

@@ -11,6 +11,12 @@ import math
 import re
 from typing import Any
 
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parent))  # loadable by file path as well as by name
+from jawrap import plain, units, wrap
+
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 TONES = {"blue", "teal", "violet", "amber", "rose", "slate", "red"}
 KINDS = {"request", "file"}
@@ -127,8 +133,16 @@ def validate_network(spec: object) -> dict[str, Any]:
         path = f"network.variants[{vi}]"
         if not isinstance(variant, dict):
             _fail(path, "must be an object")
-        if set(variant) - {"label", "active_nodes", "edges", "note", "step"}:
+        if set(variant) - {"label", "active_nodes", "edges", "note", "step", "marks"}:
             _fail(path, "unknown fields")
+        marks = variant.get("marks", [])
+        if not isinstance(marks, list) or len(marks) > 3:
+            _fail(path + ".marks", "up to 3 marks")
+        for mi, mark in enumerate(marks):
+            if (not isinstance(mark, dict) or set(mark) - {"node", "label", "tone"} or mark.get("node") not in node_map
+                    or not isinstance(mark.get("label"), str) or not mark["label"].strip() or units(mark["label"]) > 16):
+                _fail(f"{path}.marks[{mi}]", "node and a label of at most 8 full-width characters required")
+            _tone(mark.get("tone"), f"{path}.marks[{mi}].tone", "red")
         _text(variant.get("label"), path + ".label")
         active = variant.get("active_nodes", [])
         if (not isinstance(active, list) or any(not isinstance(n, str) or n not in node_map for n in active)):
@@ -198,30 +212,22 @@ def _expand_steps(spec: dict[str, Any]) -> dict[str, Any]:
 def network_steps(spec: dict[str, Any]) -> list[dict[str, str]]:
     """Default step labels and texts for a network whose edges carry step numbers."""
     edges = spec["edges"]
-    return [{"label": re.sub(r"^\s*(?:[\u2460-\u2473]|\d+[.)．]?)\s*", "", next(e["label"] for e in edges if e["step"] == k)) or str(k),
+    return [{"label": re.sub(r"^\s*(?:[\u2460-\u2473]|\d+[.)．]?)\s*", "", plain(next(e["label"] for e in edges if e["step"] == k))) or str(k),
              "text": " ".join(e["text"] for e in edges if e["step"] == k and e.get("text"))}
             for k in range(1, max(e["step"] for e in edges) + 1)]
 
 
-def _visual_len(text: str) -> int:
-    return sum(2 if ord(ch) > 0x3000 else 1 for ch in text)
+def _visual_len(text: str) -> float:
+    return units(text)
 
 
 def _wrap(text: str, max_units: int = 18) -> list[str]:
-    if _visual_len(text) <= max_units:
+    if not text:
         return [text]
-    words: list[str] = []
-    current = ""
-    for char in text:
-        if current and _visual_len(current + char) > max_units:
-            words.append(current)
-            current = ""
-        current += char
-    if current:
-        words.append(current)
-    if len(words) > 2:
-        raise ValueError("label is too long for a compact diagram")
-    return words
+    lines = wrap(text, max_units, 2)
+    if lines is None:
+        raise ValueError("label is too long for a compact diagram; shorten it or mark the break with \\n")
+    return lines
 
 
 # Top and bottom margins tried in order: compact first, wider only when a detour needs the room.
@@ -373,6 +379,16 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
             parts.append(f'<g class="dg-boundary dg-tone-{boundary.get("tone", "violet")}" data-key="{_esc(key)}"><rect data-key="{_esc(key)}:rect" x="{x:g}" y="{y:g}" width="{w:g}" height="{h:g}" rx="14"/><text data-key="{_esc(key)}:label" x="{x+18:g}" y="{y+25:g}" class="dg-boundary-label" data-label="true">{_esc(boundary["label"])}</text></g>')
         edge_pairs: dict[tuple[str, str], int] = {}
         label_boxes = []
+        mark_parts = []
+        for mark in variant.get("marks", []):
+            mx, my = positions[mark["node"]]
+            mw = units(mark["label"]) * 6.5 + 18
+            top = my - 36 - 16  # sits on the node's top edge, clear of a two-line label
+            label_boxes.append((mx - mw / 2, top, mx + mw / 2, top + 22))
+            mkey = f"mark:{mark['node']}"
+            mark_parts.append(f'<g class="dg-mark dg-tone-{mark.get("tone", "red")}" data-key="{mkey}" transform="translate({mx:g},{top + 11:g})">'
+                              f'<rect data-key="{mkey}:rect" x="{-mw / 2:g}" y="-11" width="{mw:g}" height="22" rx="11"/>'
+                              f'<text data-key="{mkey}:label" data-label="true" text-anchor="middle" y="4">{_esc(mark["label"])}</text></g>')
         for edge in variant["edges"]:
             sx, sy = positions[edge["from"]]; tx, ty = positions[edge["to"]]
             key = f"edge:{edge['id']}"; kind = edge["kind"]
@@ -433,7 +449,8 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
             detail_y = label_y + 18 * len(label_lines) + (-1 if detail_lines else 0)
             label = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 18}">{_esc(line)}</tspan>' for i, line in enumerate(label_lines))
             detail = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>' for i, line in enumerate(detail_lines))
-            parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}" data-ref="{_esc(node["label"])}" data-obstacle="{x-72:g},{y-36:g},{node_w},{node_h}"><rect data-key="{_esc(key)}:rect" x="{x-72:g}" y="{y-36:g}" width="{node_w}" height="{node_h}" rx="8"/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
+            parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}" data-ref="{_esc(plain(node["label"]))}" data-obstacle="{x-72:g},{y-36:g},{node_w},{node_h}"><rect data-key="{_esc(key)}:rect" x="{x-72:g}" y="{y-36:g}" width="{node_w}" height="{node_h}" rx="8"/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
+        parts.extend(mark_parts)
         note_lines = _wrap(variant.get("note", ""), 80) if variant.get("note", "") else []
         note = "".join(f'<tspan x="120" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>'
                         for i, line in enumerate(note_lines))

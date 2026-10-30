@@ -129,6 +129,38 @@ class NetworkStepTests(unittest.TestCase):
             render_network(self.spec(variants=[]))
 
 
+class CompareNotesAndMarksTests(unittest.TestCase):
+    def net(self):
+        return {"type": "network", "columns": 3, "rows": 2,
+                "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "フルサービス\nリゾルバー", "column": 2, "row": 1}],
+                "variants": [{"label": "なし", "edges": [{"id": "e", "from": "a", "to": "b", "label": "送る", "kind": "request"}]},
+                             {"label": "ヒット", "edges": [], "marks": [{"node": "b", "label": "ここでヒット", "tone": "teal"}]}]}
+
+    def test_notes_follow_each_variant(self):
+        html = render_diagram({"id": "n", "title": "t", "caption": "c", "notes": ["一つ目。", "二つ目。"], "panels": [{"spec": self.net()}]})
+        self.assertIn('<template data-step-text="1"><b>ヒット</b> 二つ目。</template>', html)
+        self.assertIn('dg-note-bar', html)
+        with self.assertRaisesRegex(ValueError, "notes"):
+            render_diagram({"id": "n", "title": "t", "caption": "c", "notes": ["一つだけ"], "panels": [{"spec": self.net()}]})
+
+    def test_marks_and_explicit_line_breaks(self):
+        svgs = render_network(self.net())
+        self.assertNotIn("dg-mark", svgs[0])
+        self.assertIn('class="dg-mark dg-tone-teal" data-key="mark:b"', svgs[1])
+        self.assertIn(">フルサービス</tspan>", svgs[0])
+        self.assertIn('data-ref="フルサービスリゾルバー"', svgs[0])
+        bad = self.net()
+        bad["variants"][1]["marks"] = [{"node": "zz", "label": "x"}]
+        with self.assertRaisesRegex(ValueError, "marks"):
+            render_network(bad)
+
+    def test_wrap_prefers_word_boundaries(self):
+        from jawrap import wrap
+        self.assertEqual(wrap("IPアドレスを尋ねる", 14), ["IPアドレスを", "尋ねる"])
+        self.assertEqual(wrap(".comの担当を紹介", 12), [".comの", "担当を紹介"])
+        self.assertIsNone(wrap("とても長いラベル" * 4, 10))
+
+
 class NetworkLayoutTests(unittest.TestCase):
     def test_single_row_without_detours_is_compact(self):
         spec = {"type": "network", "columns": 3, "rows": 3,
