@@ -386,7 +386,7 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
             qx=question_x(seg)
             out.append(_svg_text(qx,y+17,'？','unknown-duration','middle',f"unknown-marker-{seg['id']}"))
             if not place_beside(seg,qx-8,qx+8,y,seg['label']):
-                out.append(_svg_wrapped_text(ext_x,y+15,seg['label'],'external-label',f"segment-unknown-{seg['id']}",10))
+                external.setdefault(li,[]).append((seg['id'],seg['label']))  # joins the row's other displaced labels, in bar order
             continue
         w=float(seg['duration'])/(hi-lo)*width;tone=seg.get('tone') or lanes[li].get('tone') or 'blue'
         start,end=float(seg['start']),float(seg['start'])+float(seg['duration']);unit=spec['unit']
@@ -407,10 +407,18 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
         # Labels that found no room beside their own bar go, in bar order, just past everything else on the row.
         lane=lanes[li]['id'];text=' / '.join(x[1]for x in labels);text_width=sum(12 if ord(c)>255 else 6.8 for c in text)
         ends=[_scale(float(o['start'])+float(o.get('duration',0)),lo,hi,x0,width) for o in variant.get('segments',[]) if o['lane']==lane and not o.get('unknown')]
-        ends+=[mx+3 for mx in marker_xs]+[b for a,b in ghosts.get(lane,[])+placed.get(lane,[])]
-        sx=max(ends)+8
-        if sx+text_width<=limit:out.append(_svg_text(sx,top+li*row_height+16,text,'external-label','start',f"external-{lane}"))
-        else:out.append(_svg_wrapped_text(ext_x,top+li*row_height+15,text,'external-label',f"external-{lane}",10))
+        ends+=[mx+3 for mx in marker_xs]+[b for a,b in placed.get(lane,[])]
+        # Past everything on the row; failing that, past the real bars in a gap between the faint outlines.
+        spots=[max(ends+[b for a,b in ghosts.get(lane,[])])+8,max(ends)+8]
+        sx=next((c for c in spots if c+text_width<=limit and all(not(a<c+text_width+4 and b>c-4) for a,b in ghosts.get(lane,[]))),None)
+        if sx is not None:out.append(_svg_text(sx,top+li*row_height+16,text,'external-label','start',f"external-{lane}"))
+        elif narrow:_fail(f"lane {lane}","labels do not fit beside their bars on the phone layout")  # the column at W-144 would sit on the plot
+        else:
+            # The wrapped column starts past anything already in it, such as a label placed beside a bar near the end.
+            wx=max([ext_x]+[c+8 for c in spots])
+            chars=min(10,int((W-4-wx)/12))
+            if chars<4:_fail(f"lane {lane}","labels do not fit beside their bars; shorten them or widen the axis")
+            out.append(_svg_wrapped_text(wx,top+li*row_height+15,text,'external-label',f"external-{lane}",chars))
     layout,_=_marker_layout(variant.get('markers',[]),lo,hi,x0,width,W)
     for marker in variant.get('markers',[]):
         x,anchor,row=layout[marker['id']];tone=marker.get('tone')or'red';key=_esc(marker['id'])

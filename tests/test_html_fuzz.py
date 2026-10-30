@@ -82,7 +82,11 @@ class FuzzTests(unittest.TestCase):
             spec = {"type": "timeline", "min": 0, "max": 10, "unit": "日", "ticks": [0, 5, 10], "lanes": [{"id": "a", "label": "作業"}],
                     "variants": [{"label": "v", "segments": segments}]}
             for narrow in (False, True):
-                svg = render_chart(spec, "t", narrow=narrow)[0]
+                try:
+                    svg = render_chart(spec, "t", narrow=narrow)[0]
+                except ValueError:
+                    self.assertTrue(narrow, spec)  # only the phone layout may give up; the page then scrolls the wide one
+                    continue
                 q = float(re.search(r'<text x="([\d.]+)"[^>]*data-key="unknown-marker-u"', svg).group(1))
                 label = re.search(r'<text x="([\d.]+)"[^>]*text-anchor="(\w+)"[^>]*data-key="segment-label-u">([^<]*)<', svg)
                 if label:
@@ -93,17 +97,18 @@ class FuzzTests(unittest.TestCase):
     def test_timeline_row_labels_never_overlap(self):
         rnd = random.Random(5)
         text_re = re.compile(r'<text x="(-?[\d.]+)" y="([\d.]+)" class="(bar-label|external-label|unknown-duration)" text-anchor="(\w+)"[^>]*>([^<]+)</text>')
-        for _ in range(200):
+        wrapped_re = re.compile(r'<text transform="translate\((-?[\d.]+),([\d.]+)\)" class="external-label" text-anchor="(\w+)"[^>]*>(.*?)</text>')
+        for _ in range(300):
             segs, t = [], 0
             for k in range(rnd.randint(1, 4)):
-                d = rnd.choice([1, 2, 5, 20])
-                segs.append({"id": f"s{k}", "lane": "a", "start": t, "duration": d, "label": rnd.choice(["コピー", "照合", "読み取り専用", "待ち6分"])})
+                d = rnd.choice([0.5, 1, 1.4, 2, 5, 20])
+                segs.append({"id": f"s{k}", "lane": "a", "start": t, "duration": d, "label": rnd.choice(["コピー", "照合", "読み書き", "読み取り専用", "待ち6分"])})
                 t += d + rnd.choice([0, 1])
             if rnd.random() < 0.5:
                 segs.append({"id": "u", "lane": "a", "start": t, "unknown": True, "label": rnd.choice(["未定", "次の移行日は未定"])})
             hi = t + rnd.choice([1, 4, 10])
             spec = {"type": "timeline", "min": 0, "max": hi, "unit": "日", "ticks": [0, hi], "lanes": [{"id": "a", "label": "作業"}],
-                    "variants": [{"label": "v", "segments": segs, "markers": [{"id": "m", "value": rnd.randint(0, hi), "label": "今"}] if rnd.random() < 0.5 else []}]}
+                    "variants": [{"label": "v", "segments": segs, "markers": [{"id": "m", "value": round(rnd.uniform(0, hi), 1), "label": "今"}] if rnd.random() < 0.5 else []}]}
             for narrow in (False, True):
                 try:
                     svg = render_chart(spec, "t", narrow=narrow)[0]
@@ -114,6 +119,11 @@ class FuzzTests(unittest.TestCase):
                     x, w = float(x), _text_width(text)
                     left = x - w / 2 if anchor == "middle" else x - w if anchor == "end" else x
                     spans.append((round(float(y) / 5), left, left + w, text))  # the ? sits 1px lower than labels on its row
+                for x, y, anchor, inner in wrapped_re.findall(svg):  # labels moved to the column right of the plot
+                    for i, line in enumerate(re.findall(r">([^<]*)</tspan>", inner)):
+                        w = _text_width(line)
+                        left = float(x) if anchor == "start" else float(x) - w
+                        spans.append((round((float(y) + 1 + 15 * i) / 5), left, left + w, line))
                 spans.sort()
                 for (y1, a1, b1, t1), (y2, a2, b2, t2) in zip(spans, spans[1:]):
                     if y1 == y2:

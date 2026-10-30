@@ -11,6 +11,7 @@ SCRIPTS = ROOT / "skills/html-explainer/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from blocks import inline  # noqa: E402
+from charts import NARROW_WIDTH  # noqa: E402
 from diagrams import render_diagram  # noqa: E402
 from network import render_network  # noqa: E402
 from sequence import render_sequence  # noqa: E402
@@ -376,16 +377,16 @@ class NarrowLayoutTests(unittest.TestCase):
         html = render_diagram({"id": "t", "title": "t", "caption": "c", "panels": [{"spec": self.spec()}]})
         self.assertIn('class="dg-panel dg-wide"', html)
         self.assertIn('class="dg-panel dg-narrow"', html)
-        self.assertIn('viewBox="0 0 420 ', html)
+        self.assertIn(f'viewBox="0 0 {NARROW_WIDTH} ', html)
 
     def test_marker_labels_never_share_a_row_when_they_would_touch(self):
-        from charts import _marker_layout, NARROW_WIDTH
+        from charts import _marker_layout, _text_width, NARROW_WIDTH
         layout, rows = _marker_layout(self.spec()["variants"][0]["markers"], 0, 91, 90, NARROW_WIDTH - 106, NARROW_WIDTH)
         self.assertGreaterEqual(rows, 3)
         spans = {}
         for mid, (x, anchor, row) in layout.items():
             label = next(m["label"] for m in self.spec()["variants"][0]["markers"] if m["id"] == mid)
-            w = sum(12 if ord(c) > 255 else 7 for c in label)
+            w = _text_width(label)
             spans.setdefault(row, []).append((x + 5, x + 5 + w) if anchor == "start" else (x - 5 - w, x - 5))
         for row, items in spans.items():
             items.sort()
@@ -488,7 +489,7 @@ class LineChartTests(unittest.TestCase):
         from linechart import render_line
         wide, narrow = render_line(self.spec())[0], render_line(self.spec(), narrow=True)[0]
         self.assertIn('viewBox="0 0 960 ', wide)
-        self.assertIn('viewBox="0 0 420 ', narrow)
+        self.assertIn(f'viewBox="0 0 {NARROW_WIDTH} ', narrow)
         self.assertIn("約97人で同額", wide)
         self.assertRegex(wide, r'<desc[^>]*>スタンダード: 0人 50,000円→100人 125,000円')
         html = render_diagram({"id": "c", "title": "t", "caption": "c", "panels": [{"spec": self.spec()}]})
