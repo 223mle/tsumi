@@ -120,6 +120,8 @@ def _span_actor(spec: dict[str, Any], span: dict[str, Any]) -> str:
     return max(involved, key=order.index)
 
 
+NOTES: list[str] = []  # non-fatal layout notes; diagrams.py moves them into the render notes
+
 NARROW_WIDTH = 420
 
 
@@ -174,6 +176,9 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
         if self_call and units < 8:
             _fail(f"sequence.messages[{i}].label", "no room right of this self-call; give the actor a neighbour on its right or shorten the label")
         lines = _wrap(msg["label"], units, f"sequence.messages[{i}].label", max_lines)
+        if "\n" in msg["label"] and len(lines) > msg["label"].count("\n") + 1:
+            # The author chose where to break, but a part still does not fit, so it splits again where the author did not intend.
+            NOTES.append(f"sequence.messages[{i}].label: a part split with \\n wraps again {'on the phone layout' if narrow else ''}; about {int(units / 2)} full-width characters fit per line")
         extra = 18 * (len(lines) - 1)
         y += extra
         rows.append(y)

@@ -255,6 +255,15 @@ class FuzzTests(unittest.TestCase):
         self.assertTrue(all("is-context" in svg for svg in scenes))
         self.assertTrue(all('data-key="edge:c:path"' in svg for svg in scenes))
 
+    def test_an_explicit_break_that_wraps_again_is_noted(self):
+        sys.path.insert(0, str(Path(__file__).parents[1] / "skills/html-explainer/scripts"))
+        from diagrams import render_diagram
+        spec = {"type": "sequence", "actors": [{"id": "u", "label": "利用者"}, {"id": "s", "label": "サーバー"}, {"id": "d", "label": "データベース"}],
+                "messages": [{"id": "m1", "from": "u", "to": "s", "label": "送る"}, {"id": "m2", "from": "s", "to": "s", "label": "ハッシュ値を\n計算"}]}
+        notes = []
+        render_diagram({"id": "reg", "title": "登録", "caption": "説明用。", "status": "illustrative", "mode": "steps", "panels": [{"spec": spec}]}, warnings=notes)
+        self.assertTrue(any("wraps again" in n for n in notes), notes)
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):
