@@ -430,5 +430,43 @@ class PhoneSequenceTests(unittest.TestCase):
             render_sequence(spec, "s", narrow=True)
 
 
+class EvalFourTests(unittest.TestCase):
+    def test_hidden_node_is_not_also_faded_by_css(self):
+        spec = {"type": "network", "columns": 3, "rows": 2,
+                "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "B", "column": 2, "row": 1},
+                          {"id": "c", "label": "C", "column": 3, "row": 1}],
+                "variants": [{"label": "v", "active_nodes": ["a"], "hidden_nodes": ["c"], "edges": []}]}
+        svg = render_network(spec)[0]
+        self.assertRegex(svg, r'data-key="node:c" class="dg-node dg-tone-slate" opacity="0" aria-hidden="true"')
+        self.assertRegex(svg, r'data-key="node:b" class="dg-node dg-tone-slate inactive" opacity="0.28"')
+
+    def test_bundle_sources_and_shared_status_words(self):
+        bundle = {"id": "m", "title": "t", "caption": "c", "status": "measured", "source_ids": ["log"],
+                  "panels": [{"spec": sequence_spec()}], "mode": "steps"}
+        html = render_diagram(bundle, source_titles={"log": "監視ログ"})
+        self.assertIn('href="#log">監視ログ</a>', html)
+        self.assertIn(">計測値</span>", html)
+        doc = {"title": "題", "lead": "導入", "sections": [{"id": "s", "title": "節", "blocks": [{"type": "diagram", "bundle": {**bundle, "source_ids": []}}]}]}
+        p, _ = render_doc(doc)
+        self.assertIn("requires source_ids", p.stderr)
+
+    def test_short_amount_replaces_a_label_with_no_room(self):
+        from charts import render_chart
+        spec = {"type": "timeline", "min": 0, "max": 30, "unit": "分", "ticks": [0, 10, 20, 30],
+                "lanes": [{"id": "a", "label": "対応", "tone": "blue"}],
+                "variants": [{"label": "v", "segments": [
+                    {"id": "s1", "lane": "a", "start": 5, "duration": 6, "label": "気づくまで6分"},
+                    {"id": "s2", "lane": "a", "start": 11, "duration": 7, "label": "特定まで7分"},
+                    {"id": "s3", "lane": "a", "start": 18, "duration": 6, "label": "戻すまで6分"}]}]}
+        svg = render_chart(spec, "t", narrow=True)[0]
+        self.assertIn(">6分</text>", svg)
+        self.assertIn(">7分</text>", svg)
+
+    def test_round_axis_ticks(self):
+        from render import ticks
+        self.assertEqual(ticks(8), [0.0, 2.0, 4.0, 6.0, 8.0])
+        self.assertEqual(ticks(120)[1], 20.0)
+
+
 if __name__ == "__main__":
     unittest.main()

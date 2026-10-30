@@ -12,7 +12,7 @@ from sequence import render_sequence, sequence_steps
 
 ROOT = Path(__file__).resolve().parents[1]
 TONES = {'blue','teal','violet','amber','rose','slate','red'}
-STATUSES = {'measured':'実測','inferred':'推測','proposed':'提案','unknown':'未検証','illustrative':'説明用','code':'コード'}
+STATUSES = {'measured':'計測値','inferred':'推定','proposed':'提案','unknown':'未確定','illustrative':'説明用','code':'コード'}  # same words as render.py's basic figures
 
 RENDERERS={'network':render_network,'decision':render_decision,'sequence':render_sequence}
 
@@ -38,13 +38,15 @@ def _scene_name(labels,steps,j,n,notes=None,prose=html.escape):
         st=steps[j]; return f'{j+1}. {html.escape(st["label"])}'+(f'<span>{prose(st["text"])}</span>' if st['text'] else '')
     return html.escape(labels[j])+(f'<span>{prose(notes[j])}</span>' if notes else '')
 
-def render_diagram(bundle,prose=html.escape):
+def render_diagram(bundle,prose=html.escape,source_titles=None):
     """Render a bundle as a figure. `prose` renders caption, notes and step texts; documents pass their inline markup."""
-    if not isinstance(bundle,dict) or set(bundle)-{'id','title','caption','status','legend','panels','labels','motion','mode','steps','notes','slider','initial'}:
+    if not isinstance(bundle,dict) or set(bundle)-{'id','title','caption','status','legend','panels','labels','motion','mode','steps','notes','slider','initial','source_ids'}:
         raise ValueError('diagram: unknown fields or not an object')
     for key in ('id','title','caption'):
         if not isinstance(bundle.get(key),str) or not bundle[key].strip(): raise ValueError(f'diagram.{key}: text required')
     if not re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]*',bundle['id']): raise ValueError('diagram.id: invalid identifier')
+    refs=bundle.get('source_ids',[])
+    if not isinstance(refs,list) or not all(isinstance(r,str) for r in refs): raise ValueError('source_ids: list of source ids required')
     status=bundle.get('status','illustrative')
     if not isinstance(status,str) or status not in STATUSES: raise ValueError('diagram.status: unknown status')
     panels=bundle.get('panels')
@@ -119,7 +121,9 @@ def render_diagram(bundle,prose=html.escape):
     if steps:
         nav+='<ol class="dg-step-notes">'+''.join(f'<li><b>{html.escape(st["label"])}</b>{(" "+prose(st["text"])) if st["text"] else ""}</li>' for st in steps)+'</ol>'
     mode_attr=f' data-mode="{mode}"' if mode!='compare' else ''
-    return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="{initial}"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="status status-{status}">{STATUSES[status]}</span>{prose(bundle["caption"])}</figcaption></figure>'
+    titles=source_titles or {}
+    source_links=''.join(' <a class="source-ref" href="#'+html.escape(r)+'">'+html.escape(titles.get(r,r))+'</a>' for r in refs)
+    return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="{initial}"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="status status-{status}">{STATUSES[status]}</span>{prose(bundle["caption"])}{source_links}</figcaption></figure>'
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('input',type=Path);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--fragment',action='store_true');a=ap.parse_args()

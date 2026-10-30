@@ -380,6 +380,22 @@ class _NoRoute(ValueError):
     pass
 
 
+def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, height, canvas, label_boxes, placed_paths, route):
+    """A free spot for an edge label near the edge's middle, or None."""
+    half = (max(_visual_len(word) for word in words) * 6.2 + 8) / 2 + 6
+    # On the phone layout a label may also sit beside a vertical line instead of on it.
+    spots = [(side, mx) for side in label_sides] + ([("middle", mx - half), ("middle", mx + half)] if not margins else [])
+    for side, lx0 in spots:
+        if not _label_is_safe((lx0, my), words, side, obstacles, endpoint_ids, height, canvas): continue
+        offset = -15 if side == "above" else 15 if side == "below" else 0
+        bw = max(_visual_len(word) for word in words) * 8 + 16; bh = 20 * len(words) + 4
+        box = (lx0 - bw / 2, my + offset - bh / 2, lx0 + bw / 2, my + offset + bh / 2)
+        if any(box[0] < r[2] + 6 and box[2] > r[0] - 6 and box[1] < r[3] + 6 and box[3] > r[1] - 6 for r in label_boxes): continue
+        if any(box[0] + 4 <= x <= box[2] - 4 and box[1] + 2 <= y <= box[3] - 2 for pts in placed_paths for x, y in pts): continue
+        return (route, lx0, my, offset, box, words)
+    return None
+
+
 def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | None) -> list[str]:
     """Draw every variant; margins None selects the narrow phone layout."""
     safe_prefix = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
@@ -451,7 +467,17 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             else:
                 candidates = (["direct", "above", "below"] if route == "direct"
                               else [route, "below" if route == "above" else "above"])
-            words = _wrap(edge["label"]) if edge.get("label") else []
+            # Narrower wrappings are tried on each route before the edge is sent on a detour.
+            wraps = []
+            for units_per_line in (18, 12, 8):
+                try:
+                    w = _wrap(edge["label"], units_per_line) if edge.get("label") else []
+                except ValueError:
+                    continue
+                if w not in wraps:
+                    wraps.append(w)
+            if not wraps:
+                _wrap(edge["label"])  # raises the usual "too long" error
             requested_side = edge.get("label_side", "middle")
             label_sides = [requested_side] if requested_side != "middle" else ["middle", "above", "below"]
             candidates += [f"far-{route}"] if edge.get("route", "direct") != "direct" and margins else ["far-above", "far-below"]
@@ -462,25 +488,17 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                 # Neither may a line run through an earlier label, nor a label sit on an earlier line.
                 if any(r[0]<=x<=r[2] and r[1]<=y<=r[3] for r in label_boxes[len(variant.get("marks", [])):] for x,y in points[2:-2]): continue
                 mx,my = _path_midpoint((sx, sy),(tx, ty),candidate)
-                if not words:
-                    choice=(candidate,mx,my,0,None);break
-                half=(max(_visual_len(word)for word in words)*6.2+8)/2+6
-                # On the phone layout a label may also sit beside a vertical line instead of on it.
-                spots=[(side,mx) for side in label_sides]+([("middle",mx-half),("middle",mx+half)] if not margins else [])
-                for side,lx0 in spots:
-                    if not _label_is_safe((lx0,my),words,side,obstacles,endpoint_ids,height,canvas): continue
-                    offset=-15 if side=="above" else 15 if side=="below" else 0
-                    bw=max(_visual_len(word)for word in words)*8+16;bh=20*len(words)+4
-                    box=(lx0-bw/2,my+offset-bh/2,lx0+bw/2,my+offset+bh/2)
-                    if any(box[0]<r[2]+6 and box[2]>r[0]-6 and box[1]<r[3]+6 and box[3]>r[1]-6 for r in label_boxes): continue
-                    if any(box[0]+4<=x<=box[2]-4 and box[1]+2<=y<=box[3]-2 for pts in placed_paths for x,y in pts): continue
-                    choice=(candidate,lx0,my,offset,box);break
+                if not wraps[0]:
+                    choice=(candidate,mx,my,0,None,[]);break
+                for words in wraps:
+                    choice=_place_label(words,label_sides,mx,my,margins,obstacles,endpoint_ids,height,canvas,label_boxes,placed_paths,candidate)
+                    if choice:break
                 if choice:break
             if choice is None:
                 raise _NoRoute(f"network.variants[{vi}].edges[{edge['id']}]: no route and label slot fit"
                                + (f" on the requested side ({edge['route']})" if edge.get("route", "direct") != "direct" else "")
                                + "; rearrange nodes, shorten the label or drop route")
-            route,lx,ly,offset,box=choice
+            route,lx,ly,offset,box,words=choice
             if box: label_boxes.append(box)
             placed_paths.append(_path_points((sx, sy),(tx, ty),route,40)[3:-3])
             d=_path((sx, sy),(tx, ty),route);tone=edge.get("tone","blue")
@@ -512,8 +530,11 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             )
         for node in data["nodes"]:
             x, y = positions[node["id"]]; key = f"node:{node['id']}"; node_w, node_h = 144, 72
+            # Fading is an opacity attribute, not CSS, so the script can animate it and a hidden node stays hidden.
             border = " active" if node["id"] in active else " inactive" if active and "step" not in variant else ""
-            hide = ' opacity="0" aria-hidden="true"' if node["id"] in variant.get("hidden_nodes", []) else ""
+            hide = ' opacity="0.28"' if border == " inactive" else ""
+            if node["id"] in variant.get("hidden_nodes", []):
+                border, hide = "", ' opacity="0" aria-hidden="true"'
             label_lines = _wrap(node["label"]); detail_lines = _wrap(node.get("detail", "")) if node.get("detail", "") else []
             if len(label_lines) + len(detail_lines) > 3:
                 _fail(f"network.nodes[{node['id']}]", "label and detail exceed three lines; move detail to caption")

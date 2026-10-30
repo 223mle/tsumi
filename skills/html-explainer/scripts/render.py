@@ -86,18 +86,21 @@ def validate(doc: object) -> dict:
         for bi, block in enumerate(blocks):
             validate_block(block, f"sections[{si}].blocks[{bi}]", glossary,
                            lambda f, w: validate_figure(f, w, source_ids, figure_ids),
-                           lambda b, w: check_diagram(b, w, figure_ids, glossary))
+                           lambda b, w: check_diagram(b, w, figure_ids, glossary, source_ids))
         figs = sec.get("figures", [])
         if not isinstance(figs, list): fail(f"sections[{si}].figures: array required")
         for fi, fig in enumerate(figs): validate_figure(fig, f"sections[{si}].figures[{fi}]", source_ids, figure_ids)
     return doc
 
-def check_diagram(bundle: object, where: str, seen: set[str], glossary: dict[str, str]) -> None:
+def check_diagram(bundle: object, where: str, seen: set[str], glossary: dict[str, str], source_ids: set[str]) -> None:
     try:
         render_diagram(bundle)
     except (ValueError, TypeError, KeyError) as exc:
         fail(f"{where}: {exc}")
     check_id(bundle["id"], where + ".id", seen)
+    refs = bundle.get("source_ids", [])
+    if any(r not in source_ids for r in refs): fail(f"{where}.source_ids: unknown source id")
+    if bundle.get("status") in {"measured", "inferred"} and not refs: fail(f"{where}: {bundle['status']} figure requires source_ids")
     prose = [bundle["caption"], *bundle.get("notes", []), *(st.get("text", "") for st in bundle.get("steps", []))]
     prose += [m.get("text", "") for p in bundle["panels"] for m in p["spec"].get("messages", []) + p["spec"].get("edges", [])]
     for text in filter(None, prose): check_inline(text, where, glossary)
@@ -207,6 +210,12 @@ def fmt(v: float) -> str:
     return text if text != "0" else f"{v:.6g}"
 
 def ticks(mx: float, count: int = 5) -> list[float]:
+    """Round ticks (1, 2, 2.5 or 5 times a power of ten) from 0 up to mx; mx itself if no round step fits."""
+    if mx > 0 and math.isfinite(mx):
+        for step in sorted(m * 10 ** e for e in range(math.floor(math.log10(mx)) - 2, math.floor(math.log10(mx)) + 2) for m in (1, 2, 2.5, 5)):
+            n = mx / step
+            if n <= count + 1 and abs(n - round(n)) < 1e-9:
+                return [float(step * i) for i in range(round(n) + 1)]
     # Multiply by the fraction first: mx * i can overflow for a valid finite
     # max value even though every tick is within [0, mx].
     return [mx * (i / count) for i in range(count + 1)]
@@ -250,7 +259,7 @@ def render(doc: dict) -> str:
     sections = []
     for num, sec in enumerate(doc["sections"], 1):
         paras = ''.join(f'<p>{inline(p, glossary)}</p>' for p in sec.get("paragraphs", [])); callout = f'<aside class="callout callout-key"><p>{esc(sec["callout"])}</p></aside>' if sec.get("callout") else ''
-        body = ''.join(block_html(b, glossary, lambda f: figure_html(f, source_titles), lambda d: render_diagram(d, lambda t: inline(t, glossary))) for b in sec.get("blocks", []))
+        body = ''.join(block_html(b, glossary, lambda f: figure_html(f, source_titles), lambda d: render_diagram(d, lambda t: inline(t, glossary), source_titles)) for b in sec.get("blocks", []))
         figs = ''.join(figure_html(f, source_titles) for f in sec.get("figures", []))
         sections.append(f'<section id="{esc(sec["id"])}"><h2><span class="section-number">{num}</span>{esc(sec["title"])}</h2>{paras}{callout}{body}{figs}</section>')
     takeaways = ''.join(f'<li>{inline(t, glossary)}</li>' for t in doc.get("takeaways", []))

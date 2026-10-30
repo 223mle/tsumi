@@ -348,7 +348,13 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
         if label and w>=text_width+12:
             out.append(_svg_text(x+w/2,y+16,label,'bar-label','middle',f"segment-label-{seg['id']}"))
         elif label and not place_beside(seg,x,x+w,y,label):
-            external.setdefault(li,[]).append((seg['id'],label))
+            # Last resort before the crowded value column: keep only the trailing amount ("気づくまで6分" -> "6分").
+            short=re.search(r'[約~〜]?[0-9][0-9.,]*\s*[^0-9\s/／・、]{0,3}$',label)
+            short=short.group(0) if short and short.group(0)!=label else None
+            if short and w>=_text_width(short)+8:
+                out.append(_svg_text(x+w/2,y+16,short,'bar-label','middle',f"segment-label-{seg['id']}"))
+            elif not (short and place_beside(seg,x,x+w,y,short)):
+                external.setdefault(li,[]).append((seg['id'],label))
     for li,labels in external.items():
         # Labels that found no room beside their own bar go, in bar order, just past everything else on the row.
         lane=lanes[li]['id'];text=' / '.join(x[1]for x in labels);text_width=sum(12 if ord(c)>255 else 6.8 for c in text)
