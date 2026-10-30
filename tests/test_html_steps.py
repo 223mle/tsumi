@@ -390,5 +390,31 @@ class NarrowLayoutTests(unittest.TestCase):
                 self.assertLessEqual(b + 8, c)
 
 
+class PhoneNetworkTests(unittest.TestCase):
+    def test_two_row_network_gets_a_vertical_phone_layout(self):
+        spec = {"type": "network", "columns": 4, "rows": 2,
+                "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "B", "column": 2, "row": 1},
+                          {"id": "c", "label": "C", "column": 3, "row": 1}, {"id": "d", "label": "D", "column": 3, "row": 2}],
+                "variants": [{"label": "v", "edges": [{"id": "ab", "from": "a", "to": "b", "label": "送る", "kind": "request"},
+                                                     {"id": "bd", "from": "b", "to": "d", "label": "読む", "kind": "file"}]}]}
+        svg = render_network(spec, "n", narrow=True)[0]
+        self.assertIn('viewBox="0 0 420 ', svg)
+        ya = float(re.search(r'data-key="node:a:rect" x="[\d.]+" y="([\d.]+)"', svg).group(1))
+        yb = float(re.search(r'data-key="node:b:rect" x="[\d.]+" y="([\d.]+)"', svg).group(1))
+        self.assertLess(ya, yb)  # left-to-right becomes top-to-bottom
+        html = render_diagram({"id": "n", "title": "t", "caption": "c", "panels": [{"spec": spec}]})
+        self.assertIn("dg-panel dg-narrow", html)
+
+    def test_three_row_network_keeps_only_the_wide_layout(self):
+        spec = {"type": "network", "columns": 3, "rows": 3,
+                "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "B", "column": 1, "row": 2},
+                          {"id": "c", "label": "C", "column": 1, "row": 3}],
+                "variants": [{"label": "v", "edges": []}]}
+        with self.assertRaises(ValueError):
+            render_network(spec, "n", narrow=True)
+        html = render_diagram({"id": "n", "title": "t", "caption": "c", "panels": [{"spec": spec}]})
+        self.assertNotIn("dg-narrow", html)
+
+
 if __name__ == "__main__":
     unittest.main()

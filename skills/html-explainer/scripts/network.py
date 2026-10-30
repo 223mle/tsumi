@@ -267,30 +267,38 @@ def _ports(source: tuple[float, float], target: tuple[float, float]) -> tuple[tu
     return ((sx, sy + (36 if ty >= sy else -36)), (tx, ty - (36 if ty >= sy else -36)))
 
 
-def _path(source: tuple[float, float], target: tuple[float, float], route: str) -> str:
+def _controls(source: tuple[float, float], target: tuple[float, float], route: str):
+    """Endpoints and control points of an edge's cubic curve.
+
+    Detours bulge across the edge's direction: above/below for a mostly
+    horizontal edge, left/right (named above/below) for a mostly vertical one.
+    """
     (sx, sy), (tx, ty) = _ports(source, target)
-    if route in {"above","far-above"}:
-        lane = min(sy, ty) - (40 if route in {"above","below"} and sy == ty and abs(tx-sx) <= 140 else 100)
-        return f"M {sx} {sy} C {sx} {lane}, {tx} {lane}, {tx} {ty}"
-    if route in {"below","far-below"}:
-        lane = max(sy, ty) + (40 if route in {"above","below"} and sy == ty and abs(tx-sx) <= 140 else 100)
-        return f"M {sx} {sy} C {sx} {lane}, {tx} {lane}, {tx} {ty}"
-    cx = (sx + tx) / 2
-    return f"M {sx} {sy} C {cx} {sy}, {cx} {ty}, {tx} {ty}"
+    vertical = abs(source[0] - target[0]) < abs(source[1] - target[1])
+    if route == "direct":
+        if vertical:
+            cy = (sy + ty) / 2
+            return (sx, sy), (sx, cy), (tx, cy), (tx, ty)
+        cx = (sx + tx) / 2
+        return (sx, sy), (cx, sy), (cx, ty), (tx, ty)
+    near = route in {"above", "below"}
+    if vertical:
+        off = 40 if near and sx == tx and abs(ty - sy) <= 140 else 140  # clears a node half-width (72) at the curve's turn
+        lane = min(sx, tx) - off if route.endswith("above") else max(sx, tx) + off
+        return (sx, sy), (lane, sy), (lane, ty), (tx, ty)
+    off = 40 if near and sy == ty and abs(tx - sx) <= 140 else 100
+    lane = min(sy, ty) - off if route.endswith("above") else max(sy, ty) + off
+    return (sx, sy), (sx, lane), (tx, lane), (tx, ty)
+
+
+def _path(source: tuple[float, float], target: tuple[float, float], route: str) -> str:
+    (sx, sy), (c1x, c1y), (c2x, c2y), (tx, ty) = _controls(source, target, route)
+    return f"M {sx:g} {sy:g} C {c1x:g} {c1y:g}, {c2x:g} {c2y:g}, {tx:g} {ty:g}"
 
 
 def _path_points(source: tuple[float, float], target: tuple[float, float], route: str, count: int = 20) -> list[tuple[float, float]]:
     """Sample the cubic path for deterministic obstacle and canvas checks."""
-    (sx, sy), (tx, ty) = _ports(source, target)
-    if route in {"above","far-above"}:
-        lane = min(sy, ty) - (40 if route in {"above","below"} and sy == ty and abs(tx-sx) <= 140 else 100)
-        controls = ((sx, lane), (tx, lane))
-    elif route in {"below","far-below"}:
-        lane = max(sy, ty) + (40 if route in {"above","below"} and sy == ty and abs(tx-sx) <= 140 else 100)
-        controls = ((sx, lane), (tx, lane))
-    else:
-        controls = (((sx + tx) / 2, sy), ((sx + tx) / 2, ty))
-    c1, c2 = controls
+    (sx, sy), c1, c2, (tx, ty) = _controls(source, target, route)
     points = []
     for i in range(count + 1):
         t = i / count
@@ -302,9 +310,9 @@ def _path_points(source: tuple[float, float], target: tuple[float, float], route
 
 def _route_is_safe(source: tuple[float, float], target: tuple[float, float], route: str,
                    obstacles: dict[str, tuple[float, float, float, float]], endpoint_ids: set[str],
-                   height: float = 380) -> bool:
+                   height: float = 380, canvas_width: float = 960) -> bool:
     points = _path_points(source, target, route)
-    if any(not (0 <= x <= 960 and 0 <= y <= height) for x, y in points):
+    if any(not (0 <= x <= canvas_width and 0 <= y <= height) for x, y in points):
         return False
     for oid, (left, top, right, bottom) in obstacles.items():
         if oid in endpoint_ids:
@@ -316,13 +324,13 @@ def _route_is_safe(source: tuple[float, float], target: tuple[float, float], rou
 
 def _label_is_safe(midpoint: tuple[float, float], words: list[str], side: str,
                    obstacles: dict[str, tuple[float, float, float, float]], endpoint_ids: set[str],
-                   canvas_height: float = 380) -> bool:
+                   canvas_height: float = 380, canvas_width: float = 960) -> bool:
     width = max(_visual_len(word) for word in words) * 6.2 + 8
     height = 20 * len(words) + 4
     offset = -15 if side == "above" else 15 if side == "below" else 0
     left, right = midpoint[0] - width / 2, midpoint[0] + width / 2
     top, bottom = midpoint[1] + offset - height / 2, midpoint[1] + offset + height / 2
-    if left < 0 or right > 960 or top < 0 or bottom > canvas_height:
+    if left < 0 or right > canvas_width or top < 0 or bottom > canvas_height:
         return False
     for oid, (node_left, node_top, node_right, node_bottom) in obstacles.items():
         if left <= node_right + 4 and right >= node_left - 4 and top <= node_bottom + 4 and bottom >= node_top - 4:
@@ -331,19 +339,35 @@ def _label_is_safe(midpoint: tuple[float, float], words: list[str], side: str,
 
 
 def _path_midpoint(source: tuple[float, float], target: tuple[float, float], route: str) -> tuple[float, float]:
-    (sx, sy), (tx, ty) = _ports(source, target)
-    if route in {"above","far-above"}:
-        lane = min(sy, ty) - (40 if route in {"above","below"} and sy == ty and abs(tx-sx) <= 140 else 100)
-        return ((sx + 3 * sx + 3 * tx + tx) / 8, (sy + 3 * lane + 3 * lane + ty) / 8)
-    if route in {"below","far-below"}:
-        lane = max(sy, ty) + (40 if route in {"above","below"} and sy == ty and abs(tx-sx) <= 140 else 100)
-        return ((sx + 3 * sx + 3 * tx + tx) / 8, (sy + 3 * lane + 3 * lane + ty) / 8)
-    return ((sx + 3 * ((sx + tx) / 2) + 3 * ((sx + tx) / 2) + tx) / 8, (sy + 3 * sy + 3 * ty + ty) / 8)
+    return _path_points(source, target, route, 2)[1]
 
 
-def render_network(spec: object, prefix: str = "diagram") -> list[str]:
-    """Render one self-contained accessible SVG per variant, in the most compact layout whose routes fit."""
+NARROW_WIDTH = 420
+
+
+def _layout_narrow(spec: dict[str, Any]) -> tuple[dict[str, tuple[float, float]], float, float]:
+    """The phone layout: the grid turned on its side, so a left-to-right flow reads top to bottom."""
+    rows = sorted({n["row"] for n in spec["nodes"]})
+    cols = sorted({n["column"] for n in spec["nodes"]})
+    if len(rows) > 2:
+        raise ValueError("network: no phone layout for three rows")
+    xs = [NARROW_WIDTH / 2] if len(rows) == 1 else [NARROW_WIDTH / 2 - 105, NARROW_WIDTH / 2 + 105]
+    top = 84.0 if spec.get("boundaries") else 64.0
+    gap = 164.0 if any(v.get("marks") for v in spec["variants"]) else 132.0  # marks sit where vertical edges arrive
+    height = top + 64 + (len(cols) - 1) * gap + (20 if any(v.get("note") for v in spec["variants"]) else 0)
+    return ({n["id"]: (xs[rows.index(n["row"])], top + cols.index(n["column"]) * gap) for n in spec["nodes"]},
+            gap, height)
+
+
+def render_network(spec: object, prefix: str = "diagram", narrow: bool = False) -> list[str]:
+    """Render one self-contained accessible SVG per variant, in the most compact layout whose routes fit.
+
+    With `narrow`, render the phone layout instead; it raises ValueError when an edge cannot be placed,
+    and the caller then keeps only the wide layout.
+    """
     data = validate_network(spec)
+    if narrow:
+        return _render(data, prefix, None)
     for i, margins in enumerate(MARGINS):
         try:
             return _render(data, prefix, margins)
@@ -356,9 +380,11 @@ class _NoRoute(ValueError):
     pass
 
 
-def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> list[str]:
+def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | None) -> list[str]:
+    """Draw every variant; margins None selects the narrow phone layout."""
     safe_prefix = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
-    positions, _, height = _layout(data, margins)
+    positions, _, height = _layout(data, margins) if margins else _layout_narrow(data)
+    canvas = 960 if margins else NARROW_WIDTH
     node_map = {n["id"]: n for n in data["nodes"]}
     obstacles = {n["id"]: (positions[n["id"]][0] - 72, positions[n["id"]][1] - 36,
                            positions[n["id"]][0] + 72, positions[n["id"]][1] + 36)
@@ -368,7 +394,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
         vid = f"{safe_prefix}-v{vi}"
         title = f"{variant['label']}の経路図"
         desc = variant.get("note", "").strip() or "ノード間の処理経路を示します。"
-        parts = [f'<svg class="dg-network" viewBox="0 0 960 {height:g}" role="img" aria-labelledby="{vid}-title {vid}-desc">',
+        parts = [f'<svg class="dg-network" viewBox="0 0 {canvas} {height:g}" role="img" aria-labelledby="{vid}-title {vid}-desc">',
                  f'<title id="{vid}-title">{_esc(title)}</title>',
                  f'<desc id="{vid}-desc">{_esc(desc)}</desc>',
                  '<defs>']
@@ -403,6 +429,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
                               f'<rect data-key="{mkey}:rect" x="{-mw / 2:g}" y="-11" width="{mw:g}" height="22" rx="11"/>'
                               f'<text data-key="{mkey}:label" data-label="true" text-anchor="middle" y="4">{_esc(mark["label"])}</text></g>')
         # Marks are the first label boxes; edges must route around them as around nodes.
+        placed_paths: list[list[tuple[float, float]]] = []
         edge_obstacles = dict(obstacles)
         edge_obstacles.update((f"mark:{mark['node']}", box) for mark, box in zip(variant.get("marks", []), label_boxes))
         for edge in variant["edges"]:
@@ -415,29 +442,39 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
             if route == "direct" and count:
                 route = "above" if count % 2 else "below"
             endpoint_ids = {edge["from"], edge["to"], f"mark:{edge['from']}", f"mark:{edge['to']}"}
-            if edge.get("route", "direct") != "direct":
+            if edge.get("route", "direct") != "direct" and margins:
                 # An explicitly requested side is kept; the layout widens instead, and fails loudly if it cannot.
                 candidates = [route]
+            elif edge.get("route", "direct") != "direct":
+                # The phone layout turns the grid on its side, so the requested side is only a preference there.
+                candidates = [route, "below" if route == "above" else "above"]
             else:
                 candidates = (["direct", "above", "below"] if route == "direct"
                               else [route, "below" if route == "above" else "above"])
             words = _wrap(edge["label"]) if edge.get("label") else []
             requested_side = edge.get("label_side", "middle")
             label_sides = [requested_side] if requested_side != "middle" else ["middle", "above", "below"]
-            candidates += [f"far-{route}"] if edge.get("route", "direct") != "direct" else ["far-above", "far-below"]
+            candidates += [f"far-{route}"] if edge.get("route", "direct") != "direct" and margins else ["far-above", "far-below"]
             choice = None
             for candidate in candidates:
-                if not _route_is_safe((sx, sy),(tx, ty),candidate,edge_obstacles,endpoint_ids,height): continue
+                if not _route_is_safe((sx, sy),(tx, ty),candidate,edge_obstacles,endpoint_ids,height,canvas): continue
+                points=_path_points((sx, sy),(tx, ty),candidate)
+                # Neither may a line run through an earlier label, nor a label sit on an earlier line.
+                if any(r[0]<=x<=r[2] and r[1]<=y<=r[3] for r in label_boxes[len(variant.get("marks", [])):] for x,y in points[2:-2]): continue
                 mx,my = _path_midpoint((sx, sy),(tx, ty),candidate)
                 if not words:
                     choice=(candidate,mx,my,0,None);break
-                for side in label_sides:
-                    if not _label_is_safe((mx,my),words,side,obstacles,endpoint_ids,height): continue
+                half=(max(_visual_len(word)for word in words)*6.2+8)/2+6
+                # On the phone layout a label may also sit beside a vertical line instead of on it.
+                spots=[(side,mx) for side in label_sides]+([("middle",mx-half),("middle",mx+half)] if not margins else [])
+                for side,lx0 in spots:
+                    if not _label_is_safe((lx0,my),words,side,obstacles,endpoint_ids,height,canvas): continue
                     offset=-15 if side=="above" else 15 if side=="below" else 0
                     bw=max(_visual_len(word)for word in words)*8+16;bh=20*len(words)+4
-                    box=(mx-bw/2,my+offset-bh/2,mx+bw/2,my+offset+bh/2)
+                    box=(lx0-bw/2,my+offset-bh/2,lx0+bw/2,my+offset+bh/2)
                     if any(box[0]<r[2]+6 and box[2]>r[0]-6 and box[1]<r[3]+6 and box[3]>r[1]-6 for r in label_boxes): continue
-                    choice=(candidate,mx,my,offset,box);break
+                    if any(box[0]+4<=x<=box[2]-4 and box[1]+2<=y<=box[3]-2 for pts in placed_paths for x,y in pts): continue
+                    choice=(candidate,lx0,my,offset,box);break
                 if choice:break
             if choice is None:
                 raise _NoRoute(f"network.variants[{vi}].edges[{edge['id']}]: no route and label slot fit"
@@ -445,6 +482,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
                                + "; rearrange nodes, shorten the label or drop route")
             route,lx,ly,offset,box=choice
             if box: label_boxes.append(box)
+            placed_paths.append(_path_points((sx, sy),(tx, ty),route,40)[3:-3])
             d=_path((sx, sy),(tx, ty),route);tone=edge.get("tone","blue")
             state, opacity = "", ""
             if "step" in variant:
@@ -487,10 +525,11 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
             detail = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>' for i, line in enumerate(detail_lines))
             parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}"{hide} data-ref="{_esc(plain(node["label"]))}" data-obstacle="{x-72:g},{y-36:g},{node_w},{node_h}"><rect data-key="{_esc(key)}:rect" x="{x-72:g}" y="{y-36:g}" width="{node_w}" height="{node_h}" rx="8"/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
         parts.extend(mark_parts)
-        note_lines = _wrap(variant.get("note", ""), 80) if variant.get("note", "") else []
-        note = "".join(f'<tspan x="120" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>'
+        note_x = 120 if margins else 16
+        note_lines = _wrap(variant.get("note", ""), 80 if margins else 60) if variant.get("note", "") else []
+        note = "".join(f'<tspan x="{note_x}" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>'
                         for i, line in enumerate(note_lines))
-        parts.append(f'<text data-key="variant-note" class="dg-variant-note" x="120" y="{height - 14:g}" data-label="true">{note}</text></svg>')
+        parts.append(f'<text data-key="variant-note" class="dg-variant-note" x="{note_x}" y="{height - 14:g}" data-label="true">{note}</text></svg>')
         svg = "".join(parts)
         keys = re.findall(r'data-key="([^"]+)"', svg)
         if len(keys) != len(set(keys)):
