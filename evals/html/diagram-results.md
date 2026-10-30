@@ -522,6 +522,21 @@ node scripts/check-diagrams.cjs /tmp/animated.html /tmp/animated-evidence
 
 同じシナリオでの新しい不明瞭点の推移は、5件・3件・3件・2件・5件・4件・0件・2件・3件・2件・2件・0件・1件・2件・1件・2件・1件・1件・1件・0件・0件・0件・2件・0件・0件。
 
+#### 呼び出しの代替確認（本物のトリガー評価ではない）
+
+`evals/bin/run-trigger` は、ログイン済みの Claude CLI か Cursor CLI が要る。この環境では Claude CLI が未ログイン（`loggedIn: false`）で、Cursor CLI は入っていないため、本物のトリガー評価（`evals/cases/trigger-html-explainer-00{1..4}.yaml`、各3回）は実行していない。
+
+代わりに、各お題の依頼文と、このリポジトリで自動呼び出しされる4スキル（agent-design-review・html-explainer・tsumi-reflect・unslop）の description だけを、前の会話を持たない実行者に渡し、読む SKILL.md を答えさせた。お題ごとに別の実行者で3回。お題の判定条件（must_read／must_not_read）に照らすと、12回すべてが合格だった。
+
+| お題 | 判定条件 | 合格 |
+| --- | --- | --- |
+| 001 図解付きの単独HTML資料 | html-explainer と unslop を読む | 3/3 |
+| 002 文章だけの清書（HTMLや図は不要） | html-explainer を読まない、unslop を読む | 3/3 |
+| 003 ReactのWebアプリ実装 | html-explainer を読まない | 3/3 |
+| 004 1手ずつ進む図の解説ページ | html-explainer を読む | 3/3 |
+
+この確認は、実際の Claude Code が読んだファイルを stream-json から判定するものではなく、description の書き分けで境界を判断できるかだけを見ている。ほかのプラグインやユーザーのスキルが並ぶ環境での発動は、ログイン後に `evals/bin/run-trigger --harness claude` で確かめる。
+
 
 ### コードの独立レビュー
 
