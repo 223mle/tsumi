@@ -462,9 +462,13 @@ def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, h
     half = (max(_visual_len(word) for word in words) * _unit_px(canvas) + 8) / 2 + 6
     # On the phone layout a label may also sit beside a vertical line instead of on it.
     # Beside the line it may also slide a little up or down, clear of a mark on the box below, before it wraps.
-    beside = [("middle", mx + sign * half, dy) for dy in (0, -8, 8) for sign in (1, -1)] if not margins else []
-    # On the phone layout a short vertical edge would vanish under its label, so try beside the line first.
-    spots = beside + [(side, mx, 0) for side in label_sides] if vertical else [(side, mx, 0) for side in label_sides] + beside
+    right = [("middle", mx + half, dy) for dy in (0, -8, 8)] if not margins else []
+    left = [("middle", mx - half, dy) for dy in (0, -8, 8)] if not margins else []
+    # On the phone layout a short vertical edge would vanish under its label, so try right of the line first.
+    # On the line comes next (a label may not hide most of its own line); left of the line comes last, since
+    # there it sits in the gap between columns and reads as the label of the line on the left.
+    on_line = [(side, mx, 0) for side in label_sides]
+    spots = right + on_line + left if vertical else on_line + right + left
     for side, lx0, dy in spots:
         ly = my + dy
         if not _label_is_safe((lx0, ly), words, side, obstacles, endpoint_ids, height, canvas): continue
