@@ -90,6 +90,36 @@ class FuzzTests(unittest.TestCase):
                     left = x if anchor == "start" else x - _text_width(text)
                     self.assertTrue(left >= q + 6 or left + _text_width(text) <= q - 6, (start, narrow, svg))
 
+    def test_timeline_row_labels_never_overlap(self):
+        rnd = random.Random(5)
+        text_re = re.compile(r'<text x="(-?[\d.]+)" y="([\d.]+)" class="(bar-label|external-label|unknown-duration)" text-anchor="(\w+)"[^>]*>([^<]+)</text>')
+        for _ in range(200):
+            segs, t = [], 0
+            for k in range(rnd.randint(1, 4)):
+                d = rnd.choice([1, 2, 5, 20])
+                segs.append({"id": f"s{k}", "lane": "a", "start": t, "duration": d, "label": rnd.choice(["コピー", "照合", "読み取り専用", "待ち6分"])})
+                t += d + rnd.choice([0, 1])
+            if rnd.random() < 0.5:
+                segs.append({"id": "u", "lane": "a", "start": t, "unknown": True, "label": rnd.choice(["未定", "次の移行日は未定"])})
+            hi = t + rnd.choice([1, 4, 10])
+            spec = {"type": "timeline", "min": 0, "max": hi, "unit": "日", "ticks": [0, hi], "lanes": [{"id": "a", "label": "作業"}],
+                    "variants": [{"label": "v", "segments": segs, "markers": [{"id": "m", "value": rnd.randint(0, hi), "label": "今"}] if rnd.random() < 0.5 else []}]}
+            for narrow in (False, True):
+                try:
+                    svg = render_chart(spec, "t", narrow=narrow)[0]
+                except ValueError:
+                    continue
+                spans = []
+                for x, y, _, anchor, text in text_re.findall(svg):
+                    x, w = float(x), _text_width(text)
+                    left = x - w / 2 if anchor == "middle" else x - w if anchor == "end" else x
+                    spans.append((round(float(y) / 5), left, left + w, text))  # the ? sits 1px lower than labels on its row
+                spans.sort()
+                for (y1, a1, b1, t1), (y2, a2, b2, t2) in zip(spans, spans[1:]):
+                    if y1 == y2:
+                        # 2px: a full-width ？ has wide side bearings, so its box may graze a neighbour without the ink touching.
+                        self.assertLessEqual(b1, a2 + 2, (t1, t2, narrow, spec))
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):

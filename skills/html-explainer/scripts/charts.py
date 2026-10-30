@@ -367,13 +367,18 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
         return False
 
     under_bars=len(out)  # marker lines go here, beneath the bars, so they never cut through a bar's label
+    def question_x(seg):
+        x=_scale(float(seg['start']),lo,hi,x0,width)
+        return x+(11 if any(abs(x-mx)<8 for mx in marker_xs) else 0)  # keep the ? off a marker line
+    for seg in variant.get('segments',[]):
+        # Reserve every ? first, so a label placed earlier on the row cannot sit where a ? is drawn later.
+        if seg.get('unknown'):placed.setdefault(seg['lane'],[]).append((question_x(seg)-9,question_x(seg)+9))
     for seg in variant.get('segments',[]):
         li=next(i for i,lane in enumerate(lanes)if lane['id']==seg['lane']);y=top+li*row_height
         x=_scale(float(seg['start']),lo,hi,x0,width)
         if seg.get('unknown'):
-            qx=x+(11 if any(abs(x-mx)<8 for mx in marker_xs) else 0)  # keep the ? off a marker line
+            qx=question_x(seg)
             out.append(_svg_text(qx,y+17,'？','unknown-duration','middle',f"unknown-marker-{seg['id']}"))
-            placed.setdefault(seg['lane'],[]).append((qx-9,qx+9))  # later labels on this row keep clear of the ?
             if not place_beside(seg,qx-8,qx+8,y,seg['label']):
                 out.append(_svg_wrapped_text(ext_x,y+15,seg['label'],'external-label',f"segment-unknown-{seg['id']}",10))
             continue
