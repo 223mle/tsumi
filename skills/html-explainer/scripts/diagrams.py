@@ -40,7 +40,7 @@ def _scene_name(labels,steps,j,n,notes=None,prose=html.escape):
 
 def render_diagram(bundle,prose=html.escape):
     """Render a bundle as a figure. `prose` renders caption, notes and step texts; documents pass their inline markup."""
-    if not isinstance(bundle,dict) or set(bundle)-{'id','title','caption','status','legend','panels','labels','motion','mode','steps','notes'}:
+    if not isinstance(bundle,dict) or set(bundle)-{'id','title','caption','status','legend','panels','labels','motion','mode','steps','notes','slider','initial'}:
         raise ValueError('diagram: unknown fields or not an object')
     for key in ('id','title','caption'):
         if not isinstance(bundle.get(key),str) or not bundle[key].strip(): raise ValueError(f'diagram.{key}: text required')
@@ -58,7 +58,14 @@ def render_diagram(bundle,prose=html.escape):
     count=max(map(len,variants))
     if any(len(v) not in (1,count) for v in variants): raise ValueError('panels: scene counts must match or be one static scene')
     mode=bundle.get('mode','compare')
-    if mode not in ('compare','steps'): raise ValueError('mode: compare or steps')
+    if mode not in ('compare','steps','slider'): raise ValueError('mode: compare, steps or slider')
+    slider=bundle.get('slider')
+    if mode=='slider':
+        if count<3: raise ValueError('slider: at least three variants required; use compare for two')
+        if not isinstance(slider,str) or not slider.strip() or len(slider)>20: raise ValueError('slider: the name of the quantity (<= 20 characters) required')
+    elif slider is not None: raise ValueError('slider: only with mode slider')
+    initial=bundle.get('initial',0)
+    if not isinstance(initial,int) or isinstance(initial,bool) or not 0<=initial<max(count,1) or (initial and mode!='slider'): raise ValueError('initial: a variant index, only with mode slider')
     steps=_steps(bundle,panels,count) if mode=='steps' else None
     default_labels=[s['label'] for s in steps] if steps else [v['label'] for v in panels[0]['spec'].get('variants',[])]
     labels=bundle.get('labels',default_labels)
@@ -77,10 +84,12 @@ def render_diagram(bundle,prose=html.escape):
     controls=''
     if steps:
         controls='<ol class="dg-steps" aria-label="手順">'+''.join(f'<li><button type="button" data-step="{i}" aria-current="{"step" if i==0 else "false"}" title="{html.escape(st["label"])}"><b>{i+1}</b><span class="dg-sr">{html.escape(st["label"])}</span></button></li>' for i,st in enumerate(steps))+'</ol>'
+    elif mode=='slider':
+        controls=f'<label class="dg-slider"><span class="dg-slider-name">{html.escape(slider)}</span><input type="range" min="0" max="{count-1}" step="1" value="{initial}" aria-valuetext="{html.escape(labels[initial])}" data-labels="{html.escape(json.dumps(labels,ensure_ascii=False))}"><output>{html.escape(labels[initial])}</output></label>'
     elif count>1:
         controls='<fieldset class="dg-switch"><legend>比較する状態</legend>'+''.join(f'<label><input type="radio" name="{bundle["id"]}-state" value="{i}" {"checked" if i==0 else ""}><span>{html.escape(label)}</span></label>' for i,label in enumerate(labels))+'</fieldset>'
     if bundle.get('motion',False): controls+='<button class="dg-play" type="button" aria-pressed="false">流れを再生</button>'
-    if count>2 and not steps: controls+='<button class="dg-grid-toggle" type="button" aria-pressed="false">すべて並べる</button>'
+    if count>2 and mode=='compare': controls+='<button class="dg-grid-toggle" type="button" aria-pressed="false">すべて並べる</button>'
     controls+='<button class="dg-fit-toggle" type="button" aria-pressed="false">全体を縮小表示</button>'
     output=[]
     for i,scenes in enumerate(variants):
@@ -96,8 +105,8 @@ def render_diagram(bundle,prose=html.escape):
         nav=f'<div class="dg-step-bar dg-note-bar"><p class="dg-step-text" aria-live="polite"></p>{texts}</div>'
     if steps:
         nav+='<ol class="dg-step-notes">'+''.join(f'<li><b>{html.escape(st["label"])}</b>{(" "+prose(st["text"])) if st["text"] else ""}</li>' for st in steps)+'</ol>'
-    mode_attr=' data-mode="steps"' if steps else ''
-    return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="0"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="status status-{status}">{STATUSES[status]}</span>{prose(bundle["caption"])}</figcaption></figure>'
+    mode_attr=f' data-mode="{mode}"' if mode!='compare' else ''
+    return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="{initial}"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="status status-{status}">{STATUSES[status]}</span>{prose(bundle["caption"])}</figcaption></figure>'
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('input',type=Path);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--fragment',action='store_true');a=ap.parse_args()

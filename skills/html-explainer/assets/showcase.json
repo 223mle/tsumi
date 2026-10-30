@@ -52,6 +52,178 @@
               "note": "[[TTL]]を5分にした場合"
             }
           ]
+        },
+        {
+          "type": "p",
+          "text": "効果はヒット率で決まります。下のつまみを動かすと、平均の応答時間が変わります。"
+        },
+        {
+          "type": "diagram",
+          "bundle": {
+            "id": "hit-rate",
+            "title": "ヒット率を変えると、平均応答時間はどう変わるか",
+            "caption": "平均応答 ≒ 120ms ×（1 − ヒット率）＋ 8ms × ヒット率 で計算した説明用の値です。",
+            "status": "illustrative",
+            "mode": "slider",
+            "slider": "ヒット率",
+            "initial": 4,
+            "notes": [
+              "ヒットしないと、毎回データベースを読むため導入前と同じ120msになります（実際はキャッシュを探す分だけ少し遅くなります）。",
+              "ヒット率25%では、平均応答は約92msです。",
+              "ヒット率50%では、平均応答は約64msです。",
+              "ヒット率75%では、平均応答は約36msです。",
+              "ヒット率94%では、平均応答は約15msです。",
+              "すべてヒットすると、毎回キャッシュから返るため8msになります。"
+            ],
+            "panels": [
+              {
+                "spec": {
+                  "type": "timeline",
+                  "min": 0,
+                  "max": 130,
+                  "unit": "ms",
+                  "ticks": [
+                    0,
+                    20,
+                    40,
+                    60,
+                    80,
+                    100,
+                    120
+                  ],
+                  "lanes": [
+                    {
+                      "id": "avg",
+                      "label": "平均応答",
+                      "tone": "blue"
+                    }
+                  ],
+                  "variants": [
+                    {
+                      "label": "0%",
+                      "segments": [
+                        {
+                          "id": "avg",
+                          "lane": "avg",
+                          "start": 0,
+                          "duration": 120,
+                          "label": "120ms"
+                        }
+                      ],
+                      "markers": [
+                        {
+                          "id": "before",
+                          "value": 120,
+                          "label": "導入前 120ms",
+                          "tone": "slate"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "25%",
+                      "segments": [
+                        {
+                          "id": "avg",
+                          "lane": "avg",
+                          "start": 0,
+                          "duration": 92,
+                          "label": "92ms"
+                        }
+                      ],
+                      "markers": [
+                        {
+                          "id": "before",
+                          "value": 120,
+                          "label": "導入前 120ms",
+                          "tone": "slate"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "50%",
+                      "segments": [
+                        {
+                          "id": "avg",
+                          "lane": "avg",
+                          "start": 0,
+                          "duration": 64,
+                          "label": "64ms"
+                        }
+                      ],
+                      "markers": [
+                        {
+                          "id": "before",
+                          "value": 120,
+                          "label": "導入前 120ms",
+                          "tone": "slate"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "75%",
+                      "segments": [
+                        {
+                          "id": "avg",
+                          "lane": "avg",
+                          "start": 0,
+                          "duration": 36,
+                          "label": "36ms"
+                        }
+                      ],
+                      "markers": [
+                        {
+                          "id": "before",
+                          "value": 120,
+                          "label": "導入前 120ms",
+                          "tone": "slate"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "94%",
+                      "segments": [
+                        {
+                          "id": "avg",
+                          "lane": "avg",
+                          "start": 0,
+                          "duration": 15,
+                          "label": "15ms"
+                        }
+                      ],
+                      "markers": [
+                        {
+                          "id": "before",
+                          "value": 120,
+                          "label": "導入前 120ms",
+                          "tone": "slate"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "100%",
+                      "segments": [
+                        {
+                          "id": "avg",
+                          "lane": "avg",
+                          "start": 0,
+                          "duration": 8,
+                          "label": "8ms"
+                        }
+                      ],
+                      "markers": [
+                        {
+                          "id": "before",
+                          "value": 120,
+                          "label": "導入前 120ms",
+                          "tone": "slate"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         }
       ]
     },

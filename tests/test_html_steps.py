@@ -296,5 +296,28 @@ class NetworkVocabularyTests(unittest.TestCase):
         self.assertIn("not in glossary", p.stderr)
 
 
+class SliderTests(unittest.TestCase):
+    def timeline(self, n):
+        return {"type": "timeline", "min": 0, "max": 10, "unit": "秒", "ticks": [0, 5, 10],
+                "lanes": [{"id": "a", "label": "待ち", "tone": "blue"}],
+                "variants": [{"label": f"{i}秒", "segments": [{"id": "w", "lane": "a", "start": 0, "duration": i + 1, "label": f"{i + 1}秒"}]} for i in range(n)]}
+
+    def test_slider_renders_range_with_initial_state(self):
+        html = render_diagram({"id": "s", "title": "t", "caption": "c", "mode": "slider", "slider": "入力時間", "initial": 2,
+                               "panels": [{"spec": self.timeline(4)}]})
+        self.assertIn('type="range" min="0" max="3" step="1" value="2"', html)
+        self.assertIn('data-state="2" data-mode="slider"', html)
+        self.assertIn("<output>2秒</output>", html)
+
+    def test_slider_rules(self):
+        base = {"id": "s", "title": "t", "caption": "c", "panels": [{"spec": self.timeline(4)}]}
+        with self.assertRaisesRegex(ValueError, "slider"):
+            render_diagram({**base, "mode": "slider"})
+        with self.assertRaisesRegex(ValueError, "at least three"):
+            render_diagram({**base, "mode": "slider", "slider": "x", "panels": [{"spec": self.timeline(2)}]})
+        with self.assertRaisesRegex(ValueError, "initial"):
+            render_diagram({**base, "initial": 1})
+
+
 if __name__ == "__main__":
     unittest.main()

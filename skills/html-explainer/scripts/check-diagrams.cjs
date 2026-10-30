@@ -60,6 +60,15 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
           for(let v=0;v<n;v++){await stepButtons.nth(v).click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);await f.screenshot({path:path.join(out,`${theme}-${id}-step-${v+1}.png`)});}
           await stepButtons.first().click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
         }
+        const range=f.locator('.dg-slider input');if(await range.count()){
+          const max=Number(await range.getAttribute('max'));
+          for(let v=0;v<=max;v++){await range.evaluate((r,v)=>{r.value=v;r.dispatchEvent(new Event('input'));},v);await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);await f.screenshot({path:path.join(out,`${theme}-${id}-value-${v}.png`)});}
+          const errors=await inspect(p);
+          check(`${theme}/${id}: slider reaches every value`,(await f.getAttribute('data-rendered-state'))===String(max)&&(await f.locator('.dg-slider output').textContent())===(JSON.parse(await range.getAttribute('data-labels'))[max]),errors.join('; '));
+          check(`${theme}/${id}: slider geometry`,!errors.length,errors.join('; '));
+          await range.focus();await p.keyboard.press('Home');await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+          check(`${theme}/${id}: slider keyboard`,(await f.getAttribute('data-rendered-state'))==='0');
+        }
         const grid=f.locator('.dg-grid-toggle');if(await grid.count()){
           await grid.click();const all=await f.locator('.dg-static-scene').evaluateAll(es=>es.every(e=>e.getBoundingClientRect().height>0));
           const errors=await inspect(p);check(`${theme}/${id}: small multiples show every variant`,all&&!errors.length,errors.join('; '));

@@ -86,7 +86,7 @@
         live.forEach((el,key)=>{if(!wanted.has(key))updates.push({el,attrs:[['opacity',interpolator(el.getAttribute('opacity')||'1','0')]],dest:null,text:false});});
       });
       figure.dataset.state=String(index);figure.dataset.animating='true';syncSteps(index,follow);
-      const duration=instant||reduced.matches?0:760;const start=performance.now();
+      const duration=instant||reduced.matches?0:figure.dataset.mode==='slider'?260:760;const start=performance.now();
       function frame(now){
         const linear=duration?Math.min(1,(now-start)/duration):1;const t=linear<.5?4*linear**3:1-(-2*linear+2)**3/2;
         updates.forEach(({el,attrs,dest,text})=>{
@@ -163,6 +163,12 @@
       }
       box.addEventListener('scroll',()=>requestAnimationFrame(update),{passive:true});addEventListener('resize',update);update();
     });
+    const range=figure.querySelector('.dg-slider input');
+    if(range){
+      // Dragging moves through the variants in order; each step interpolates briefly so the motion stays continuous.
+      const out=figure.querySelector('.dg-slider output'),names=JSON.parse(range.dataset.labels);
+      range.addEventListener('input',()=>{const i=Number(range.value);select(i);out.textContent=names[i];range.setAttribute('aria-valuetext',names[i]);});
+    }
     const fitButton=figure.querySelector('.dg-fit-toggle');
     if(fitButton)fitButton.addEventListener('click',()=>{
       // On a phone the reader can trade legible labels for the whole picture, and back.
@@ -180,7 +186,7 @@
     new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;startFlow();},{threshold:.05}).observe(figure);
     document.addEventListener('visibilitychange',startFlow);
     reduced.addEventListener('change',()=>{select(Number(figure.dataset.state||0),true);});
-    select(0,true,false);
+    select(Number(figure.dataset.state||0),true,false);
   });
 })();
 (() => {

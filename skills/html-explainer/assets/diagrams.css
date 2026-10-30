@@ -34,3 +34,4 @@
 @media print{.dg-fit-toggle{display:none!important}}
 .dg-panel{position:relative}.dg-pinned-labels{position:absolute;left:0;width:auto;pointer-events:none;z-index:2}.dg-pinned-labels[hidden]{display:none}.dg-pinned-labels span{position:absolute;left:0;transform:translateY(-50%);white-space:nowrap;font-size:11px;font-weight:650;padding:1px 8px 1px 2px;background:linear-gradient(90deg,var(--surface) 75%,transparent);color:var(--text)}
 @media print{.dg-pinned-labels{display:none!important}}
+.dg-slider{display:flex;align-items:center;gap:12px;flex:1;min-width:240px;font-size:13px}.dg-slider-name{font-weight:650;white-space:nowrap}.dg-slider input{flex:1;accent-color:var(--accent);min-width:120px}.dg-slider output{font-variant-numeric:tabular-nums;font-weight:700;min-width:4.5em;padding:2px 10px;border-radius:6px;background:var(--subtle);text-align:center}
