@@ -649,7 +649,8 @@ def _render_layout(data: dict[str, Any], prefix: str, margins: tuple[float, floa
             if "step" in variant and "step" not in edge:
                 # Structure the steps never traverse, such as sibling branches: grey, fainter than any hop taken but
                 # clearer than a step still to come (0.16), so the branch the walk skips can still be seen.
-                state, opacity, tone = " is-context", ' opacity="0.4"', "slate"
+                # Its kind carries no meaning (nothing moves along it), so every context edge looks the same: a grey dashed line.
+                state, opacity, tone, kind = " is-context", ' opacity="0.4"', "slate", "request"
             elif "step" in variant:
                 state = " is-current" if edge["step"] == variant["step"] else " is-done" if edge["step"] < variant["step"] else " is-future"
                 opacity = f' opacity="{"0.16" if state == " is-future" else "1"}"'

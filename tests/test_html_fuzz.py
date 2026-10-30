@@ -382,6 +382,28 @@ class FuzzTests(unittest.TestCase):
         self.assertIn('class="line-band dg-tone-red"', svg)
         self.assertIn('class="line-band" ', svg)
 
+    def test_context_edges_look_the_same_whatever_their_kind(self):
+        spec = {"type": "network", "columns": 3, "rows": 2,
+                "nodes": [{"id": "r", "label": "根", "column": 1, "row": 1}, {"id": "b", "label": "枝", "column": 2, "row": 1},
+                          {"id": "o", "label": "ほかの枝", "column": 2, "row": 2}, {"id": "o2", "label": "別の枝", "column": 3, "row": 2}],
+                "edges": [{"id": "e1", "from": "r", "to": "b", "label": "① 読む", "kind": "request", "step": 1},
+                          {"id": "e2", "from": "b", "to": "o2", "label": "② 読む", "kind": "request", "step": 2},
+                          {"id": "c1", "from": "r", "to": "o", "kind": "file"}, {"id": "c2", "from": "r", "to": "o2"}]}
+        svg = render_network(spec, "n")[0]
+        styles = [re.search(rf'data-key="edge:{k}:path" data-flow="(\w+)" class="([^"]+)"', svg).groups() for k in ("c1", "c2")]
+        self.assertEqual(styles[0], styles[1])
+
+    def test_a_duration_under_a_self_call_leaves_room_before_the_next_message(self):
+        spec = {"type": "sequence", "actors": [{"id": "u", "label": "利用者"}, {"id": "s", "label": "サーバー"}, {"id": "d", "label": "データベース"}],
+                "messages": [{"id": "m1", "from": "u", "to": "s", "label": "送る"},
+                             {"id": "m2", "from": "s", "to": "s", "label": "遅いハッシュで計算"},
+                             {"id": "m3", "from": "s", "to": "d", "label": "ソルトと\nハッシュ値を保存"}],
+                "spans": [{"from": "m2", "to": "m2", "label": "約0.1秒"}]}
+        svg = render_sequence(spec, "q", narrow=True)[0]
+        span_y = float(re.search(r'data-key="span:0:label"[^>]*y="([\d.]+)"', svg).group(1))
+        next_y = float(re.search(r'data-key="msg:m3:label" x="[\d.]+" y="([\d.]+)"', svg).group(1))
+        self.assertGreaterEqual(next_y - 12, span_y + 4)
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):

@@ -189,6 +189,8 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
         rows.append(y)
         layouts.append((lines, self_call, span_cols))
         y += ROW_GAP + (22 if self_call else 0)
+        if self_call and any(sp["from"] == sp["to"] == msg["id"] for sp in data.get("spans", [])):
+            y += 18  # the duration is written under this self-call's label, so the next message starts a line lower
     height = y + 4
     # Actor names are 14px wide-screen and 12px on the phone layout (see diagrams.css).
     actor_units = int((min(gap, 200) - 20) / 7.2) if not narrow else int((_actor_box(gap, left, narrow, len(data["actors"])) - 10) / 6.7)
