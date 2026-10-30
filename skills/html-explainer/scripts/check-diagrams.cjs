@@ -59,6 +59,12 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
           for(let v=0;v<n;v++){await stepButtons.nth(v).click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);await f.screenshot({path:path.join(out,`${theme}-${id}-step-${v+1}.png`)});}
           await stepButtons.first().click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
         }
+        const grid=f.locator('.dg-grid-toggle');if(await grid.count()){
+          await grid.click();const all=await f.locator('.dg-static-scene').evaluateAll(es=>es.every(e=>e.getBoundingClientRect().height>0));
+          const errors=await inspect(p);check(`${theme}/${id}: small multiples show every variant`,all&&!errors.length,errors.join('; '));
+          await f.screenshot({path:path.join(out,`${theme}-${id}-all.png`)});await grid.click();
+          check(`${theme}/${id}: back to one variant`,await f.locator('.dg-live').evaluate(e=>e.getBoundingClientRect().height>0));
+        }
         const play=f.locator('.dg-play');if(await play.count()){
           await play.click();await p.waitForTimeout(120);const x=await f.locator('.dg-flow-particle').evaluateAll(es=>es.map(e=>e.getAttribute('transform')));await p.waitForTimeout(240);const y=await f.locator('.dg-flow-particle').evaluateAll(es=>es.map(e=>e.getAttribute('transform')));check(`${theme}/${id}: moving flow`,x.length>0&&JSON.stringify(x)!==JSON.stringify(y));await play.click();check(`${theme}/${id}: stop flow`,await f.locator('.dg-flow-particle').count()===0);
         }

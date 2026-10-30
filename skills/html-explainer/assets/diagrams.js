@@ -116,7 +116,7 @@
     function go(delta){const n=stepButtons.length;const next=Math.max(0,Math.min(n-1,Number(figure.dataset.state||0)+delta));if(next!==Number(figure.dataset.state||0))select(next);return next;}
     let autoTimer=0;
     function stopAuto(){clearTimeout(autoTimer);autoTimer=0;if(autoButton){autoButton.setAttribute('aria-pressed','false');autoButton.textContent='自動で進める';}}
-    function tick(){if(!autoTimer)return;const n=stepButtons.length;const cur=Number(figure.dataset.state||0);if(cur>=n-1){stopAuto();return;}go(1);autoTimer=setTimeout(tick,reduced.matches?2600:3200);}
+    function tick(){if(!autoTimer)return;if(!visible){stopAuto();return;}const n=stepButtons.length;const cur=Number(figure.dataset.state||0);if(cur>=n-1){stopAuto();return;}go(1);autoTimer=setTimeout(tick,reduced.matches?2600:3200);}
     figure.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{stopAuto();select(Number(b.dataset.step));}));
     figure.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{stopAuto();go(Number(b.dataset.go));}));
     if(autoButton)autoButton.addEventListener('click',()=>{
@@ -130,6 +130,13 @@
       else if(e.key==='ArrowLeft'){stopAuto();go(-1);e.preventDefault();}
     });
     figure.querySelectorAll('.dg-switch input').forEach(input=>input.addEventListener('change',()=>{if(input.checked)select(Number(input.value));}));
+    const gridButton=figure.querySelector('.dg-grid-toggle');
+    if(gridButton)gridButton.addEventListener('click',()=>{
+      // Small multiples: the static scenes, already in the page for print, side by side.
+      const on=gridButton.getAttribute('aria-pressed')!=='true';
+      gridButton.setAttribute('aria-pressed',String(on));gridButton.textContent=on?'1つずつ見る':'すべて並べる';
+      figure.classList.toggle('dg-grid',on);figure.querySelectorAll('.dg-switch input').forEach(i=>i.disabled=on);
+    });
     if(play)play.addEventListener('click',()=>{playing=!playing;play.setAttribute('aria-pressed',String(playing));play.textContent=playing?'流れを停止':'流れを再生';startFlow();});
     new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;startFlow();},{threshold:.05}).observe(figure);
     document.addEventListener('visibilitychange',startFlow);

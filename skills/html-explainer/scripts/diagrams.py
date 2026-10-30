@@ -79,6 +79,7 @@ def render_diagram(bundle):
     elif count>1:
         controls='<fieldset class="dg-switch"><legend>比較する状態</legend>'+''.join(f'<label><input type="radio" name="{bundle["id"]}-state" value="{i}" {"checked" if i==0 else ""}><span>{html.escape(label)}</span></label>' for i,label in enumerate(labels))+'</fieldset>'
     if bundle.get('motion',False): controls+='<button class="dg-play" type="button" aria-pressed="false">流れを再生</button>'
+    if count>2 and not steps: controls+='<button class="dg-grid-toggle" type="button" aria-pressed="false">すべて並べる</button>'
     output=[]
     for i,scenes in enumerate(variants):
         title=panels[i].get('title',''); heading=f'<h4 class="dg-panel-title">{html.escape(title)}</h4>' if title else ''

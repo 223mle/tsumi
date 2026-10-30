@@ -28,6 +28,8 @@
 - `compare`: variantを切り替えボタンで選ぶ。前後比較や、条件ごとの違いに使う。`notes` にvariantと同じ数の文（各160字以内）を渡すと、選んだvariantの説明が図の上に出る。何が変わったかを1文で書く。
 - `steps`: 前へ・次へ・自動で進めるボタンと、←→キーで1段階ずつ進める。各段階の説明文が図の上に出る。`steps: [{"label": "コードを渡す", "text": "ブラウザーがコードをアプリへ届けます。"}]` をscene数と同じ数だけ書く。`label` は40字以内、`text` は160字以内。panelが `sequence` か、番号付きの辺を持つ `network` なら、`steps` を省略すると図の入力から作る。
 
+variantが3つ以上の `compare` には「すべて並べる」ボタンが付き、全variantを小さく並べて一度に比べられる（small multiples）。
+
 印刷とJS無効のときは、`compare` は全variantを、`steps` は最後のsceneと全段階の文章を表示する。
 
 ## ラベルの改行
