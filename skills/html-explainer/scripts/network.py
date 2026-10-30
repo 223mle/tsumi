@@ -351,7 +351,7 @@ def _layout_narrow(spec: dict[str, Any], extra_gap: float = 0.0) -> tuple[dict[s
     rows = sorted({n["row"] for n in spec["nodes"]})
     cols = sorted({n["column"] for n in spec["nodes"]})
     if len(rows) > 2:
-        raise ValueError("network: no phone layout for three rows")
+        raise ValueError("network: no phone layout for three rows; put the main path on two rows to get one")
     xs = [NARROW_WIDTH / 2] if len(rows) == 1 else [NARROW_WIDTH / 2 - 105, NARROW_WIDTH / 2 + 105]
     top = 84.0 if spec.get("boundaries") else 64.0
     gap = (164.0 if any(v.get("marks") for v in spec["variants"]) else 132.0) + extra_gap  # marks sit where vertical edges arrive

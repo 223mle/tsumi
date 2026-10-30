@@ -150,7 +150,7 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
     """
     data = validate_sequence(spec)
     if narrow and len(data["actors"]) > 4:
-        raise ValueError("sequence: no phone layout for more than four actors")
+        raise ValueError("sequence: no phone layout for more than four actors; merge or drop actors to get one")
     safe = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
     xs, gap, left = _columns(data, narrow)
     canvas = _width(data, narrow)  # used below for self-call room
