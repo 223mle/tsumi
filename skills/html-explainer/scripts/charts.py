@@ -241,7 +241,8 @@ def _tick_stride(spec: dict[str, Any], lo: float, hi: float, width: float, log: 
 
 
 def _text_width(text: str) -> float:
-    return sum(12 if ord(c) > 255 else 7 for c in text)
+    # 12px text: CJK is square; m, w and % run wide and i, l, t, dots run narrow in Latin.
+    return sum(12 if ord(c) > 255 else 10.5 if c in "mwMW%@" else 4 if c in "iljtfr.,:;|' " else 7 for c in text)
 
 
 def _marker_layout(markers, lo, hi, x0, width, W, log=False):
@@ -273,7 +274,7 @@ def choose_ticks(ticks: list[tuple[float, str]], to_x, W: float, marked: set) ->
     keep = set()
     for value, text in order:
         a, b = _label_span(to_x(value), text, W)
-        if all(b + 6 <= c or a - 6 >= d for c, d in spans):
+        if all(b + 10 <= c or a - 10 >= d for c, d in spans):  # labels closer than this read as one
             spans.append((a, b)); keep.add(value)
     return keep
 
