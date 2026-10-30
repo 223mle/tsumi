@@ -472,5 +472,38 @@ class EvalFourTests(unittest.TestCase):
         self.assertEqual(ticks(120)[1], 20.0)
 
 
+class LineChartTests(unittest.TestCase):
+    def spec(self, **extra):
+        spec = {"type": "line", "x": {"min": 0, "max": 100, "unit": "人", "ticks": [0, 50, 100]},
+                "y": {"min": 0, "max": 160000, "unit": "円", "ticks": [0, {"value": 80000, "label": "8万円"}, {"value": 160000, "label": "16万円"}]},
+                "series": [{"id": "s", "label": "スタンダード", "tone": "blue", "points": [[0, 50000], [50, 50000], [100, 125000]]},
+                           {"id": "e", "label": "エンタープライズ", "tone": "amber", "points": [[0, 120000], [100, 120000]]}],
+                "points": [{"id": "x", "x": 96.67, "y": 120000, "label": "約97人で同額"}],
+                "markers": [{"id": "now", "x": 40, "label": "今 40人"}],
+                "bands": [{"id": "next", "from": 70, "to": 90, "label": "来年の見込み"}]}
+        spec.update(extra)
+        return spec
+
+    def test_renders_both_layouts_with_data_in_the_text_alternative(self):
+        from linechart import render_line
+        wide, narrow = render_line(self.spec())[0], render_line(self.spec(), narrow=True)[0]
+        self.assertIn('viewBox="0 0 960 ', wide)
+        self.assertIn('viewBox="0 0 420 ', narrow)
+        self.assertIn("約97人で同額", wide)
+        self.assertRegex(wide, r'<desc[^>]*>スタンダード: 0人 50000円→100人 125000円')
+        html = render_diagram({"id": "c", "title": "t", "caption": "c", "panels": [{"spec": self.spec()}]})
+        self.assertIn("dg-panel dg-narrow", html)
+
+    def test_rejects_points_outside_axes_and_unsorted_x(self):
+        from linechart import render_line
+        bad = self.spec()
+        bad["series"][0]["points"] = [[0, 50000], [120, 50000]]
+        with self.assertRaisesRegex(ValueError, "outside"):
+            render_line(bad)
+        bad["series"][0]["points"] = [[50, 1], [10, 1]]
+        with self.assertRaisesRegex(ValueError, "increase"):
+            render_line(bad)
+
+
 if __name__ == "__main__":
     unittest.main()

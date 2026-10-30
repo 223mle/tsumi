@@ -9,12 +9,13 @@ from charts import render_chart, has_narrow_layout
 from network import render_network, network_steps
 from decisions import render_decision
 from sequence import render_sequence, sequence_steps
+from linechart import render_line
 
 ROOT = Path(__file__).resolve().parents[1]
 TONES = {'blue','teal','violet','amber','rose','slate','red'}
 STATUSES = {'measured':'計測値','inferred':'推定','proposed':'提案','unknown':'未確定','illustrative':'説明用','code':'コード'}  # same words as render.py's basic figures
 
-RENDERERS={'network':render_network,'decision':render_decision,'sequence':render_sequence}
+RENDERERS={'network':render_network,'decision':render_decision,'sequence':render_sequence,'line':render_line}
 
 def _steps(bundle,panels,count):
     steps=bundle.get('steps')
@@ -104,6 +105,7 @@ def render_diagram(bundle,prose=html.escape,source_titles=None):
         spec=panels[i]['spec']
         narrow=None
         if has_narrow_layout(spec): narrow=render_chart(spec,f"{bundle['id']}-p{i}n",narrow=True)
+        elif spec.get('type')=='line': narrow=render_line(spec,f"{bundle['id']}-p{i}n",narrow=True)
         elif spec.get('type') in ('network','sequence'):
             try: narrow=RENDERERS[spec['type']](spec,f"{bundle['id']}-p{i}n",narrow=True)
             except ValueError: narrow=None  # something does not fit the phone layout; keep scrolling the wide one

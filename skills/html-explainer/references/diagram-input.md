@@ -1,6 +1,6 @@
 # 図の入力
 
-目次: [bundle](#bundle) / [比較とステップ](#比較とステップ) / [sequence](#sequence) / [timeline](#timeline) / [threshold](#threshold) / [network](#network) / [decision](#decision) / [一度の生成で確認する例](#一度の生成で確認する例)
+目次: [bundle](#bundle) / [比較とステップ](#比較とステップ) / [sequence](#sequence) / [timeline](#timeline) / [line](#line) / [threshold](#threshold) / [network](#network) / [decision](#decision) / [一度の生成で確認する例](#一度の生成で確認する例)
 
 `diagrams.py`は1つのbundleからfigureを生成する。`render.py`の文書では、`diagram`ブロックの`bundle`に同じものを入れる。`compose.py`は `{"figures": [bundle, ...]}` の順番で元HTMLの全figureを置き換える。入力はJSON。生のHTML・CSS・SVG・座標は受け付けない。検証と配置は `diagrams.py`、`charts.py`、`network.py`、`sequence.py`、`decisions.py` が行う。
 
@@ -92,6 +92,27 @@ bundleの `id` は、文書内の節の `id`、他の図の `id` と重ならな
 variantの `segments` は空でもよい。比較対象に存在しない工程は省く。
 
 グループ帯は `groups: [{"label":"受信前に実行可能","summary":"約10秒","lane_ids":["a","b","c"],"tone":"teal"}]`。3行程度の関連laneをまとめると左のラベル・summaryが収まる。各variantの `group_summaries` にグループ順の文字列を渡すと、summaryも同期して切り替わる。
+
+## line
+
+量が別の量につれてどう変わるか（利用者数と料金、日付と件数）を折れ線で描く。2本の線が交わる点（損益分岐）を示すのに使う。
+
+```json
+{
+  "type": "line",
+  "x": {"min": 0, "max": 100, "unit": "人", "ticks": [0, 20, 40, 60, 80, 100], "label": "利用者数"},
+  "y": {"min": 0, "max": 160000, "unit": "円", "ticks": [0, {"value": 80000, "label": "8万円"}, {"value": 160000, "label": "16万円"}]},
+  "series": [
+    {"id": "std", "label": "スタンダード", "tone": "blue", "points": [[0, 50000], [50, 50000], [100, 125000]]},
+    {"id": "ent", "label": "エンタープライズ", "tone": "amber", "points": [[0, 120000], [100, 120000]]}
+  ],
+  "points": [{"id": "even", "x": 96.67, "y": 120000, "label": "約97人で同額"}],
+  "markers": [{"id": "now", "x": 40, "label": "今 40人"}],
+  "bands": [{"id": "next", "from": 70, "to": 90, "label": "来年の見込み"}]
+}
+```
+
+線は1〜4本、各線の `points` は x の昇順。交点や閾値の値は自分で計算して `points` に書く（部品は交点を求めない）。線名は線の右端に書き、入らない場合は線の始点に書く。`dashed: true` で推定や見込みの線を点線にする。`variants`（各要素に `label` と上書きする `series`・`points`・`markers`・`bands`）を渡すと比較・スライダー・ステップに使える。凡例の代わりに線名を線に直接書くので、`legend` は不要。
 
 ## threshold
 
