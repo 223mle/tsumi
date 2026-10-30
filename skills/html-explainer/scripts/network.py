@@ -382,6 +382,32 @@ class _NoRoute(ValueError):
     pass
 
 
+def _port_shifts(edges, positions):
+    """Offsets for edge ends that share a node side, ordered by where the other end lies so they do not cross."""
+    sides: dict[tuple[str, str], list] = {}
+    for e in edges:
+        (ax, ay), (bx, by) = positions[e["from"]], positions[e["to"]]
+        horizontal = abs(ax - bx) >= abs(ay - by)
+        for node, here, there, end in ((e["from"], (ax, ay), (bx, by), 0), (e["to"], (bx, by), (ax, ay), 1)):
+            if horizontal:
+                side = (node, "right" if there[0] > here[0] else "left")
+                order = there[1]
+            else:
+                side = (node, "bottom" if there[1] > here[1] else "top")
+                order = there[0]
+            sides.setdefault(side, []).append((order, e["id"], end, horizontal))
+    shifts: dict[str, list] = {}
+    for items in sides.values():
+        if len(items) < 2:
+            continue
+        items.sort()
+        for k, (_, eid, end, horizontal) in enumerate(items):
+            off = (k - (len(items) - 1) / 2) * 14
+            pair = shifts.setdefault(eid, [(0, 0), (0, 0)])
+            pair[end] = (0, off) if horizontal else (off, 0)
+    return {k: tuple(v) for k, v in shifts.items()}
+
+
 def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, height, canvas, label_boxes, placed_paths, route, vertical=False):
     """A free spot for an edge label near the edge's middle, or None."""
     half = (max(_visual_len(word) for word in words) * 6.2 + 8) / 2 + 6
@@ -460,8 +486,12 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
         node_obstacles = {k: v for k, v in obstacles.items() if k not in variant.get("hidden_nodes", [])}
         edge_obstacles = dict(node_obstacles)
         edge_obstacles.update((f"mark:{mark['node']}", box) for mark, box in zip(variant.get("marks", []), label_boxes))
+        shifts = _port_shifts(variant["edges"], positions)
         for edge in variant["edges"]:
             sx, sy = positions[edge["from"]]; tx, ty = positions[edge["to"]]
+            # Edges that meet the same side of a node attach a little apart, so their directions stay readable.
+            (dsx, dsy), (dtx, dty) = shifts.get(edge["id"], ((0, 0), (0, 0)))
+            sx, sy, tx, ty = sx + dsx, sy + dsy, tx + dtx, ty + dty
             key = f"edge:{edge['id']}"; kind = edge["kind"]
             pair = tuple(sorted((edge["from"], edge["to"])))
             count = edge_pairs.get(pair, 0)
