@@ -134,7 +134,13 @@ def _validate_timeline(spec: dict[str, Any]) -> None:
         if not isinstance(variant, dict):
             _fail(f"chart.variants[{vi}]", "object required")
         _text(variant.get("label"), f"chart.variants[{vi}].label")
-        if set(variant) - {"label", "summary", "segments", "markers", "group_summaries"}: _fail(f"chart.variants[{vi}]", "unknown fields")
+        if set(variant) - {"label", "summary", "segments", "markers", "group_summaries", "empty"}: _fail(f"chart.variants[{vi}]", "unknown fields")
+        empty = variant.get("empty", {})
+        lane_ids = {lane.get("id") for lane in spec.get("lanes", []) if isinstance(lane, dict)}
+        if not isinstance(empty, dict) or any(k not in lane_ids or not isinstance(v, str) or not v.strip() or len(v) > 12 for k, v in empty.items()):
+            _fail(f"chart.variants[{vi}].empty", "lane id to a short label (12 characters or fewer), such as \"なし\"")
+        if any(isinstance(seg, dict) and seg.get("lane") in empty for seg in variant.get("segments", [])):
+            _fail(f"chart.variants[{vi}].empty", "only for lanes with no segment in this variant")
         if "summary" in variant: _text(variant["summary"], f"chart.variants[{vi}].summary")
         if "group_summaries" in variant:
             if not isinstance(variant["group_summaries"],list) or len(variant["group_summaries"]) != len(spec.get("groups",[])) or not all(isinstance(x,str)for x in variant["group_summaries"]): _fail("variant.group_summaries","one string per group required")
@@ -343,7 +349,7 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
         out.append(_svg_wrapped_text(x0-12,y+15-(lines-1)*7.5,lane['label'],'lane-label',f"lane-label-{lane['id']}",lane_chars,'end',2 if narrow else 3))
     external={}
     marker_xs=[_scale(float(m['value']),lo,hi,x0,width) for m in variant.get('markers',[])]
-    ghosts={};placed={}
+    ghosts={};placed={};ghost_labels={}
     if spec.get('baseline') and index>0:
         # The first variant stays as a faint outline so the reader sees what each change removed.
         for seg in spec['variants'][0].get('segments',[]):
@@ -356,6 +362,7 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
                 text=f"{spec['variants'][0]['label']} {float(seg['duration']):g}{spec['unit']}"
                 if gw>=_text_width(text)+16:
                     out.append(_svg_text(gx+gw/2,y+16,text,'ghost-label','middle',f"ghost-label-{seg['id']}"))
+                    ghost_labels.setdefault(seg['lane'],[]).append((gx+gw/2-_text_width(text)/2,gx+gw/2+_text_width(text)/2))
             ghosts.setdefault(seg['lane'],[]).append((gx,gx+gw))
 
     def place_beside(seg,left_edge,right_edge,y,label):
@@ -403,6 +410,14 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
                 out.append(_svg_text(x+w/2,y+16,short,'bar-label','middle',f"segment-label-{seg['id']}"))
             elif not (short and place_beside(seg,x,x+w,y,short)):
                 external.setdefault(li,[]).append((seg['id'],label))
+    for lane_id,text in variant.get('empty',{}).items():
+        # Say that the lane is empty in this state, left of any outline label, so a missing bar does not read as missing data.
+        li=next(i for i,lane in enumerate(lanes) if lane['id']==lane_id);y=top+li*row_height;tw=_text_width(text)
+        taken=ghost_labels.get(lane_id,[])
+        ex=next((c for c in [x0+6]+[b+8 for a,b in taken] if c+tw<=limit and all(not(a<c+tw+4 and b>c-4) for a,b in taken)),None)
+        if ex is None:_fail(f"variant.empty.{lane_id}","no room for the label on this lane; shorten it")
+        out.append(_svg_text(ex,y+16,text,'empty-label','start',f"empty-label-{lane_id}"))
+        placed.setdefault(lane_id,[]).append((ex,ex+tw))
     for li,labels in external.items():
         # Labels that found no room beside their own bar go, in bar order, just past everything else on the row.
         lane=lanes[li]['id'];text=' / '.join(x[1]for x in labels);text_width=sum(12 if ord(c)>255 else 6.8 for c in text)

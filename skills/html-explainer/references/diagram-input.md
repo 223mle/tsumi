@@ -21,7 +21,7 @@ bundleの `id` は、文書内の節の `id`、他の図の `id` と重ならな
 }
 ```
 
-`spec`には下記の種類を指定する。全panelのvariant数は同じにする。1つだけの静的panelは比較図に併用できる。`status`は `measured` / `inferred` / `planned` / `proposed` / `unknown` / `illustrative` / `code`。根拠と測定条件はcaptionに書く。
+`spec`には下記の種類を指定する。全panelのvariant数は同じにする。1つだけの静的panelは比較図に併用できる。`status`は `measured` / `inferred` / `planned` / `proposed` / `unknown` / `illustrative` / `code`。根拠と測定条件はcaptionに書く。`status` は図に1つなので、確度の違うvariant（計算で出せる案Aと、推定しかできない案B）を1枚に並べるときは、低い方の確度を `status` にし、variantの `label`（「B 判定1分（推定）」）と `notes` に確度を書き、captionでどの結果が計算でどれが推定かを分ける。
 
 `source_ids` には、文書の `sources` の `id` を並べる。`status` が `measured` か `inferred` の図では必須で、captionの後ろに出典へのリンクが付く。`legend` は図全体で1つなので、同じ色を全variantで同じ意味に使う。`legend` を書いた経路図では、辺に使う色をすべてlegendに載せる。載っていない色の辺は生成時に拒否する（中立の `slate` と、×印の付く `conflict` は除く）。
 
@@ -87,9 +87,11 @@ bundleの `id` は、文書内の節の `id`、他の図の `id` と重ならな
 
 未測定の工程は `{"id":"classify","lane":"work","start":4,"unknown":true,"label":"分類時間は未計測"}` とする。`duration`との同時指定は拒否され、量を表す棒は描かれない。既知工程だけで完了時刻を決めない。
 
+長さは分かっているが原因が分からない区間（判定3分と起動4分で7分のはずが、回復は9分後だった、の残り2分）は、`unknown` ではなく実際の長さの棒を `tone: "slate"` で描き、ラベルに「未確認」と書く。本文の未確定事項にも挙げる。
+
 timelineのspec（bundleではない）に `baseline: true` を書くと、2番目以降のvariantに最初のvariantの区間を点線で重ね、何が減ったかを示す。そのvariantで消えた区間の点線には、入る幅があれば「最初のvariantのlabel＋長さ」（例: 導入前 110ms）を書く。
 
-variantの `segments` は空でもよい。比較対象に存在しない工程は省く。
+variantの `segments` は空でもよい。比較対象に存在しない工程は省く。laneが空になること自体が答え（対策後は遅れがない）なら、variantに `"empty": {"slow": "なし（計算）"}` のようにlaneのIDと短いラベル（12字以内）を書く。そのlaneに薄い文字で表示し、棒がないのはデータの欠落ではないと示す。棒のあるlaneには書けない。
 
 グループ帯は `groups: [{"label":"受信前に実行可能","summary":"約10秒","lane_ids":["a","b","c"],"tone":"teal"}]`。3行程度の関連laneをまとめると左のラベル・summaryが収まる。各variantの `group_summaries` にグループ順の文字列を渡すと、summaryも同期して切り替わる。
 
@@ -112,7 +114,7 @@ variantの `segments` は空でもよい。比較対象に存在しない工程�
 }
 ```
 
-線は1〜4本、各線の `points` は x の昇順。`dots: true` の線は点だけを描き（訓練データなどの観測値）、線より手前に重ねる。交点や閾値の値は自分で計算して `points` に書く（部品は交点を求めない）。`points` のラベルは全角10字程度までにする。スマートフォンでは長いラベルの置き場所がなく、線に触れることがある。線名は、横幅のある画面では線の右端に書き、入らなければ始点に書く。スマートフォン用の配置では、線に重ならないよう図の下に凡例として並べる。y軸名（`y.label`）は図の上に専用の行を取る。`dashed: true` で推定や見込みの線を点線にする。`variants`（各要素に `label` と上書きする `series`・`points`・`markers`・`bands`）を渡すと比較・スライダー・ステップに使える。ステップにするときは、bundleに `steps` を明示する（`sequence` と番号付きの `network` だけが省略できる）。同じ `id` の線は、variantごとに点の数が違っても補間して動く。凡例の代わりに線名を線に直接書くので、`legend` は不要。
+線は1〜4本、各線の `points` は x の昇順（同じxは置けない）。処理能力が20:09に切り替わるような段差は、`[8.9, 300], [9, 1200]` のように直前の点をわずかに手前に置いて描き、切り替わりの正確な時刻が分からなければcaptionに書く。`dots: true` の線は点だけを描き（訓練データなどの観測値）、線より手前に重ねる。交点や閾値の値は自分で計算して `points` に書く（部品は交点を求めない）。`points` のラベルは全角10字程度までにする。スマートフォンでは長いラベルの置き場所がなく、線に触れることがある。線名は、横幅のある画面では線の右端に書き、入らなければ始点に書く。スマートフォン用の配置では、線に重ならないよう図の下に凡例として並べる。y軸名（`y.label`）は図の上に専用の行を取る。`dashed: true` で推定や見込みの線を点線にする。`variants`（各要素に `label` と上書きする `series`・`points`・`markers`・`bands`）を渡すと比較・スライダー・ステップに使える。ステップにするときは、bundleに `steps` を明示する（`sequence` と番号付きの `network` だけが省略できる）。同じ `id` の線は、variantごとに点の数が違っても補間して動く。凡例の代わりに線名を線に直接書くので、`legend` は不要。
 
 ## threshold
 

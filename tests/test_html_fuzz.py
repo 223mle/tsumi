@@ -186,6 +186,22 @@ class FuzzTests(unittest.TestCase):
         self.assertNotIn("series-key", render_line(spec, "l", narrow=True)[0])
         self.assertIn("series-label-a", render_line(spec, "l")[0])
 
+    def test_an_empty_lane_can_say_so(self):
+        spec = {"type": "timeline", "min": -6, "max": 12, "unit": "分", "ticks": [-6, 0, 6, 12], "baseline": True,
+                "lanes": [{"id": "scale", "label": "台数を増やす"}, {"id": "slow", "label": "応答の遅れ"}],
+                "variants": [{"label": "現状", "segments": [{"id": "boot", "lane": "scale", "start": 3, "duration": 4, "label": "起動4分"},
+                                                          {"id": "late", "lane": "slow", "start": 0, "duration": 9, "label": "9分"}]},
+                             {"label": "A", "segments": [{"id": "boot", "lane": "scale", "start": -4, "duration": 4, "label": "起動4分"}], "empty": {"slow": "なし（計算）"}}]}
+        for narrow in (False, True):
+            svg = render_chart(spec, "t", narrow=narrow)[1]
+            empty = re.search(r'<text x="([\d.]+)"[^>]*data-key="empty-label-slow">([^<]+)<', svg)
+            ghost = re.search(r'<text x="([\d.]+)"[^>]*data-key="ghost-label-late">([^<]+)<', svg)
+            self.assertTrue(empty and ghost)
+            self.assertLessEqual(float(empty.group(1)) + _text_width(empty.group(2)), float(ghost.group(1)) - _text_width(ghost.group(2)) / 2)
+        spec["variants"][1]["empty"] = {"scale": "なし"}
+        with self.assertRaisesRegex(ValueError, "no segment"):
+            render_chart(spec, "t")
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):
