@@ -228,6 +228,13 @@ class FuzzTests(unittest.TestCase):
         render_diagram({"id": "g", "title": "伸び", "caption": "説明用。", "status": "illustrative", "panels": [{"spec": spec}]}, warnings=notes)
         self.assertTrue(any("100万行" in n for n in notes), notes)
 
+    def test_crowded_y_labels_are_thinned_keeping_named_ones(self):
+        spec = {"type": "line", "x": {"min": 100, "max": 1000, "ticks": [100, 1000]},
+                "y": {"min": 0, "max": 10, "ticks": [0, {"value": 1, "label": "1倍"}, {"value": 5, "label": "5倍"}, {"value": 10, "label": "10倍"}]},
+                "series": [{"id": "s", "label": "全件読み", "points": [[100, 1], [1000, 10]]}]}
+        labels = re.findall(r'data-key="ytick-label-[^"]+"[^>]*>([^<]*)<', render_line(spec, "l", narrow=True)[0])
+        self.assertEqual(labels, ["1倍", "5倍", "10倍"])
+
     def test_one_line_needs_no_phone_key(self):
         spec = {"type": "line", "x": {"min": 0, "max": 4, "unit": "回", "ticks": [0, 4]}, "y": {"min": 0, "max": 6, "unit": "件", "ticks": [0, 6], "label": "新しい不明瞭点"},
                 "series": [{"id": "a", "label": "新しい不明瞭点", "points": [[0, 5], [4, 0]]}]}

@@ -199,9 +199,19 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         if v in keep:
             out.append(_axis_label(gx, y1 + 18, text, W, f"xtick-label-{v:g}"))
     taken.append((0, y1 + 2, W, H))  # the x tick labels and the axis name below the plot
+    # y labels sit in one column, so ones closer than a line of text read as one: keep named ticks, then the ends, then the rest.
+    y_named = {float(t["value"]) for t in y["ticks"] if isinstance(t, dict) and t.get("label")}
+    y_vals = [_tick(t, tick_unit)[0] for t in y["ticks"]]
+    y_keep: list[float] = []
+    for v in sorted(y_vals, key=lambda v: (v not in y_named, v not in (y_vals[0], y_vals[-1]), v)):
+        if all(abs(py(v) - py(k)) >= 20 for k in y_keep):
+            y_keep.append(v)
     for t in y["ticks"]:
         v, text = _tick(t, tick_unit)
         gy = py(v)
+        if v not in y_keep:
+            out.append(f'<line class="axis-grid" x1="{x0:g}" y1="{gy:.2f}" x2="{x1:g}" y2="{gy:.2f}" data-key="ytick-{v:g}"/>')
+            continue
         out.append(f'<line class="axis-grid" x1="{x0:g}" y1="{gy:.2f}" x2="{x1:g}" y2="{gy:.2f}" data-key="ytick-{v:g}"/>')
         out.append(_svg_text(x0 - 8, gy + 4, text, "axis-label", "end", f"ytick-label-{v:g}"))
     if x.get("label"):

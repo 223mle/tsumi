@@ -100,6 +100,9 @@ async function main() {
       if (fold.length && fold[0] > 844) report.errors.push(`first screen: the first key point ends at ${Math.round(fold[0])}px, below 844px; shorten the title or lead`);
       const below = fold.filter(b => b > 844).length;
       if (below && fold[0] <= 844) report.notes.push(`first screen: ${below} of ${fold.length} key points start or end below 844px; shorten the lead or the key points if they should all show`);
+      // A big number that wraps at phone width reads as two numbers.
+      const wrapped = await page.evaluate(() => [...document.querySelectorAll('.stat-value')].filter(v => { const lh = parseFloat(getComputedStyle(v).lineHeight) || parseFloat(getComputedStyle(v).fontSize) * 1.3; return v.getBoundingClientRect().height > lh * 1.5; }).map(v => v.textContent.trim()));
+      if (wrapped.length) report.notes.push(`stats: values wrap at 390px (${wrapped.join('、')}); keep the value to about 6 full-width characters and move qualifiers into the label`);
       await page.screenshot({path:path.join(dest,'390-first-screen.png')});
       await context.close();
     }

@@ -24,7 +24,7 @@
 | `p` | `text` | 段落。1〜3文 |
 | `list` | `items`（2〜9個）、`ordered` | 独立した事実の列挙。読み手が順に行う操作は `ordered: true` |
 | `callout` | `tone`（`note` / `key` / `warn` / `example`）、`text`、任意の `title` | 読み落とすと困る注意・要点。1節に1つまで |
-| `stats` | `items`（2〜4個の `value`・`label`・任意の `note`） | 大きく見せたい数値。`value` は12字以内で単位を含める |
+| `stats` | `items`（2〜4個の `value`・`label`・任意の `note`） | 大きく見せたい数値。`value` は単位を含めて全角6字程度まで（スマートフォンでは2列に並び、それを超えると折り返す。`check-render.cjs` が `notes` で知らせる）。「1回の」「/回」のような添え書きは `label` に置く |
 | `compare` | `columns`（2〜3列の `title`・`items`・任意の `label`・`verdict`・`tone`）、任意の `caption` | 選択肢を同じ観点で並べる。`tone` は `good` / `bad` / `accent` / `neutral` |
 | `code` | `code`（40行以内）、任意の `language`・`caption` | 説明に必要な部分だけのコード |
 | `details` | `summary`、`paragraphs` | 本筋から外れる理由・例外。初期状態で閉じる |
