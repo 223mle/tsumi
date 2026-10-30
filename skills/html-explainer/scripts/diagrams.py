@@ -112,6 +112,7 @@ def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
             spec=panel['spec']
             if spec.get('type')!='network': continue
             for edge in spec.get('edges',[])+[e for v in spec.get('variants',[]) for e in v.get('edges',[])]:
+                if spec.get('edges') and 'step' not in edge: continue  # context edges in a step figure are drawn grey
                 tone=edge.get('tone','blue')
                 if edge.get('kind')!='conflict' and tone!='slate' and tone not in named:  # grey reads as neutral
                     raise ValueError(f"legend: edge {edge.get('id')} is drawn in {tone}, which the legend does not name; add it to the legend or reuse a named colour")

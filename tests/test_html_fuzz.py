@@ -211,6 +211,13 @@ class FuzzTests(unittest.TestCase):
             y1, y2 = map(float, re.search(r'data-key="span:0:line"[^>]*d="M[\d.]+ ([\d.]+)H[\d.]+M[\d.]+ [\d.]+V([\d.]+)', svg).groups())
             self.assertGreater(y2 - y1, 10)
 
+    def test_a_line_can_hide_its_vertices(self):
+        spec = {"type": "line", "x": {"min": 0, "max": 10, "unit": "", "ticks": [0, 10]}, "y": {"min": 0, "max": 2, "unit": "", "ticks": [0, 2]},
+                "series": [{"id": "i", "label": "索引", "points": [[0, 1], [4.9, 1], [5, 1.25], [10, 1.25]], "vertices": False}]}
+        self.assertNotIn('data-key="pt-i-', render_line(spec, "l")[0])
+        spec["series"][0]["vertices"] = True
+        self.assertIn('data-key="pt-i-', render_line(spec, "l")[0])
+
     def test_one_line_needs_no_phone_key(self):
         spec = {"type": "line", "x": {"min": 0, "max": 4, "unit": "回", "ticks": [0, 4]}, "y": {"min": 0, "max": 6, "unit": "件", "ticks": [0, 6], "label": "新しい不明瞭点"},
                 "series": [{"id": "a", "label": "新しい不明瞭点", "points": [[0, 5], [4, 0]]}]}

@@ -44,8 +44,10 @@ def _scene(spec: dict[str, Any], scene: dict[str, Any], path: str, x: dict[str, 
     ids: set[str] = set()
     for i, s in enumerate(series):
         p = f"{path}.series[{i}]"
-        if not isinstance(s, dict) or set(s) - {"id", "label", "tone", "points", "dashed", "dots"}:
-            _fail(p, "id, label, points; optional tone, dashed, dots")
+        if not isinstance(s, dict) or set(s) - {"id", "label", "tone", "points", "dashed", "dots", "vertices"}:
+            _fail(p, "id, label, points; optional tone, dashed, dots, vertices")
+        if "vertices" in s and not isinstance(s["vertices"], bool):
+            _fail(p + ".vertices", "true or false")
         _id(s.get("id"), p + ".id", ids)
         _text(s.get("label"), p + ".label")
         if len(s["label"]) > 16:
@@ -257,7 +259,7 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
             out.append(f'<path class="{key_cls} dg-tone-{tone}" d="M{lx + 6:.2f} {ly:.2f}h16"{dash} data-key="series-key-{_esc(s["id"])}"/>')
             out.append(_svg_text(lx + 26, ly + 4, s["label"], f"series-label series-label-{tone}", "start", f"series-label-{s['id']}"))
             taken.append((lx + 6, ly - 8, lx + 26 + _text_width(s["label"]), ly + 8))
-        for p in s.get("shown", s["points"]):
+        for p in ([] if s.get("vertices") is False else s.get("shown", s["points"])):
             tip = f'{plain(s["label"])}: {_tick(p[0], x.get("unit", ""))[1]} → {_tick(p[1], y.get("unit", ""))[1]}'
             dot = ' line-dot" r="5' if s.get("dots") else '" r="3.5'
             out.append(f'<circle class="line-point dg-tone-{tone}{dot}" cx="{px(p[0]):.2f}" cy="{py(p[1]):.2f}" data-tip="{_esc(tip)}" data-key="pt-{_esc(s["id"])}-{p[0]:g}"/>')
