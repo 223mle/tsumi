@@ -237,15 +237,6 @@ def _number(v: float) -> str:
     return f"{v:.6g}"
 
 
-def _tick_stride(spec: dict[str, Any], lo: float, hi: float, width: float, log: bool = False) -> int:
-    """Label every n-th tick so that tick texts never touch; gridlines stay on every tick."""
-    texts=[_tick(t,spec['unit']) for t in spec['ticks']]
-    xs=[_scale(v,lo,hi,0,width,log) for v,_ in texts]
-    need=max(sum(12 if ord(c)>255 else 7 for c in t) for _,t in texts)+8
-    gap=min((b-a for a,b in zip(xs,xs[1:])),default=need)
-    return max(1,math.ceil(need/max(gap,1)))
-
-
 def _text_width(text: str) -> float:
     # 12px text: CJK is square; m, w and % run wide and i, l, t, dots run narrow in Latin.
     return sum(12 if ord(c) > 255 else 10.5 if c in "mwMW%@" else 4 if c in "iljtfr.,:;|' " else 7 for c in text)
@@ -272,10 +263,10 @@ def _label_span(x: float, text: str, W: float) -> tuple[float, float]:
     return left, left + tw
 
 
-def choose_ticks(ticks: list[tuple[float, str]], to_x, W: float, marked: set) -> set:
-    """Tick values to label so no two labels touch: zero, the two ends, marked values, then the rest in order."""
+def choose_ticks(ticks: list[tuple[float, str]], to_x, W: float, marked: set, named: set = frozenset()) -> set:
+    """Tick values to label so no two labels touch: zero, ticks the author named, the two ends, marked values, then the rest."""
     first, last = ticks[0][0], ticks[-1][0]
-    order = sorted(ticks, key=lambda t: (t[0] != 0, t[0] not in (first, last), t[0] not in marked, t[0]))
+    order = sorted(ticks, key=lambda t: (t[0] != 0, t[0] not in named, t[0] not in (first, last), t[0] not in marked, t[0]))
     spans: list[tuple[float, float]] = []
     keep = set()
     for value, text in order:
@@ -337,7 +328,8 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
         if summary:out.append(_svg_wrapped_text(24,cy+(12 if gh<60 else 22),summary,'group-summary',f'group-summary-{gi}',9))
     ticks=[_tick(t,spec['unit']) for t in spec['ticks']]
     marked={float(m['value']) for v in spec['variants'] for m in v.get('markers',[])}
-    keep=choose_ticks(ticks,lambda v:_scale(v,lo,hi,x0,width),W,marked)
+    named={float(t['value']) for t in spec['ticks'] if isinstance(t,dict) and t.get('label')}
+    keep=choose_ticks(ticks,lambda v:_scale(v,lo,hi,x0,width),W,marked,named)
     for value,text in ticks:
         x=_scale(value,lo,hi,x0,width)
         out.append(f'<line x1="{x:.2f}" y1="{48+lift}" x2="{x:.2f}" y2="{h-28}" class="axis-grid" data-key="tick-{value:g}"/>')
@@ -447,12 +439,19 @@ def _threshold_svg(spec,prefix,narrow=False):
     values=[plain(r['label'])+' '+plain(r.get('value_label') or f"{r['value']:g}{spec['unit']}") for r in spec['rows']]
     desc='、'.join(values+[plain(t['label']) for t in spec.get('thresholds',[])])
     W,x0,width,row_chars=(NARROW_WIDTH,96.0,NARROW_WIDTH-96-74,6) if narrow else (960,210.0,580.0,14)
+    if narrow:
+        # Row names are right-aligned at x0-16; widen the name column so the longest one keeps 12px from the edge.
+        longest=max(_text_width(line) for r in spec['rows'] for line in (wrap(r['label'],row_chars*2,3) or [r['label']]))
+        x0=max(x0,longest+28);width=W-x0-74
     out=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {h}" role="img" aria-labelledby="{prefix}-title" aria-describedby="{prefix}-desc"><title id="{prefix}-title">値と閾値</title><desc id="{prefix}-desc">{_esc(desc)}</desc>']
-    every=_tick_stride(spec,lo,hi,width,log)
-    for ti,tick in enumerate(spec['ticks']):
-        value,text=_tick(tick,spec['unit']);x=_scale(value,lo,hi,x0,width,log)
+    # The same thinning as the other axes: labels keep a clear gap, zero and named ticks first.
+    ticks=[_tick(t,spec['unit']) for t in spec['ticks']]
+    named={float(t['value']) for t in spec['ticks'] if isinstance(t,dict) and t.get('label')}
+    keep=choose_ticks(ticks,lambda v:_scale(v,lo,hi,x0,width,log),W,{float(t['value']) for t in spec.get('thresholds',[])},named)
+    for value,text in ticks:
+        x=_scale(value,lo,hi,x0,width,log)
         out.append(f'<line x1="{x:.2f}" y1="42" x2="{x:.2f}" y2="{h-26}" class="axis-grid" data-key="tick-{value:g}"/>')
-        if ti%every==0:out.append(_axis_label(x,h-9,text,W,f'tick-label-{value:g}'))
+        if value in keep:out.append(_axis_label(x,h-9,text,W,f'tick-label-{value:g}'))
     thresholds=spec.get('thresholds',[]);limit=max(float(t['value'])for t in thresholds)if thresholds else None
     for i,row in enumerate(spec['rows']):
         y=53+i*44;x=_scale(float(row['value']),lo,hi,x0,width,log);tone=row.get('tone','blue')

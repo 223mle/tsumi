@@ -188,7 +188,8 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
     # Tick labels that would touch are thinned, but ticks at a marked point or marker are kept first.
     # keep_ticks is the same for every variant, so tick labels do not jump when switching.
     ticks = [_tick(t, x.get("unit", "")) for t in x["ticks"]]
-    keep = choose_ticks(ticks, px, W, keep_ticks)
+    named = {float(t["value"]) for t in x["ticks"] if isinstance(t, dict) and t.get("label")}
+    keep = choose_ticks(ticks, px, W, keep_ticks, named)
     for v, text in ticks:
         gx = px(v)
         out.append(f'<line class="axis-grid" x1="{gx:.2f}" y1="{y0:g}" x2="{gx:.2f}" y2="{y1:g}" data-key="xtick-{v:g}"/>')
@@ -267,7 +268,7 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
             n = max(1, int(max(abs(bx - ax), abs(by - ay)) / 4))
             line_samples += [(ax + (bx - ax) * k / n, ay + (by - ay) * k / n) for k in range(n + 1)]
     for p in scene.get("points", []):
-        tone = p.get("tone", "red")
+        tone = p.get("tone") or _series_tone_at(scene["series"], p, yhi - ylo)
         cx, cy = px(p["x"]), py(p["y"])
         tw = _text_width(p["label"])
         def fits(lx, ty, avoid_lines):
@@ -309,6 +310,20 @@ def _resample(points, xs):
                 out.append([x, ay + (by - ay) * ((x - ax) / (bx - ax) if bx != ax else 0)])
                 break
     return out
+
+
+def _series_tone_at(series, point, y_span):
+    """The colour of the one line a note sits on; red when it sits on none or where lines cross (a break-even)."""
+    hits = []
+    for s in series:
+        pts = s["points"]
+        for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+            if ax <= point["x"] <= bx:
+                y = ay if bx == ax else ay + (by - ay) * (point["x"] - ax) / (bx - ax)
+                if abs(y - point["y"]) <= 0.02 * y_span:
+                    hits.append(s.get("tone") or "blue")
+                break
+    return hits[0] if len(hits) == 1 else "red"
 
 
 def render_line(spec: Any, prefix: str = "line", narrow: bool = False) -> list[str]:

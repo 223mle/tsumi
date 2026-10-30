@@ -189,6 +189,14 @@ class FuzzTests(unittest.TestCase):
         self.assertIn("ピーク時の接続数（接続）", phone)
         self.assertIn(">1200接続<", wide)
 
+    def test_a_note_on_one_line_takes_its_colour(self):
+        spec = {"type": "line", "x": {"min": 0, "max": 10, "unit": "", "ticks": [0, 10]}, "y": {"min": 0, "max": 10, "unit": "", "ticks": [0, 10]},
+                "series": [{"id": "a", "label": "全件", "tone": "amber", "points": [[0, 1], [10, 10]]}, {"id": "b", "label": "索引", "tone": "blue", "points": [[0, 9], [10, 2]]}],
+                "points": [{"id": "on", "x": 10, "y": 10, "label": "10倍"}, {"id": "cross", "x": 5, "y": 5.5, "label": "同じ"}]}
+        svg = render_line(spec, "l")[0]
+        self.assertRegex(svg, r'class="line-callout dg-tone-amber" data-key="callout-on"')
+        self.assertRegex(svg, r'class="line-callout dg-tone-red" data-key="callout-cross"')
+
     def test_one_line_needs_no_phone_key(self):
         spec = {"type": "line", "x": {"min": 0, "max": 4, "unit": "回", "ticks": [0, 4]}, "y": {"min": 0, "max": 6, "unit": "件", "ticks": [0, 6], "label": "新しい不明瞭点"},
                 "series": [{"id": "a", "label": "新しい不明瞭点", "points": [[0, 5], [4, 0]]}]}
