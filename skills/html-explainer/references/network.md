@@ -11,6 +11,6 @@ svgs = render_network(spec, "transfer")
 
 辺の`kind`は`request`（破線）、`file`（実線）、`conflict`（向きのない赤い破線と×）です。`route`は`direct`、`above`、`below`から選びます。これは意味のある経路の選択で、ピクセル座標ではありません。指定した側を通せなければ図の上下を広げ、それでも無理なら生成を拒否します。`label_side`でラベルを線の上・下へ避けられます。同じノードの同じ辺に付く複数の線は、少しずらして付けます。入力の詳細は[図の入力](diagram-input.md#network)にあります。
 
-生成されたSVGは`title`、`desc`、`role="img"`と、`aria-labelledby`（title）・`aria-describedby`（desc）を持ちます。descには描いた経路と札の内容が入ります。ノードの`row`が2種類以内なら、`render_network(spec, prefix, narrow=True)`で行と列を入れ替えたスマートフォン用の縦向きの配置も作ります。全ノード、辺、境界、ラベルに安定した`data-key`を付け、ノードには`data-obstacle`を付けます。`diagrams.py`が同梱のJSと組み合わせ、同じキーの属性を補間します。`prefers-reduced-motion`では選んだvariantへ即時切替し、JavaScript無効時と印刷時は全variantを静止表示します。
+生成されたSVGは`title`、`desc`、`role="img"`と、`aria-labelledby`（title）・`aria-describedby`（desc）を持ちます。descには描いた経路と札の内容が入ります。ノードの`row`が2種類以内なら、`render_network(spec, prefix, narrow=True)`で行と列を入れ替えたスマートフォン用の縦向きの配置も作ります。3行のグリッドは、入れ替えると幅144pxのノードが3つ横に並び、420pxの図に収まらないため、縦向きにしません。スマートフォンで読ませたい経路図は、主な経路を2行に置き、脇の要素は本文か別の図に移します。全ノード、辺、境界、ラベルに安定した`data-key`を付け、ノードには`data-obstacle`を付けます。`diagrams.py`が同梱のJSと組み合わせ、同じキーの属性を補間します。`prefers-reduced-motion`では選んだvariantへ即時切替し、JavaScript無効時と印刷時は全variantを静止表示します。
 
 CSSは`--diagram-blue`、`--diagram-teal`、`--diagram-violet`、`--diagram-amber`、`--diagram-rose`、`--diagram-slate`、`--diagram-red`と、共通の`--text`、`--muted`、`--surface`、`--subtle`、`--line`を定義します。コンポーネントはテーマ値を上書きしません。
