@@ -62,3 +62,14 @@
 })();
 addEventListener('beforeprint', () => document.querySelectorAll('details:not([open])').forEach(d => { d.open = true; d.dataset.printOpened = ''; }));
 addEventListener('afterprint', () => document.querySelectorAll('details[data-print-opened]').forEach(d => { d.open = false; delete d.dataset.printOpened; }));
+(() => {
+  // Show "scroll sideways" hints only where the content really overflows.
+  function mark() {
+    document.querySelectorAll('.table-wrap').forEach(w => w.classList.toggle('is-scrollable', w.scrollWidth > w.clientWidth + 2));
+    document.querySelectorAll('.dg-panel').forEach(p => {
+      const box = p.querySelector('.dg-live') || p.querySelector('.dg-scroll');
+      p.classList.toggle('is-scrollable', !!box && box.scrollWidth > box.clientWidth + 2);
+    });
+  }
+  addEventListener('load', mark); addEventListener('resize', mark); mark();
+})();

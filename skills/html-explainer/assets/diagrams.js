@@ -38,13 +38,13 @@
     function removeParticles(){particles.forEach(p=>p.node.remove());particles=[];}
     function particleFrame(now){
       if(!playing||!visible||reduced.matches||document.hidden){flowFrame=0;return;}
-      particles.forEach(p=>{
-        const opacity=Number(p.path.getAttribute('opacity')??1);
-        if(opacity<.1){p.node.style.display='none';return;}
+      // Edges run one after another in their written order, so the dots retrace the numbered sequence.
+      const live=particles.filter(p=>{p.node.style.display='none';return Number(p.path.closest('[opacity]')?.getAttribute('opacity')??1)>=.5;});
+      const leg=1100,cycle=live.length*leg+700,t=(now-flowOrigin)%cycle;
+      live.forEach((p,i)=>{
+        const progress=(t-i*leg)/leg;if(progress<0||progress>1)return;
         p.node.style.display='';
-        const len=p.path.getTotalLength();
-        const progress=((now-flowOrigin)/2200+p.phase)%1;
-        const point=p.path.getPointAtLength(progress*len);
+        const point=p.path.getPointAtLength(progress*p.path.getTotalLength());
         p.node.setAttribute('transform',`translate(${point.x},${point.y})`);
       });flowFrame=requestAnimationFrame(particleFrame);
     }
@@ -56,7 +56,7 @@
         const node=document.createElementNS(SVG,request?'circle':'rect');
         node.setAttribute('class','dg-flow-particle'+(request?' dg-flow-request':''));node.setAttribute('aria-hidden','true');
         if(request)node.setAttribute('r','3');else{node.setAttribute('x','-4');node.setAttribute('y','-3');node.setAttribute('width','8');node.setAttribute('height','6');node.setAttribute('rx','1');}
-        svg.append(node);particles.push({path,node,phase:(i*.19)%1});
+        svg.insertBefore(node,svg.querySelector(':scope>.dg-edge-label,:scope>.dg-node'));particles.push({path,node});
       }));flowOrigin=performance.now();flowFrame=requestAnimationFrame(particleFrame);
     }
     function select(index,instant=false){
@@ -104,12 +104,18 @@
       stepButtons.forEach((b,i)=>{b.setAttribute('aria-current',i===index?'step':'false');b.classList.toggle('is-done',i<index);});
       if(stepCount)stepCount.textContent=`${index+1} / ${stepButtons.length}`;
       // On narrow screens the drawing scrolls sideways; bring the current step into view.
-      panels.forEach(({svg})=>{
-        const box=svg.parentElement,cur=svg.querySelector('.is-current .dg-msg-line, .dg-msg.is-current');
-        if(!cur||box.scrollWidth<=box.clientWidth+2)return;
-        const r=cur.getBoundingClientRect(),b=box.getBoundingClientRect();
-        const target=r.width>b.width-40?box.scrollLeft+r.left-b.left-40:box.scrollLeft+(r.left+r.right)/2-(b.left+b.right)/2;
-        box.scrollTo({left:Math.max(0,target),behavior:reduced.matches?'auto':'smooth'});
+      panels.forEach(({svg,scenes})=>{
+        const box=svg.parentElement;if(box.scrollWidth<=box.clientWidth+2)return;
+        // Follow what this state is about: the current message or edge, or a node's mark.
+        const target=scenes[Math.min(index,scenes.length-1)];
+        const keys=[...target.querySelectorAll('.dg-msg.is-current .dg-msg-line,.dg-edge.is-current,.dg-mark')].map(e=>e.dataset.key);
+        const els=keys.map(k=>svg.querySelector(`[data-key="${CSS.escape(k)}"]`)).filter(Boolean);
+        if(!els.length)return;
+        const rs=els.map(e=>e.getBoundingClientRect());
+        const r={left:Math.min(...rs.map(x=>x.left)),right:Math.max(...rs.map(x=>x.right))};r.width=r.right-r.left;
+        const b=box.getBoundingClientRect();
+        const left=r.width>b.width-40?box.scrollLeft+r.left-b.left-40:box.scrollLeft+(r.left+r.right)/2-(b.left+b.right)/2;
+        box.scrollTo({left:Math.max(0,left),behavior:reduced.matches?'auto':'smooth'});
       });
       figure.querySelectorAll('[data-go]').forEach(b=>{const next=index+Number(b.dataset.go);b.disabled=next<0||next>=stepButtons.length;});
     }

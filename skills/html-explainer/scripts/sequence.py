@@ -111,18 +111,19 @@ def validate_sequence(spec: object) -> dict[str, Any]:
     return spec
 
 
-def _span_side(spec: dict[str, Any], span: dict[str, Any]) -> str:
-    worker = next(m["to"] for m in spec["messages"] if m["id"] == span["from"])
-    if worker == spec["actors"][-1]["id"]:
-        return "last"
-    return "first" if worker == spec["actors"][0]["id"] else "rail"
+def _span_actor(spec: dict[str, Any], span: dict[str, Any]) -> str:
+    """The actor beside which a span is drawn: the rightmost one its messages touch."""
+    order = [a["id"] for a in spec["actors"]]
+    ids = [m["id"] for m in spec["messages"]]
+    a, b = ids.index(span["from"]), ids.index(span["to"])
+    involved = {x for m in spec["messages"][a:b + 1] for x in (m["from"], m["to"])}
+    return max(involved, key=order.index)
 
 
 def _columns(spec: dict[str, Any]) -> tuple[dict[str, float], float, float]:
     count = len(spec["actors"])
-    sides = {_span_side(spec, sp) for sp in spec.get("spans", [])}
-    left = 160.0 if sides & {"rail", "first"} else 110.0
-    right = 160.0 if "last" in sides else 110.0
+    left = 110.0
+    right = 160.0 if any(_span_actor(spec, sp) == spec["actors"][-1]["id"] for sp in spec.get("spans", [])) else 110.0
     gap = (WIDTH - left - right) / (count - 1)
     return ({a["id"]: left + i * gap for i, a in enumerate(spec["actors"])}, gap, left)
 
@@ -178,15 +179,10 @@ def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
             order = [m["id"] for m in msgs]
             a, b = order.index(span["from"]), order.index(span["to"])
             y1, y2 = rows[a], rows[b]
-            # Measure on the lifeline of the actor doing the work when it sits at an edge; otherwise use the left rail.
-            worker = msgs[a]["to"]
-            if worker == actor_order[-1]:
-                bx, lx, anchor = xs[worker] + 42, xs[worker] + 54, "start"
-            elif worker == actor_order[0]:
-                bx, lx, anchor = xs[worker] - 42, xs[worker] - 54, "end"
-            else:
-                bx, lx, anchor = left - 33, left - 46, "end"
-            op = "1" if step >= b else "0.18"
+            # Measure beside the rightmost actor taking part in the measured messages, where no arrow of the span passes.
+            edge_x = xs[_span_actor(data, span)]
+            bx, lx, anchor = edge_x + 42, edge_x + 54, "start"
+            op = "1" if step >= b else "0.4"
             key = f"span:{si}"
             mid = (y1 + y2) / 2
             parts.append(f'<g class="dg-span dg-tone-{span.get("tone", "amber")}" data-key="{key}" opacity="{op}">'
@@ -200,7 +196,7 @@ def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
             tone = msg.get("tone", "slate" if kind == "reply" else "blue")
             key = f"msg:{msg['id']}"
             state = "is-current" if i == step else "is-done" if i < step else "is-future"
-            opacity = "1" if i <= step else "0.16"
+            opacity = "1" if i <= step else "0.26"
             marker = f"url(#{vid}-{'open' if kind != 'call' else 'solid'}-{tone})"
             if self_call:
                 d = f"M{x1 + 6:g} {y:g}H{x1 + SELF_W:g}V{y + 22:g}H{x1 + 8:g}"

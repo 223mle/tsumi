@@ -62,8 +62,10 @@ def _tone(value: Any, path: str) -> str:
 def validate_chart(spec: dict[str, Any]) -> None:
     if not isinstance(spec, dict):
         _fail("chart", "object required")
-    allowed = {"type", "min", "max", "unit", "ticks", "lanes", "groups", "variants", "rows", "thresholds", "scale"}
+    allowed = {"type", "min", "max", "unit", "ticks", "lanes", "groups", "variants", "rows", "thresholds", "scale", "baseline"}
     if set(spec) - allowed: _fail("chart", "unknown fields")
+    if "baseline" in spec and (not isinstance(spec["baseline"], bool) or spec.get("type") != "timeline"):
+        _fail("chart.baseline", "boolean for a timeline required")
     kind = spec.get("type")
     if kind == "timeline":
         _validate_timeline(spec)
@@ -244,6 +246,14 @@ def _timeline_svg(spec, variant, index, prefix):
         y=top+i*row_height
         out.append(_svg_wrapped_text(x0-12,y+15,lane['label'],'lane-label',f"lane-label-{lane['id']}",12 if grouped else 14,'end'))
     external={}
+    marker_xs=[_scale(float(m['value']),lo,hi,x0,width) for m in variant.get('markers',[])]
+    if spec.get('baseline') and index>0:
+        # The first variant stays as a faint outline so the reader sees what each change removed.
+        for seg in spec['variants'][0].get('segments',[]):
+            if seg.get('unknown'):continue
+            li=next(i for i,lane in enumerate(lanes)if lane['id']==seg['lane']);y=top+li*row_height
+            gx=_scale(float(seg['start']),lo,hi,x0,width);gw=float(seg['duration'])/(hi-lo)*width
+            out.append(f'<rect x="{gx:.2f}" y="{y}" width="{gw:.2f}" height="23" rx="3" class="bar-ghost" data-key="ghost-{_esc(seg["id"])}"/>')
     for seg in variant.get('segments',[]):
         li=next(i for i,lane in enumerate(lanes)if lane['id']==seg['lane']);y=top+li*row_height
         x=_scale(float(seg['start']),lo,hi,x0,width)
@@ -261,11 +271,14 @@ def _timeline_svg(spec, variant, index, prefix):
         elif label:
             # Put a short segment's label beside its bar when the lane leaves room; otherwise use the value column.
             bounds=[(_scale(float(o['start']),lo,hi,x0,width),_scale(float(o['start'])+float(o.get('duration',0)),lo,hi,x0,width)) for o in variant.get('segments',[]) if o['lane']==seg['lane'] and o is not seg and not o.get('unknown')]
-            right=x+w+6;left=x-6
-            if right+text_width<=940 and all(not(a<right+text_width+6 and b>right-2) for a,b in bounds):
-                out.append(_svg_text(right,y+16,label,'external-label','start',f"segment-label-{seg['id']}"))
-            elif left-text_width>=x0 and all(not(a<left+2 and b>left-text_width-6) for a,b in bounds):
-                out.append(_svg_text(left,y+16,label,'external-label','end',f"segment-label-{seg['id']}"))
+            bounds+=[(mx-3,mx+3) for mx in marker_xs]
+            free=lambda l,r:l>=x0-4 and r<=940 and all(not(a<r+4 and b>l-4) for a,b in bounds)
+            # Beside the bar, then just past the next obstacle on the same row; the value column is the last resort.
+            spots=[(x+w+6,'start'),(x-6,'end')]+[(b+6,'start') for a,b in sorted(bounds) if b>x+w]
+            for sx,anchor in spots:
+                l,r=(sx,sx+text_width) if anchor=='start' else (sx-text_width,sx)
+                if free(l,r):
+                    out.append(_svg_text(sx,y+16,label,'external-label',anchor,f"segment-label-{seg['id']}"));break
             else:external.setdefault(li,[]).append((seg['id'],label))
     for li,labels in external.items():
         out.append(_svg_wrapped_text(816,top+li*row_height+15,' / '.join(x[1]for x in labels),'external-label',f"external-{lanes[li]['id']}",10))

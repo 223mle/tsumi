@@ -381,9 +381,10 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
         label_boxes = []
         mark_parts = []
         for mark in variant.get("marks", []):
-            mx, my = positions[mark["node"]]
+            nx, ny = positions[mark["node"]]
             mw = units(mark["label"]) * 6.5 + 18
-            top = my - 36 - 16  # sits on the node's top edge, clear of a two-line label
+            # Straddle the node's top-right corner: clear of a centred label and of a boundary title at the top left.
+            mx, top = nx + 72 - mw / 2 + 10, ny - 36 - 15
             label_boxes.append((mx - mw / 2, top, mx + mw / 2, top + 22))
             mkey = f"mark:{mark['node']}"
             mark_parts.append(f'<g class="dg-mark dg-tone-{mark.get("tone", "red")}" data-key="{mkey}" transform="translate({mx:g},{top + 11:g})">'

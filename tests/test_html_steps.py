@@ -46,7 +46,7 @@ class SequenceTests(unittest.TestCase):
         second = scenes[1]
         self.assertRegex(second, r'class="dg-msg dg-msg-call dg-tone-blue is-done" data-key="msg:m1" opacity="1"')
         self.assertRegex(second, r'class="dg-msg dg-msg-call dg-tone-blue is-current" data-key="msg:m2"')
-        self.assertRegex(second, r'data-key="msg:m3" opacity="0.16"')
+        self.assertRegex(second, r'data-key="msg:m3" opacity="0.26"')
         keys = re.findall(r'data-key="([^"]+)"', second)
         self.assertEqual(len(keys), len(set(keys)))
 

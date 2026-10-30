@@ -16,7 +16,8 @@ SOFT = set(" 　・/／")
 
 
 def units(text: str) -> float:
-    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in text)
+    # Ambiguous glyphs such as ① and ※ render full-width in Japanese fonts.
+    return sum(2 if unicodedata.east_asian_width(c) in "WFA" else 1 for c in text)
 
 
 def _script(c: str) -> str:
