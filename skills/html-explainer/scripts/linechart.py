@@ -11,7 +11,7 @@ from typing import Any
 
 from charts import (_axis_label, _esc, _fail, _id, _marker_layout, _num, _svg_text, _text, _text_width,
                     _tick, _tone, choose_ticks, ID_RE, NARROW_WIDTH)
-from jawrap import plain
+from jawrap import units, plain
 
 
 def _axis(spec: Any, path: str) -> dict[str, Any]:
@@ -136,10 +136,15 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
     xlo, xhi, ylo, yhi = float(x["min"]), float(x["max"]), float(y["min"]), float(y["max"])
     W = NARROW_WIDTH if narrow else 960
     x0, x1 = (64.0, W - 78.0) if narrow else (110.0, W - 190.0)
-    x0 = max(x0, 12 + max(_text_width(_tick(t, y.get("unit", ""))[1]) for t in y["ticks"]))  # room for the longest y label
+    # A unit of two or more characters on every phone tick crowds the gutter; say it once in the axis name instead.
+    y_unit = y.get("unit", "")
+    unit_in_name = narrow and units(y_unit) > 2
+    tick_unit = "" if unit_in_name else y_unit
+    y_name = (f"{y['label']}（{y_unit}）" if y.get("label") else y_unit) if unit_in_name else y.get("label")
+    x0 = max(x0, 16 + max(_text_width(_tick(t, tick_unit)[1]) for t in y["ticks"]))  # room for the longest y label
     marker_layout, rows = _marker_layout([{"id": m["id"], "value": m["x"], "label": m["label"]} for m in scene.get("markers", [])], xlo, xhi, x0, x1 - x0, W)
     lift = max(0, rows - 1) * 17
-    name_row = 16.0 if y.get("label") else 0.0  # a row of its own for the y-axis name, above the plot
+    name_row = 16.0 if y_name else 0.0  # a row of its own for the y-axis name, above the plot
     y0, y1 = 40.0 + lift + name_row, (230.0 if narrow else 270.0) + lift + name_row  # plot top and bottom
     H = y1 + 46
     # On the phone layout series names go in a key below the plot, where they cannot sit on a line.
@@ -191,17 +196,16 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
             out.append(_axis_label(gx, y1 + 18, text, W, f"xtick-label-{v:g}"))
     taken.append((0, y1 + 2, W, H))  # the x tick labels and the axis name below the plot
     for t in y["ticks"]:
-        v, text = _tick(t, y.get("unit", ""))
+        v, text = _tick(t, tick_unit)
         gy = py(v)
         out.append(f'<line class="axis-grid" x1="{x0:g}" y1="{gy:.2f}" x2="{x1:g}" y2="{gy:.2f}" data-key="ytick-{v:g}"/>')
         out.append(_svg_text(x0 - 8, gy + 4, text, "axis-label", "end", f"ytick-label-{v:g}"))
     if x.get("label"):
         out.append(_svg_text((x0 + x1) / 2, x_name_y, x["label"], "axis-label", "middle", "x-axis-label"))
-    if y.get("label"):
-        # Above the plot from the left edge, so a long name is never cut off.
+    if y_name:
         # Just above the plot and below the marker labels, from the left edge so a long name is never cut off.
-        out.append(_svg_text(4, y0 - 14, y["label"], "axis-label", "start", "y-axis-label"))
-        taken.append((4, y0 - 26, 4 + _text_width(y["label"]), y0 - 11))
+        out.append(_svg_text(4, y0 - 14, y_name, "axis-label", "start", "y-axis-label"))
+        taken.append((4, y0 - 26, 4 + _text_width(y_name), y0 - 11))
     for m in scene.get("markers", []):
         mx, anchor, row = marker_layout[m["id"]]
         tone = m.get("tone", "slate")

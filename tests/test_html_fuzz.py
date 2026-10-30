@@ -180,6 +180,15 @@ class FuzzTests(unittest.TestCase):
         self.assertRegex(svg, r'data-key="span:0:label"[^>]*text-anchor="end"')
         self.assertTrue(inside(svg))
 
+    def test_a_long_unit_moves_to_the_axis_name_on_phones(self):
+        spec = {"type": "line", "x": {"min": 0, "max": 28, "unit": "か月", "ticks": [0, 14, 28]},
+                "y": {"min": 0, "max": 1200, "unit": "接続", "ticks": [0, 600, 1200], "label": "ピーク時の接続数"},
+                "series": [{"id": "p", "label": "見込み", "points": [[0, 80], [28, 1150]]}]}
+        phone, wide = render_line(spec, "l", narrow=True)[0], render_line(spec, "l")[0]
+        self.assertIn(">1200<", phone)
+        self.assertIn("ピーク時の接続数（接続）", phone)
+        self.assertIn(">1200接続<", wide)
+
     def test_one_line_needs_no_phone_key(self):
         spec = {"type": "line", "x": {"min": 0, "max": 4, "unit": "回", "ticks": [0, 4]}, "y": {"min": 0, "max": 6, "unit": "件", "ticks": [0, 6], "label": "新しい不明瞭点"},
                 "series": [{"id": "a", "label": "新しい不明瞭点", "points": [[0, 5], [4, 0]]}]}
