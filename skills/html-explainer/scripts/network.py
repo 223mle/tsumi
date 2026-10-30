@@ -350,7 +350,7 @@ def _path_midpoint(source: tuple[float, float], target: tuple[float, float], rou
 NARROW_WIDTH = 420
 
 
-def _layout_narrow(spec: dict[str, Any], extra_gap: float = 0.0) -> tuple[dict[str, tuple[float, float]], float, float]:
+def _layout_narrow(spec: dict[str, Any], extra_gap: float = 0.0, bottom_room: bool = False) -> tuple[dict[str, tuple[float, float]], float, float]:
     """The phone layout: the grid turned on its side, so a left-to-right flow reads top to bottom."""
     rows = sorted({n["row"] for n in spec["nodes"]})
     cols = sorted({n["column"] for n in spec["nodes"]})
@@ -361,6 +361,12 @@ def _layout_narrow(spec: dict[str, Any], extra_gap: float = 0.0) -> tuple[dict[s
     gap = 132.0 + extra_gap  # render_network retries with more room when a label or mark does not fit
     note_lines = max((len(_wrap(v["note"], 60)) for v in spec["variants"] if v.get("note")), default=0)
     height = top + 64 + (len(cols) - 1) * gap + (20 + 16 * (note_lines - 1) if note_lines else 0)
+    # Two side-by-side boxes on the bottom row get room below them, so an edge between them can detour
+    # underneath instead of crossing the lines that arrive from above. Every scene shares this height.
+    column = {n["id"]: n["column"] for n in spec["nodes"]}
+    edges = spec.get("edges", []) + [e for v in spec["variants"] for e in v.get("edges", [])]
+    if bottom_room and len(rows) > 1 and any(column[e["from"]] == column[e["to"]] == cols[-1] for e in edges):
+        height += 72
     return ({n["id"]: (xs[rows.index(n["row"])], top + cols.index(n["column"]) * gap) for n in spec["nodes"]},
             gap, height)
 
@@ -374,10 +380,11 @@ def render_network(spec: object, prefix: str = "diagram", narrow: bool = False) 
     data = validate_network(spec)
     if narrow:
         # Taller row gaps give long labels and detours more room before the phone layout gives up.
-        attempts = [(extra, beside, strict) for strict in (True, False) for extra in (0.0, 48.0, 96.0) for beside in (True, False)]  # the shortest figure that fits
-        for n, (extra, beside, strict) in enumerate(attempts):
+        attempts = [(extra, bottom, beside, strict) for strict in (True, False) for extra in (0.0, 48.0, 96.0)
+                    for bottom in (False, True) for beside in (True, False)]  # the shortest figure that fits
+        for n, (extra, bottom, beside, strict) in enumerate(attempts):
             try:
-                return _render(data, prefix, None, extra, beside, strict)
+                return _render(data, prefix, None, extra, beside, strict, bottom)
             except _NoRoute:
                 if n == len(attempts) - 1:
                     raise
@@ -389,6 +396,15 @@ def render_network(spec: object, prefix: str = "diagram", narrow: bool = False) 
         except _NoRoute:
             if n == len(attempts) - 1:
                 raise
+
+
+def _crosses(path, others) -> bool:
+    """Whether a sampled path crosses any earlier sampled path."""
+    def side(a, b, c):
+        return (b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0])
+    def hit(p, q, r, t):
+        return side(p, q, r) * side(p, q, t) < 0 and side(r, t, p) * side(r, t, q) < 0
+    return any(hit(a, b, c, e) for other in others for a, b in zip(path, path[1:]) for c, e in zip(other, other[1:]))
 
 
 class _NoRoute(ValueError):
@@ -446,10 +462,10 @@ def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, h
 
 
 def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | None, extra_gap: float = 0.0,
-            beside_first: bool = True, strict: bool = True) -> list[str]:
+            beside_first: bool = True, strict: bool = True, bottom_room: bool = False) -> list[str]:
     """Draw every variant; margins None selects the narrow phone layout."""
     safe_prefix = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
-    positions, _, height = _layout(data, margins) if margins else _layout_narrow(data, extra_gap)
+    positions, _, height = _layout(data, margins) if margins else _layout_narrow(data, extra_gap, bottom_room)
     canvas = 960 if margins else NARROW_WIDTH
     node_map = {n["id"]: n for n in data["nodes"]}
     obstacles = {n["id"]: (positions[n["id"]][0] - 72, positions[n["id"]][1] - 36,
@@ -549,6 +565,8 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                 points=_path_points((sx, sy),(tx, ty),candidate)
                 # Neither may a line run through an earlier label, nor a label sit on an earlier line.
                 if strict and any(r[0]<=x<=r[2] and r[1]<=y<=r[3] for r in label_boxes[len(variant.get("marks", [])):] for x,y in points[2:-2]): continue
+                # Nor may a detour cross an earlier line; a direct edge may, as a straight crossing reads clearly.
+                if strict and candidate!="direct" and _crosses(_path_points((sx, sy),(tx, ty),candidate,40)[3:-3],placed_paths): continue
                 mx,my = _path_midpoint((sx, sy),(tx, ty),candidate)
                 if not wraps[0]:
                     choice=(candidate,mx,my,0,None,[]);break
