@@ -29,8 +29,9 @@ def _lines(col, width):
     """Each field wrapped to the column width; 13px text is about 6.5px per unit."""
     values = {"eyebrow": col["eyebrow"], "title": col["title"], "item0": col["items"][0], "item1": col["items"][1], "footer": col["footer"]}
     out = {}
-    for field, *_ in ROWS:
-        lines = wrap(values[field], int((width - 48) / 6.8), 3)
+    for field, cls, *_ in ROWS:
+        # Bold headings run wider, especially Latin capitals; plain lines about 6.8px per unit.
+        lines = wrap(values[field], int((width - 48) / (8.2 if cls == "group-label" else 6.8)), 3)
         if lines is None:
             raise ValueError(f'decision.{field}: too long for the column; shorten it')
         out[field] = lines

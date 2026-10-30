@@ -2,7 +2,7 @@
 """Render a validated explainer document JSON as one portable HTML file."""
 from __future__ import annotations
 
-import argparse, html, json, math, os, re, sys, tempfile
+import argparse, html, itertools, json, math, os, re, sys, tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -17,10 +17,13 @@ STATUS_LABELS = {"measured": "計測値", "inferred": "推定", "proposed": "提
 STATUS_HELP = {"measured": "実際に測った値です。", "inferred": "根拠となる資料や条件から計算・推定した値です。", "proposed": "これから行う案で、まだ実施していません。",
                "unknown": "まだ決まっていない、または確かめていない部分です。", "illustrative": "仕組みを説明するための例で、実際の値ではありません。", "code": "コードから読み取った内容です。"}
 
+_STATUS_TIPS = itertools.count(1)
+
 def status_badge(status: str, label: str) -> str:
     """A figure's evidence badge that explains itself on hover, focus or tap, like a glossary term."""
-    return (f'<span class="term status-term" tabindex="0"><span class="status status-{esc(status)}">{esc(label)}</span>'
-            f'<span class="term-tip" role="tooltip"><b>{esc(label)}</b>{esc(STATUS_HELP.get(status, ""))}</span></span>')
+    tip = f"status-tip:{next(_STATUS_TIPS)}"
+    return (f'<span class="term status-term" tabindex="0" aria-describedby="{tip}"><span class="status status-{esc(status)}">{esc(label)}</span>'
+            f'<span class="term-tip" role="tooltip" id="{tip}" aria-hidden="true"><b>{esc(label)}</b>{esc(STATUS_HELP.get(status, ""))}</span></span>')
 ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 
 def esc(v: object) -> str:
@@ -255,7 +258,7 @@ def figure_html(fig: dict, source_titles: dict[str, str] | None = None) -> str:
         head = ''.join(f'<th scope="col">{esc(c)}</th>' for c in fig["columns"])
         # data-label lets a phone show each row as a card with its column names (style.css, .table-stack).
         rows = ''.join('<tr>' + ''.join((f'<th scope="row">{esc(c)}</th>' if j == 0 else f'<td data-label="{esc(fig["columns"][j])}">{esc(c)}</td>') for j, c in enumerate(row)) + '</tr>' for row in fig["rows"])
-        body = f'<p class="table-summary">{esc(fig["summary"])}</p><div class="table-wrap" tabindex="0" role="region" aria-label="表: {esc(fig["summary"].rstrip("。"))}。横にスクロールできます。"><p class="scroll-hint">横にスクロールして表全体を確認できます。</p><table class="{"table-stack" if len(fig["columns"]) >= 4 else ""}"><caption class="visually-hidden">{esc(fig["summary"])}</caption><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>'
+        body = f'<p class="table-summary">{esc(fig["summary"])}</p><div class="table-wrap" tabindex="0" role="region" aria-label="表: {esc(fig["summary"].rstrip("。"))}"><p class="scroll-hint">横にスクロールして表全体を確認できます。</p><table class="{"table-stack" if len(fig["columns"]) >= 4 else ""}"><caption class="visually-hidden">{esc(fig["summary"])}</caption><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>'
     source_titles = source_titles or {}
     status = esc(fig["status"]); refs = ''.join(f'<a class="source-ref" href="#{esc(x)}">{esc(source_titles.get(x, x))}</a>' for x in fig.get("source_ids", []))
     summary = f'<p class="summary">{esc(fig["summary"])}</p>' if kind != "table" else ""

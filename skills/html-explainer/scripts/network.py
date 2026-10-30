@@ -370,17 +370,20 @@ def render_network(spec: object, prefix: str = "diagram", narrow: bool = False) 
     data = validate_network(spec)
     if narrow:
         # Taller row gaps give long labels and detours more room before the phone layout gives up.
-        for extra in (0.0, 48.0, 96.0):
+        attempts = [(extra, beside, strict) for strict in (True, False) for beside in (True, False) for extra in (0.0, 48.0, 96.0)]
+        for n, (extra, beside, strict) in enumerate(attempts):
             try:
-                return _render(data, prefix, None, extra)
+                return _render(data, prefix, None, extra, beside, strict)
             except _NoRoute:
-                if extra == 96.0:
+                if n == len(attempts) - 1:
                     raise
-    for i, margins in enumerate(MARGINS):
+    # Strict first (no label on a line, no line through a label); only if nothing fits, allow the overlap.
+    attempts = [(margins, strict) for strict in (True, False) for margins in MARGINS]
+    for n, (margins, strict) in enumerate(attempts):
         try:
-            return _render(data, prefix, margins)
+            return _render(data, prefix, margins, strict=strict)
         except _NoRoute:
-            if i == len(MARGINS) - 1:
+            if n == len(attempts) - 1:
                 raise
 
 
@@ -391,7 +394,13 @@ class _NoRoute(ValueError):
 def _port_shifts(edges, positions):
     """Offsets for edge ends that share a node side, ordered by where the other end lies so they do not cross."""
     sides: dict[tuple[str, str], list] = {}
+    pairs: dict[tuple[str, str], int] = {}
     for e in edges:
+        key = tuple(sorted((e["from"], e["to"])))
+        pairs[key] = pairs.get(key, 0) + 1
+    for e in edges:
+        if pairs[tuple(sorted((e["from"], e["to"])))] > 1:
+            continue  # edges of one pair are already separated by their above/below detours
         (ax, ay), (bx, by) = positions[e["from"]], positions[e["to"]]
         horizontal = abs(ax - bx) >= abs(ay - by)
         for node, here, there, end in ((e["from"], (ax, ay), (bx, by), 0), (e["to"], (bx, by), (ax, ay), 1)):
@@ -432,7 +441,8 @@ def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, h
     return None
 
 
-def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | None, extra_gap: float = 0.0) -> list[str]:
+def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | None, extra_gap: float = 0.0,
+            beside_first: bool = True, strict: bool = True) -> list[str]:
     """Draw every variant; margins None selects the narrow phone layout."""
     safe_prefix = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
     positions, _, height = _layout(data, margins) if margins else _layout_narrow(data, extra_gap)
@@ -534,12 +544,12 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                 if not _route_is_safe((sx, sy),(tx, ty),candidate,edge_obstacles,endpoint_ids,height,canvas): continue
                 points=_path_points((sx, sy),(tx, ty),candidate)
                 # Neither may a line run through an earlier label, nor a label sit on an earlier line.
-                if any(r[0]<=x<=r[2] and r[1]<=y<=r[3] for r in label_boxes[len(variant.get("marks", [])):] for x,y in points[2:-2]): continue
+                if strict and any(r[0]<=x<=r[2] and r[1]<=y<=r[3] for r in label_boxes[len(variant.get("marks", [])):] for x,y in points[2:-2]): continue
                 mx,my = _path_midpoint((sx, sy),(tx, ty),candidate)
                 if not wraps[0]:
                     choice=(candidate,mx,my,0,None,[]);break
                 for words in wraps:
-                    choice=_place_label(words,label_sides,mx,my,margins,node_obstacles,endpoint_ids,height,canvas,label_boxes,placed_paths,candidate,abs(sx-tx)<abs(sy-ty))
+                    choice=_place_label(words,label_sides,mx,my,margins,node_obstacles,endpoint_ids,height,canvas,label_boxes,placed_paths if strict else [],candidate,beside_first and abs(sx-tx)<abs(sy-ty))
                     if choice:break
                 if choice:break
             if choice is None:

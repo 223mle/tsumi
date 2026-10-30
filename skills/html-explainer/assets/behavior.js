@@ -1,3 +1,4 @@
+document.documentElement.classList.add('js');  // styles that only make sense with the scripts running
 (() => {
   const root = document.documentElement;
   const controls = document.querySelectorAll('[data-theme-set]');

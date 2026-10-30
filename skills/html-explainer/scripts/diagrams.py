@@ -127,7 +127,7 @@ def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
     mode_attr=f' data-mode="{mode}"' if mode!='compare' else ''
     titles=source_titles or {}
     source_links=''.join(' <a class="source-ref" href="#'+html.escape(r)+'">'+html.escape(titles.get(r,r))+'</a>' for r in refs)
-    return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="{initial}"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="term status-term" tabindex="0"><span class="status status-{status}">{STATUSES[status]}</span><span class="term-tip" role="tooltip"><b>{STATUSES[status]}</b>{STATUS_HELP[status]}</span></span>{prose(bundle["caption"])}{source_links}</figcaption></figure>'
+    return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="{initial}"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="term status-term" tabindex="0" aria-describedby="{bundle["id"]}-status"><span class="status status-{status}">{STATUSES[status]}</span><span class="term-tip" role="tooltip" id="{bundle["id"]}-status" aria-hidden="true"><b>{STATUSES[status]}</b>{STATUS_HELP[status]}</span></span>{prose(bundle["caption"])}{source_links}</figcaption></figure>'
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('input',type=Path);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--fragment',action='store_true');a=ap.parse_args()
