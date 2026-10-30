@@ -382,11 +382,13 @@ class _NoRoute(ValueError):
     pass
 
 
-def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, height, canvas, label_boxes, placed_paths, route):
+def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, height, canvas, label_boxes, placed_paths, route, vertical=False):
     """A free spot for an edge label near the edge's middle, or None."""
     half = (max(_visual_len(word) for word in words) * 6.2 + 8) / 2 + 6
     # On the phone layout a label may also sit beside a vertical line instead of on it.
-    spots = [(side, mx) for side in label_sides] + ([("middle", mx - half), ("middle", mx + half)] if not margins else [])
+    beside = [("middle", mx + half), ("middle", mx - half)] if not margins else []
+    # On the phone layout a short vertical edge would vanish under its label, so try beside the line first.
+    spots = beside + [(side, mx) for side in label_sides] if vertical else [(side, mx) for side in label_sides] + beside
     for side, lx0 in spots:
         if not _label_is_safe((lx0, my), words, side, obstacles, endpoint_ids, height, canvas): continue
         offset = -15 if side == "above" else 15 if side == "below" else 0
@@ -501,7 +503,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                 if not wraps[0]:
                     choice=(candidate,mx,my,0,None,[]);break
                 for words in wraps:
-                    choice=_place_label(words,label_sides,mx,my,margins,node_obstacles,endpoint_ids,height,canvas,label_boxes,placed_paths,candidate)
+                    choice=_place_label(words,label_sides,mx,my,margins,node_obstacles,endpoint_ids,height,canvas,label_boxes,placed_paths,candidate,abs(sx-tx)<abs(sy-ty))
                     if choice:break
                 if choice:break
             if choice is None:

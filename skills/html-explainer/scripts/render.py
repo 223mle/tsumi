@@ -14,6 +14,13 @@ from jawrap import strip_markup  # noqa: E402
 STATUSES = {"measured", "inferred", "proposed", "unknown", "illustrative"}
 KINDS = {"flow", "bars", "timeline", "table"}
 STATUS_LABELS = {"measured": "計測値", "inferred": "推定", "proposed": "提案", "unknown": "未確定", "illustrative": "説明用"}
+STATUS_HELP = {"measured": "実際に測った値です。", "inferred": "根拠となる資料や条件から計算・推定した値です。", "proposed": "これから行う案で、まだ実施していません。",
+               "unknown": "まだ決まっていない、または確かめていない部分です。", "illustrative": "仕組みを説明するための例で、実際の値ではありません。", "code": "コードから読み取った内容です。"}
+
+def status_badge(status: str, label: str) -> str:
+    """A figure's evidence badge that explains itself on hover, focus or tap, like a glossary term."""
+    return (f'<span class="term status-term" tabindex="0"><span class="status status-{esc(status)}">{esc(label)}</span>'
+            f'<span class="term-tip" role="tooltip"><b>{esc(label)}</b>{esc(STATUS_HELP.get(status, ""))}</span></span>')
 ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 
 def esc(v: object) -> str:
@@ -248,11 +255,11 @@ def figure_html(fig: dict, source_titles: dict[str, str] | None = None) -> str:
         head = ''.join(f'<th scope="col">{esc(c)}</th>' for c in fig["columns"])
         # data-label lets a phone show each row as a card with its column names (style.css, .table-stack).
         rows = ''.join('<tr>' + ''.join((f'<th scope="row">{esc(c)}</th>' if j == 0 else f'<td data-label="{esc(fig["columns"][j])}">{esc(c)}</td>') for j, c in enumerate(row)) + '</tr>' for row in fig["rows"])
-        body = f'<p class="table-summary">{esc(fig["summary"])}</p><div class="table-wrap" tabindex="0" role="region" aria-label="表: {esc(fig["summary"])}。横にスクロールできます。"><p class="scroll-hint">横にスクロールして表全体を確認できます。</p><table class="{"table-stack" if len(fig["columns"]) >= 4 else ""}"><caption class="visually-hidden">{esc(fig["summary"])}</caption><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>'
+        body = f'<p class="table-summary">{esc(fig["summary"])}</p><div class="table-wrap" tabindex="0" role="region" aria-label="表: {esc(fig["summary"].rstrip("。"))}。横にスクロールできます。"><p class="scroll-hint">横にスクロールして表全体を確認できます。</p><table class="{"table-stack" if len(fig["columns"]) >= 4 else ""}"><caption class="visually-hidden">{esc(fig["summary"])}</caption><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>'
     source_titles = source_titles or {}
     status = esc(fig["status"]); refs = ''.join(f'<a class="source-ref" href="#{esc(x)}">{esc(source_titles.get(x, x))}</a>' for x in fig.get("source_ids", []))
     summary = f'<p class="summary">{esc(fig["summary"])}</p>' if kind != "table" else ""
-    return f'<figure id="{fid}" class="explainer-figure" data-kind="{kind}"><h3>{esc(fig["title"])}</h3>{summary}{body}<figcaption><span class="status status-{status}">{STATUS_LABELS[fig["status"]]}</span> {esc(fig["caption"])} {refs}</figcaption></figure>'
+    return f'<figure id="{fid}" class="explainer-figure" data-kind="{kind}"><h3>{esc(fig["title"])}</h3>{summary}{body}<figcaption>{status_badge(fig["status"], STATUS_LABELS[fig["status"]])} {esc(fig["caption"])} {refs}</figcaption></figure>'
 
 def render(doc: dict) -> str:
     css_path, js_path = ROOT / "assets" / "style.css", ROOT / "assets" / "behavior.js"
@@ -263,7 +270,7 @@ def render(doc: dict) -> str:
     if has_diagram:
         css += (ROOT / "assets" / "diagrams.css").read_text(encoding="utf-8")
         js += (ROOT / "assets" / "diagrams.js").read_text(encoding="utf-8")
-    toc = ''.join(f'<li><a href="#{esc(s["id"])}"><span class="toc-num">{i}</span>{esc(s["title"])}</a></li>' for i, s in enumerate(doc["sections"], 1))
+    toc = ''.join(f'<li><a href="#{esc(s["id"])}"><span class="toc-num">{i}</span><span class="toc-text">{esc(s["title"])}</span></a></li>' for i, s in enumerate(doc["sections"], 1))
     source_titles = {s["id"]: s["title"] for s in doc.get("sources", [])}
     sections = []
     for num, sec in enumerate(doc["sections"], 1):
@@ -275,7 +282,7 @@ def render(doc: dict) -> str:
     takeaway_box = f'<div class="takeaways"><p class="takeaways-title">この資料の要点</p><ol>{takeaways}</ol></div>' if takeaways else ''
     gloss = ''.join(f'<div><dt>{esc(t)}</dt><dd>{esc(d)}</dd></div>' for t, d in glossary.items())
     glossary_section = f'<section id="glossary" class="glossary"><h2>用語</h2><dl>{gloss}</dl></section>' if gloss else ''
-    if gloss: toc += '<li><a href="#glossary"><span class="toc-num">・</span>用語</a></li>'
+    if gloss: toc += '<li><a href="#glossary"><span class="toc-num">・</span><span class="toc-text">用語</span></a></li>'
     source_items = []
     for s in doc.get("sources", []):
         label = esc(s["title"])

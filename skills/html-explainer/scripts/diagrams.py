@@ -13,6 +13,7 @@ from linechart import render_line
 
 ROOT = Path(__file__).resolve().parents[1]
 TONES = {'blue','teal','violet','amber','rose','slate','red'}
+STATUS_HELP = {'measured':'実際に測った値です。','inferred':'根拠となる資料や条件から計算・推定した値です。','proposed':'これから行う案で、まだ実施していません。','unknown':'まだ決まっていない、または確かめていない部分です。','illustrative':'仕組みを説明するための例で、実際の値ではありません。','code':'コードから読み取った内容です。'}
 STATUSES = {'measured':'計測値','inferred':'推定','proposed':'提案','unknown':'未確定','illustrative':'説明用','code':'コード'}  # same words as render.py's basic figures
 
 RENDERERS={'network':render_network,'decision':render_decision,'sequence':render_sequence,'line':render_line}
@@ -126,7 +127,7 @@ def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
     mode_attr=f' data-mode="{mode}"' if mode!='compare' else ''
     titles=source_titles or {}
     source_links=''.join(' <a class="source-ref" href="#'+html.escape(r)+'">'+html.escape(titles.get(r,r))+'</a>' for r in refs)
-    return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="{initial}"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="status status-{status}">{STATUSES[status]}</span>{prose(bundle["caption"])}{source_links}</figcaption></figure>'
+    return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="{initial}"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="term status-term" tabindex="0"><span class="status status-{status}">{STATUSES[status]}</span><span class="term-tip" role="tooltip"><b>{STATUSES[status]}</b>{STATUS_HELP[status]}</span></span>{prose(bundle["caption"])}{source_links}</figcaption></figure>'
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('input',type=Path);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--fragment',action='store_true');a=ap.parse_args()
