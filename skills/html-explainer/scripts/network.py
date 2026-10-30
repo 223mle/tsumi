@@ -409,8 +409,11 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
     for vi, variant in enumerate(data["variants"]):
         vid = f"{safe_prefix}-v{vi}"
         title = f"{variant['label']}の経路図"
-        desc = variant.get("note", "").strip() or "ノード間の処理経路を示します。"
-        parts = [f'<svg class="dg-network" viewBox="0 0 {canvas} {height:g}" role="img" aria-labelledby="{vid}-title {vid}-desc">',
+        names = {n["id"]: plain(n["label"]) for n in data["nodes"]}
+        flow = [f'{names[e["from"]]}→{names[e["to"]]}' + (f'「{plain(e["label"])}」' if e.get("label") else "") for e in variant["edges"]]
+        flow += [f'{names[m["node"]]}「{m["label"]}」' for m in variant.get("marks", [])]
+        desc = variant.get("note", "").strip() or "、".join(flow) or "経路なし"
+        parts = [f'<svg class="dg-network" viewBox="0 0 {canvas} {height:g}" role="img" aria-labelledby="{vid}-title" aria-describedby="{vid}-desc">',
                  f'<title id="{vid}-title">{_esc(title)}</title>',
                  f'<desc id="{vid}-desc">{_esc(desc)}</desc>',
                  '<defs>']
@@ -532,7 +535,8 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             x, y = positions[node["id"]]; key = f"node:{node['id']}"; node_w, node_h = 144, 72
             # Fading is an opacity attribute, not CSS, so the script can animate it and a hidden node stays hidden.
             border = " active" if node["id"] in active else " inactive" if active and "step" not in variant else ""
-            hide = ' opacity="0.28"' if border == " inactive" else ""
+            hide = ""
+            box_fade = ' opacity="0.35"' if border == " inactive" else ""  # the box fades; its text turns muted (diagrams.css)
             if node["id"] in variant.get("hidden_nodes", []):
                 border, hide = "", ' opacity="0" aria-hidden="true"'
             label_lines = _wrap(node["label"]); detail_lines = _wrap(node.get("detail", "")) if node.get("detail", "") else []
@@ -544,7 +548,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             detail_y = label_y + 18 * len(label_lines) + (-1 if detail_lines else 0)
             label = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 18}">{_esc(line)}</tspan>' for i, line in enumerate(label_lines))
             detail = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>' for i, line in enumerate(detail_lines))
-            parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}"{hide} data-ref="{_esc(plain(node["label"]))}" data-obstacle="{x-72:g},{y-36:g},{node_w},{node_h}"><rect data-key="{_esc(key)}:rect" x="{x-72:g}" y="{y-36:g}" width="{node_w}" height="{node_h}" rx="8"/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
+            parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}"{hide} data-ref="{_esc(plain(node["label"]))}" data-obstacle="{x-72:g},{y-36:g},{node_w},{node_h}"><rect data-key="{_esc(key)}:rect" x="{x-72:g}" y="{y-36:g}" width="{node_w}" height="{node_h}" rx="8"{box_fade}/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
         parts.extend(mark_parts)
         note_x = 120 if margins else 16
         note_lines = _wrap(variant.get("note", ""), 80 if margins else 60) if variant.get("note", "") else []

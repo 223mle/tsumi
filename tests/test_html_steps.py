@@ -44,9 +44,12 @@ class SequenceTests(unittest.TestCase):
         scenes = render_sequence(sequence_spec())
         self.assertEqual(len(scenes), 4)
         second = scenes[1]
-        self.assertRegex(second, r'class="dg-msg dg-msg-call dg-tone-blue is-done" data-key="msg:m1" opacity="1"')
+        self.assertIn('class="dg-msg dg-msg-call dg-tone-blue is-done" data-key="msg:m1">', second)
         self.assertRegex(second, r'class="dg-msg dg-msg-call dg-tone-blue is-current" data-key="msg:m2"')
-        self.assertRegex(second, r'data-key="msg:m3" opacity="0.26"')
+        # A later message fades its line and number but keeps its label legible.
+        self.assertRegex(second, r'data-key="msg:m3:line"[^>]* opacity="0.26"')
+        self.assertRegex(second, r'data-key="msg:m3:num"[^>]* opacity="0.26"')
+        self.assertNotRegex(second, r'data-key="msg:m3:label"[^>]* opacity=')
         keys = re.findall(r'data-key="([^"]+)"', second)
         self.assertEqual(len(keys), len(set(keys)))
 
@@ -307,7 +310,7 @@ class SliderTests(unittest.TestCase):
                                "panels": [{"spec": self.timeline(4)}]})
         self.assertIn('type="range" min="0" max="3" step="1" value="2"', html)
         self.assertIn('data-state="2" data-mode="slider"', html)
-        self.assertIn("<output>2秒</output>", html)
+        self.assertIn(">2秒</output>", html)
 
     def test_slider_rules(self):
         base = {"id": "s", "title": "t", "caption": "c", "panels": [{"spec": self.timeline(4)}]}
@@ -438,7 +441,8 @@ class EvalFourTests(unittest.TestCase):
                 "variants": [{"label": "v", "active_nodes": ["a"], "hidden_nodes": ["c"], "edges": []}]}
         svg = render_network(spec)[0]
         self.assertRegex(svg, r'data-key="node:c" class="dg-node dg-tone-slate" opacity="0" aria-hidden="true"')
-        self.assertRegex(svg, r'data-key="node:b" class="dg-node dg-tone-slate inactive" opacity="0.28"')
+        self.assertRegex(svg, r'data-key="node:b" class="dg-node dg-tone-slate inactive" data-ref')
+        self.assertRegex(svg, r'data-key="node:b:rect"[^>]* opacity="0.35"')
 
     def test_bundle_sources_and_shared_status_words(self):
         bundle = {"id": "m", "title": "t", "caption": "c", "status": "measured", "source_ids": ["log"],

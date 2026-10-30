@@ -71,8 +71,25 @@ addEventListener('afterprint', () => document.querySelectorAll('details[data-pri
     document.querySelectorAll('.table-wrap').forEach(w => w.classList.toggle('is-scrollable', w.scrollWidth > w.clientWidth + 2));
     document.querySelectorAll('.dg-panel').forEach(p => {
       const box = p.querySelector('.dg-live') || p.querySelector('.dg-scroll');
-      p.classList.toggle('is-scrollable', !!box && box.scrollWidth > box.clientWidth + 2);
+      const scrolls = !!box && box.scrollWidth > box.clientWidth + 2;
+      p.classList.toggle('is-scrollable', scrolls);
+      // A box is a keyboard stop and a landmark only while it actually scrolls.
+      if (box && box.classList.contains('dg-live')) {
+        if (scrolls) { box.tabIndex = 0; box.setAttribute('role', 'region'); }
+        else { box.removeAttribute('tabindex'); box.removeAttribute('role'); }
+      }
     });
   }
   addEventListener('load', mark); addEventListener('resize', mark); mark();
+})();
+(() => {
+  // Esc hides a term's definition until the pointer or focus leaves it (WCAG 1.4.13).
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('.term:hover, .term:focus, .term:focus-within').forEach(t => t.classList.add('tip-closed'));
+  });
+  ['mouseout', 'focusout'].forEach(ev => document.addEventListener(ev, e => {
+    const t = e.target.closest && e.target.closest('.term');
+    if (t && !t.contains(e.relatedTarget)) t.classList.remove('tip-closed');
+  }));
 })();

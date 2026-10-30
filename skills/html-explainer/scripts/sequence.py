@@ -175,7 +175,7 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
         vid = f"{safe}-s{step}"
         cur = msgs[step]
         title = f"手順{step + 1}: {plain(cur['label'])}"
-        parts = [f'<svg class="dg-sequence" viewBox="0 0 {canvas:g} {height:g}" role="img"{min_width} aria-labelledby="{vid}-title {vid}-desc">',
+        parts = [f'<svg class="dg-sequence" viewBox="0 0 {canvas:g} {height:g}" role="img"{min_width} aria-labelledby="{vid}-title" aria-describedby="{vid}-desc">',
                  f'<title id="{vid}-title">{_esc(title)}</title><desc id="{vid}-desc">{_esc(cur.get("text", cur["label"]))}</desc><defs>']
         for tone in sorted(TONES):
             parts.append(f'<marker id="{vid}-solid-{tone}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path class="dg-arrow-head dg-tone-{tone}" d="M0 0L10 5L0 10Z"/></marker>')
@@ -202,11 +202,12 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
             # Measure beside the rightmost actor taking part in the measured messages, where no arrow of the span passes.
             edge_x = xs[_span_actor(data, span)]
             bx, lx, anchor = edge_x + 42, edge_x + 54, "start"
-            op = "1" if step >= b else "0.4"
+            op = "1" if step >= b else "0.35"
             key = f"span:{si}"
             mid = (y1 + y2) / 2
-            parts.append(f'<g class="dg-span dg-tone-{span.get("tone", "amber")}" data-key="{key}" opacity="{op}">'
-                         f'<path data-key="{key}:line" d="M{bx - 7:g} {y1:g}H{bx + 7:g}M{bx:g} {y1:g}V{y2:g}M{bx - 7:g} {y2:g}H{bx + 7:g}"/>'
+            future = " is-future" if step < b else ""
+            parts.append(f'<g class="dg-span dg-tone-{span.get("tone", "amber")}{future}" data-key="{key}">'
+                         f'<path data-key="{key}:line" opacity="{op}" d="M{bx - 7:g} {y1:g}H{bx + 7:g}M{bx:g} {y1:g}V{y2:g}M{bx - 7:g} {y2:g}H{bx + 7:g}"/>'
                          f'<text data-key="{key}:label" class="dg-span-label" data-label="true" x="{lx:g}" y="{mid + 4:g}" text-anchor="{anchor}">{_esc(span["label"])}</text></g>')
         for i, msg in enumerate(msgs):
             lines, self_call, _ = layouts[i]
@@ -216,7 +217,7 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
             tone = msg.get("tone", "slate" if kind == "reply" else "blue")
             key = f"msg:{msg['id']}"
             state = "is-current" if i == step else "is-done" if i < step else "is-future"
-            opacity = "1" if i <= step else "0.26"
+            fade = "" if i <= step else ' opacity="0.26"'  # lines and numbers fade; the label stays legible in muted ink
             marker = f"url(#{vid}-{'open' if kind != 'call' else 'solid'}-{tone})"
             if self_call:
                 d = f"M{x1 + 6:g} {y:g}H{x1 + SELF_W:g}V{y + 22:g}H{x1 + 8:g}"
@@ -227,10 +228,10 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
                 lx, anchor, ly = (x1 + x2) / 2, "middle", y - 10 - 18 * (len(lines) - 1)
             tspans = "".join(f'<tspan x="{lx:g}" dy="{0 if j == 0 else 18}">{_esc(line)}</tspan>' for j, line in enumerate(lines))
             num_x = x1 - 20 if self_call or x2 > x1 else x1 + 20
-            parts.append(f'<g class="dg-msg dg-msg-{kind} dg-tone-{tone} {state}" data-key="{key}" opacity="{opacity}">'
-                         f'<path class="dg-msg-line" data-key="{key}:line" data-flow="{"request" if kind == "call" else "file"}" d="{d}" marker-end="{marker}"/>'
+            parts.append(f'<g class="dg-msg dg-msg-{kind} dg-tone-{tone} {state}" data-key="{key}">'
+                         f'<path class="dg-msg-line" data-key="{key}:line" data-flow="{"request" if kind == "call" else "file"}" d="{d}" marker-end="{marker}"{fade}/>'
                          f'<text class="dg-msg-label" data-label="true" data-key="{key}:label" x="{lx:g}" y="{ly:g}" text-anchor="{anchor}">{tspans}</text>'
-                         f'<g class="dg-step-num" data-key="{key}:num" transform="translate({num_x:g} {y:g})"><circle r="10"/><text text-anchor="middle" y="4">{i + 1}</text></g></g>')
+                         f'<g class="dg-step-num" data-key="{key}:num" transform="translate({num_x:g} {y:g})"{fade}><circle r="10"/><text text-anchor="middle" y="4">{i + 1}</text></g></g>')
         parts.append('</svg>')
         out.append("".join(parts))
     return out

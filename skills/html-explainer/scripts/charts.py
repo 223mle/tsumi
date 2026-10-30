@@ -14,7 +14,7 @@ import sys as _sys
 from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parent))  # loadable by file path as well as by name
-from jawrap import wrap
+from jawrap import plain, wrap
 
 TONES = {"blue", "teal", "violet", "amber", "rose", "slate", "red"}
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]*$")
@@ -284,8 +284,13 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
     label_rows=max([_marker_layout(v.get('markers',[]),lo,hi,x0,width,W)[1] for v in spec['variants']]+[2])
     lift=(label_rows-2)*17
     lanes=spec["lanes"];row_height=38;top=58+lift;h=top+len(lanes)*row_height+34
-    title=variant["label"];desc=variant.get("summary","同じ時間軸で処理の重なりを比較する図")
-    out=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {h}" role="img" aria-labelledby="{prefix}-{index}-title {prefix}-{index}-desc"><title id="{prefix}-{index}-title">{_esc(title)}</title><desc id="{prefix}-{index}-desc">{_esc(desc)}</desc>']
+    title=variant["label"]
+    # The text alternative carries the data itself, not a description of the chart type.
+    lane_names={l['id']:plain(l['label']) for l in lanes}
+    parts_desc=[f"{lane_names[g['lane']]} {plain(g.get('label') or '')}".strip() for g in variant.get('segments',[])]
+    parts_desc+=[plain(m['label']) for m in variant.get('markers',[])]
+    desc=variant.get("summary") or f"{plain(title)}: "+"、".join(parts_desc)
+    out=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {h}" role="img" aria-labelledby="{prefix}-{index}-title" aria-describedby="{prefix}-{index}-desc"><title id="{prefix}-{index}-title">{_esc(title)}</title><desc id="{prefix}-{index}-desc">{_esc(desc)}</desc>']
     for gi,group in enumerate(spec.get("groups", [])):
         members=[i for i,lane in enumerate(lanes)if lane['id'] in group['lane_ids']]
         gy=top+min(members)*row_height-7;gh=(max(members)-min(members)+1)*row_height-1;tone=group.get('tone','slate');cy=gy+gh/2
@@ -373,8 +378,10 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
 
 def _threshold_svg(spec,prefix,narrow=False):
     lo,hi=float(spec['min']),float(spec['max']);log=spec.get('scale')=='log';h=90+44*len(spec['rows'])
+    values=[plain(r['label'])+' '+plain(r.get('value_label') or f"{r['value']:g}{spec['unit']}") for r in spec['rows']]
+    desc='、'.join(values+[plain(t['label']) for t in spec.get('thresholds',[])])
     W,x0,width,row_chars=(NARROW_WIDTH,96.0,NARROW_WIDTH-96-74,6) if narrow else (960,210.0,580.0,14)
-    out=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {h}" role="img" aria-labelledby="{prefix}-title {prefix}-desc"><title id="{prefix}-title">値と閾値</title><desc id="{prefix}-desc">{_esc(spec["unit"])}の値を同じ軸で比較します。</desc>']
+    out=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {h}" role="img" aria-labelledby="{prefix}-title" aria-describedby="{prefix}-desc"><title id="{prefix}-title">値と閾値</title><desc id="{prefix}-desc">{_esc(desc)}</desc>']
     every=_tick_stride(spec,lo,hi,width,log)
     for ti,tick in enumerate(spec['ticks']):
         value,text=_tick(tick,spec['unit']);x=_scale(value,lo,hi,x0,width,log)

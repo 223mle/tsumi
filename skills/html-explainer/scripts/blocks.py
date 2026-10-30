@@ -12,12 +12,14 @@ after escaping, so authors cannot inject HTML:
 from __future__ import annotations
 
 import html
+import itertools
 import re
 from typing import Any, Callable
 from urllib.parse import urlparse
 
 TONES = {"note": "補足", "key": "要点", "warn": "注意", "example": "例"}
 BLOCK_TYPES = {"p", "list", "callout", "code", "stats", "compare", "details", "figure", "diagram"}
+_TIP_IDS = itertools.count(1)
 INLINE_RE = re.compile(r"\*\*(.+?)\*\*|`([^`]+)`|\[\[([^\]|]+?)(?:\|([^\]]+?))?\]\]|\[([^\]]+)\]\((https?://[^)\s]+)\)")
 
 
@@ -59,8 +61,10 @@ def inline(text: str, glossary: dict[str, str]) -> str:
         elif m.group(3) is not None:
             shown, term = m.group(3), (m.group(4) or m.group(3)).strip()
             definition = glossary.get(term, "")
-            out.append(f'<span class="term" tabindex="0" data-term="{html.escape(term)}">{html.escape(shown)}'
-                       f'<span class="term-tip" role="tooltip"><b>{html.escape(term)}</b>{html.escape(definition)}</span></span>')
+            tip = f"term-tip-{next(_TIP_IDS)}"
+            # The definition is a description of the term, not part of its name; Esc hides it (behavior.js).
+            out.append(f'<span class="term" tabindex="0" data-term="{html.escape(term)}" aria-describedby="{tip}">{html.escape(shown)}'
+                       f'<span class="term-tip" role="tooltip" id="{tip}" aria-hidden="true"><b>{html.escape(term)}</b>{html.escape(definition)}</span></span>')
         else:
             out.append(f'<a href="{html.escape(m.group(6), quote=True)}">{html.escape(m.group(5))}</a>')
         pos = m.end()

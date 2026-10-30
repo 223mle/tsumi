@@ -15,7 +15,7 @@
     [clone,...clone.querySelectorAll('*')].forEach(el=>{
       for(const attr of [...el.attributes]){
         let value=attr.value;
-        if(attr.name==='aria-labelledby')value=value.split(' ').map(id=>replacements.get(id)||id).join(' ');
+        if(attr.name==='aria-labelledby'||attr.name==='aria-describedby')value=value.split(' ').map(id=>replacements.get(id)||id).join(' ');
         else value=value.replace(/url\(#([^)]+)\)/g,(_,id)=>`url(#${replacements.get(id)||id})`);
         if(value!==attr.value)el.setAttribute(attr.name,value);
       }
@@ -99,8 +99,12 @@
     }
     function syncSteps(index,follow=true){
       const tpl=figure.querySelector(`template[data-step-text="${index}"]`);
+      // Replacing the text would drop keyboard focus held by a term inside it; hand focus to the next button first.
+      if(stepText&&stepText.contains(document.activeElement))figure.querySelector('[data-go="1"]')?.focus();
       if(stepText&&tpl)stepText.replaceChildren(tpl.content.cloneNode(true));
-      stepButtons.forEach((b,i)=>{b.setAttribute('aria-current',i===index?'step':'false');b.classList.toggle('is-done',i<index);});
+      const stepFocused=stepButtons.includes(document.activeElement);
+      stepButtons.forEach((b,i)=>{b.setAttribute('aria-current',i===index?'step':'false');b.classList.toggle('is-done',i<index);b.tabIndex=i===index?0:-1;});
+      if(stepFocused)stepButtons[index].focus();
       if(stepCount)stepCount.textContent=`${index+1} / ${stepButtons.length}`;
       // On narrow screens the drawing scrolls sideways; bring the current step into view.
       if(follow)panels.forEach(({svg,scenes})=>{
@@ -129,23 +133,26 @@
         const left=r.width>b.width-40?box.scrollLeft+r.left-b.left-40:box.scrollLeft+(r.left+r.right)/2-(b.left+b.right)/2;
         box.scrollTo({left:Math.max(0,left),behavior:reduced.matches?'auto':'smooth'});
       });
-      figure.querySelectorAll('[data-go]').forEach(b=>{const next=index+Number(b.dataset.go);b.disabled=next<0||next>=stepButtons.length;});
+      // aria-disabled, not disabled: a disabled button would drop the focus it holds.
+      figure.querySelectorAll('[data-go]').forEach(b=>{const next=index+Number(b.dataset.go);b.setAttribute('aria-disabled',String(next<0||next>=stepButtons.length));});
     }
     function go(delta){const n=stepButtons.length;const next=Math.max(0,Math.min(n-1,Number(figure.dataset.state||0)+delta));if(next!==Number(figure.dataset.state||0))select(next);return next;}
     let autoTimer=0;
-    function stopAuto(){clearTimeout(autoTimer);autoTimer=0;if(autoButton){autoButton.setAttribute('aria-pressed','false');autoButton.textContent='自動で進める';}}
+    function stopAuto(){clearTimeout(autoTimer);autoTimer=0;if(autoButton)autoButton.setAttribute('aria-pressed','false');}
     function tick(){if(!autoTimer)return;if(!visible){stopAuto();return;}const n=stepButtons.length;const cur=Number(figure.dataset.state||0);if(cur>=n-1){stopAuto();return;}go(1);autoTimer=setTimeout(tick,reduced.matches?2600:3200);}
     figure.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{stopAuto();select(Number(b.dataset.step));}));
-    figure.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{stopAuto();go(Number(b.dataset.go));}));
+    figure.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{if(b.getAttribute('aria-disabled')==='true')return;stopAuto();go(Number(b.dataset.go));}));
     if(autoButton)autoButton.addEventListener('click',()=>{
       if(autoTimer){stopAuto();return;}
       if(Number(figure.dataset.state||0)>=stepButtons.length-1)select(0);
-      autoButton.setAttribute('aria-pressed','true');autoButton.textContent='停止';autoTimer=setTimeout(tick,reduced.matches?1600:2200);
+      autoButton.setAttribute('aria-pressed','true');autoTimer=setTimeout(tick,reduced.matches?1600:2200);
     });
     if(stepButtons.length)figure.addEventListener('keydown',e=>{
       if(e.target.closest('input,textarea'))return;
       if(e.key==='ArrowRight'){stopAuto();go(1);e.preventDefault();}
       else if(e.key==='ArrowLeft'){stopAuto();go(-1);e.preventDefault();}
+      else if(e.key==='Home'&&e.target.closest('[data-step]')){stopAuto();select(0);e.preventDefault();}
+      else if(e.key==='End'&&e.target.closest('[data-step]')){stopAuto();select(stepButtons.length-1);e.preventDefault();}
     });
     figure.querySelectorAll('.dg-switch input').forEach(input=>input.addEventListener('change',()=>{if(input.checked)select(Number(input.value));}));
     // When a chart is scrolled sideways on a phone, keep its row names pinned at the left edge.
@@ -173,16 +180,16 @@
     if(fitButton)fitButton.addEventListener('click',()=>{
       // On a phone the reader can trade legible labels for the whole picture, and back.
       const on=fitButton.getAttribute('aria-pressed')!=='true';
-      fitButton.setAttribute('aria-pressed',String(on));fitButton.textContent=on?'拡大して読む':'全体を縮小表示';figure.classList.toggle('dg-fit',on);
+      fitButton.setAttribute('aria-pressed',String(on));figure.classList.toggle('dg-fit',on);
     });
     const gridButton=figure.querySelector('.dg-grid-toggle');
     if(gridButton)gridButton.addEventListener('click',()=>{
       // Small multiples: the static scenes, already in the page for print, side by side.
       const on=gridButton.getAttribute('aria-pressed')!=='true';
-      gridButton.setAttribute('aria-pressed',String(on));gridButton.textContent=on?'1つずつ見る':'すべて並べる';
+      gridButton.setAttribute('aria-pressed',String(on));
       figure.classList.toggle('dg-grid',on);figure.querySelectorAll('.dg-switch input').forEach(i=>i.disabled=on);
     });
-    if(play)play.addEventListener('click',()=>{playing=!playing;play.setAttribute('aria-pressed',String(playing));play.textContent=playing?'流れを停止':'流れを再生';startFlow();});
+    if(play)play.addEventListener('click',()=>{playing=!playing;play.setAttribute('aria-pressed',String(playing));startFlow();});
     new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;startFlow();},{threshold:.05}).observe(figure);
     document.addEventListener('visibilitychange',startFlow);
     reduced.addEventListener('change',()=>{select(Number(figure.dataset.state||0),true);});
