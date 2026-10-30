@@ -575,8 +575,10 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                     if choice:break
                 if choice:break
             if choice is None:
+                marked = [m["node"] for m in variant.get("marks", []) if m["node"] in (edge["from"], edge["to"])]
                 raise _NoRoute(f"network.variants[{vi}].edges[{edge['id']}]: no route and label slot fit"
                                + (f" on the requested side ({edge['route']})" if edge.get("route", "direct") != "direct" else "")
+                               + (f"; the mark on {', '.join(marked)} also takes room beside this edge" if marked else "")
                                + "; rearrange nodes, shorten the label or drop route")
             route,lx,ly,offset,box,words=choice
             if box: label_boxes.append(box)

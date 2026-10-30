@@ -54,7 +54,8 @@ document.documentElement.classList.add('js');  // styles that only make sense wi
   // A glossary term and the diagram parts with the same name light up together.
   // Delegated, so terms inside step texts that are swapped in later also link.
   function link(name, on) {
-    document.querySelectorAll('[data-ref]').forEach(el => { if (el.dataset.ref === name) el.classList.toggle('is-linked', on); });
+    // A node hidden in the current state (opacity 0) stays hidden: the term must not bring back something the state says is not there.
+    document.querySelectorAll('[data-ref]').forEach(el => { if (el.dataset.ref === name) el.classList.toggle('is-linked', on && el.getAttribute('opacity') !== '0'); });
     document.querySelectorAll('.term[data-term]').forEach(el => { if (el.dataset.term === name) el.classList.toggle('is-linked', on); });
   }
   function owner(e) { return e.target.closest && e.target.closest('.term[data-term], [data-ref]'); }

@@ -113,6 +113,18 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
       }
       await sc.close();
     }
+    {
+      // Pointing at a term highlights its node, but never brings back a node the current state hides.
+      const tc=await b.newContext({viewport:{width:1280,height:900},reducedMotion:'reduce'});const tp=await tc.newPage();await tp.goto(pathToFileURL(path.resolve(input)).href);
+      const names=await tp.evaluate(()=>[...new Set([...document.querySelectorAll('[data-ref]')].filter(e=>e.getAttribute('opacity')==='0').map(e=>e.dataset.ref))]);
+      for(const name of names){
+        const term=tp.locator(`.term[data-term="${name}"]`).first();if(!await term.count())continue;
+        await term.scrollIntoViewIfNeeded();await term.hover();await tp.waitForTimeout(100);
+        const shown=await tp.evaluate(n=>[...document.querySelectorAll('.dg-live [data-ref]')].filter(e=>e.dataset.ref===n&&e.getAttribute('opacity')==='0'&&getComputedStyle(e).opacity!=='0').length,name);
+        check(`term ${name}: hidden node stays hidden`,!shown,`${shown} hidden node(s) shown on hover`);
+      }
+      await tc.close();
+    }
     const nc=await b.newContext({javaScriptEnabled:false,viewport:{width:390,height:1000}});const np=await nc.newPage();await np.goto(pathToFileURL(path.resolve(input)).href);check('no JS: every scene or step visible',await np.locator('[data-diagram]').evaluateAll(fs=>fs.length>0&&fs.every(f=>{const scenes=[...f.querySelectorAll('.dg-static-scene')].filter(s=>getComputedStyle(s.closest('.dg-panel')).display!=='none');const shown=s=>s.getBoundingClientRect().height>0;
       if(f.dataset.mode==='steps')return shown(scenes.at(-1))&&f.querySelectorAll('.dg-step-notes li').length===scenes.length;return scenes.every(shown);})));await nc.close();
   }finally{await b.close();report.passed=report.errors.length===0;fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');}
