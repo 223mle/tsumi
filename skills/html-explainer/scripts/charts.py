@@ -373,6 +373,7 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
         if seg.get('unknown'):
             qx=x+(11 if any(abs(x-mx)<8 for mx in marker_xs) else 0)  # keep the ? off a marker line
             out.append(_svg_text(qx,y+17,'？','unknown-duration','middle',f"unknown-marker-{seg['id']}"))
+            placed.setdefault(seg['lane'],[]).append((qx-9,qx+9))  # later labels on this row keep clear of the ?
             if not place_beside(seg,qx-8,qx+8,y,seg['label']):
                 out.append(_svg_wrapped_text(ext_x,y+15,seg['label'],'external-label',f"segment-unknown-{seg['id']}",10))
             continue
