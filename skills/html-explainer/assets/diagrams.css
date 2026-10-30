@@ -39,3 +39,5 @@
 .dg-narrow{display:none}
 @media(max-width:600px){.dg-figure .dg-wide{display:none}.dg-figure .dg-narrow{display:block}.dg-narrow .dg-scroll>svg{min-width:0}.dg-figure.dg-grid .dg-narrow .dg-static{grid-template-columns:minmax(0,1fr)}}
 @media print{.dg-figure .dg-narrow{display:none!important}.dg-figure .dg-wide{display:block!important}}
+.dg-scroll>svg.dg-sequence{min-width:min(var(--min-width,700px),700px)}
+@media(max-width:600px){.dg-scroll>svg.dg-sequence{min-width:var(--min-width,760px)}}

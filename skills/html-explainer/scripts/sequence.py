@@ -120,11 +120,16 @@ def _span_actor(spec: dict[str, Any], span: dict[str, Any]) -> str:
     return max(involved, key=order.index)
 
 
+def _width(spec: dict[str, Any]) -> float:
+    """Few actors get a narrower canvas, so columns stay close and the text stays large on a phone."""
+    return float(min(WIDTH, 260 * (len(spec["actors"]) - 1) + 220 + (50 if spec.get("spans") else 0)))
+
+
 def _columns(spec: dict[str, Any]) -> tuple[dict[str, float], float, float]:
     count = len(spec["actors"])
     left = 110.0
     right = 160.0 if any(_span_actor(spec, sp) == spec["actors"][-1]["id"] for sp in spec.get("spans", [])) else 110.0
-    gap = (WIDTH - left - right) / (count - 1)
+    gap = (_width(spec) - left - right) / (count - 1)
     return ({a["id"]: left + i * gap for i, a in enumerate(spec["actors"])}, gap, left)
 
 
@@ -133,6 +138,7 @@ def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
     data = validate_sequence(spec)
     safe = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
     xs, gap, left = _columns(data)
+    canvas = _width(data)
     msgs = data["messages"]
     label_units = max(10, int((gap - 28) / 6.6))
     rows: list[float] = []
@@ -155,7 +161,7 @@ def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
         vid = f"{safe}-s{step}"
         cur = msgs[step]
         title = f"手順{step + 1}: {plain(cur['label'])}"
-        parts = [f'<svg class="dg-sequence" viewBox="0 0 {WIDTH} {height:g}" role="img" aria-labelledby="{vid}-title {vid}-desc">',
+        parts = [f'<svg class="dg-sequence" viewBox="0 0 {canvas:g} {height:g}" role="img" style="--min-width:{canvas * 0.72:.0f}px" aria-labelledby="{vid}-title {vid}-desc">',
                  f'<title id="{vid}-title">{_esc(title)}</title><desc id="{vid}-desc">{_esc(cur.get("text", cur["label"]))}</desc><defs>']
         for tone in sorted(TONES):
             parts.append(f'<marker id="{vid}-solid-{tone}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path class="dg-arrow-head dg-tone-{tone}" d="M0 0L10 5L0 10Z"/></marker>')
