@@ -73,7 +73,11 @@
           if(!el){
             // Insert the highest missing keyed ancestor once, retaining its child geometry.
             let ancestor=dest.parentElement;while(ancestor&&ancestor!==target){if(ancestor.hasAttribute('data-key')&&!live.has(ancestor.dataset.key))return;ancestor=ancestor.parentElement;}
-            el=dest.cloneNode(true);el.setAttribute('opacity','0');svg.append(el);
+            el=dest.cloneNode(true);el.setAttribute('opacity','0');
+            // Keep the target's paint order: a bar that appears later must still sit under the labels drawn after it.
+            let after=dest.nextElementSibling;while(after&&!(after.dataset&&live.get(after.dataset.key)?.parentNode===svg))after=after.nextElementSibling;
+            const ref=after&&dest.parentElement===target?live.get(after.dataset.key):null;
+            if(ref)svg.insertBefore(el,ref);else svg.append(el);
             live.set(key,el);el.querySelectorAll('[data-key]').forEach(child=>live.set(child.dataset.key,child));
           }
           const attrs=[];
@@ -189,6 +193,18 @@
       // Dragging moves through the variants in order; each step interpolates briefly so the motion stays continuous.
       const out=figure.querySelector('.dg-slider output'),names=JSON.parse(range.dataset.labels);
       range.addEventListener('input',()=>{const i=Number(range.value);select(i);out.textContent=names[i];range.setAttribute('aria-valuetext',names[i]);});
+      // On a narrow track, show every k-th value (and the last) so neighbouring values never run together; the chip shows the current one.
+      const ticks=[...figure.querySelectorAll('.dg-slider-ticks span')];
+      const thin=()=>{
+        for(let k=1;k<=ticks.length;k++){
+          const on=ticks.map((_,i)=>i%k===0||i===ticks.length-1);
+          if(k>1&&(ticks.length-1)%k)on[ticks.length-1-((ticks.length-1)%k)]=false;  // keep the gap before the last value at least one step wide
+          ticks.forEach((t,i)=>t.style.visibility=on[i]?'':'hidden');
+          const rs=ticks.filter((_,i)=>on[i]).map(t=>t.getBoundingClientRect());
+          if(rs.every((r,i)=>i===0||r.left>=rs[i-1].right+6))break;
+        }
+      };
+      thin();addEventListener('resize',thin);
     }
     const fitButton=figure.querySelector('.dg-fit-toggle');
     if(fitButton)fitButton.addEventListener('click',()=>{

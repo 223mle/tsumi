@@ -5,6 +5,10 @@ async function inspect(page){return page.evaluate(()=>{
   function shown(el){for(let p=el;p&&p instanceof Element;p=p.parentElement){const s=getComputedStyle(p);if(s.display==='none'||s.visibility==='hidden'||Number(s.opacity)<.05)return false;}return true;}
   document.querySelectorAll('.dg-live svg').forEach(svg=>{
     const bounds=svg.getBoundingClientRect();if(!bounds.width)return;
+    // A bar painted after a label hides it: the label's centre must not sit under a later filled bar.
+    const bars=[...svg.querySelectorAll('rect.bar')].filter(shown);
+    svg.querySelectorAll('text[data-label]').forEach(t=>{if(!shown(t)||!t.textContent.trim())return;const r=t.getBoundingClientRect();const cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
+      if(bars.some(bar=>{const q=bar.getBoundingClientRect();return t.compareDocumentPosition(bar)&Node.DOCUMENT_POSITION_FOLLOWING&&cx>q.left&&cx<q.right&&cy>q.top&&cy<q.bottom;}))errors.push(`label under a bar: ${t.textContent.trim()}`);});
     const keys=[...svg.querySelectorAll('[data-key]')].map(e=>e.dataset.key);
     if(new Set(keys).size!==keys.length)errors.push('duplicate animation key');
     svg.querySelectorAll('[data-label]').forEach(el=>{if(!shown(el))return;const r=el.getBoundingClientRect();if(r.width&&r.height&&(r.left<bounds.left-2||r.right>bounds.right+2||r.top<bounds.top-2||r.bottom>bounds.bottom+2))errors.push(`clipped label: ${el.textContent.trim()}`);});
