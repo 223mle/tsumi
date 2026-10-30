@@ -10,7 +10,7 @@ import re
 from typing import Any
 
 from charts import (_axis_label, _esc, _fail, _id, _marker_layout, _num, _svg_text, _text, _text_width,
-                    _tick, _tone, ID_RE, NARROW_WIDTH)
+                    _tick, _tone, choose_ticks, ID_RE, NARROW_WIDTH)
 from jawrap import plain
 
 
@@ -133,7 +133,8 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
     x0 = max(x0, 12 + max(_text_width(_tick(t, y.get("unit", ""))[1]) for t in y["ticks"]))  # room for the longest y label
     marker_layout, rows = _marker_layout([{"id": m["id"], "value": m["x"], "label": m["label"]} for m in scene.get("markers", [])], xlo, xhi, x0, x1 - x0, W)
     lift = max(0, rows - 1) * 17
-    y0, y1 = 40.0 + lift, (230.0 if narrow else 270.0) + lift  # plot top and bottom
+    name_row = 16.0 if y.get("label") else 0.0  # a row of its own for the y-axis name, above the plot
+    y0, y1 = 40.0 + lift + name_row, (230.0 if narrow else 270.0) + lift + name_row  # plot top and bottom
     H = y1 + 46
     px = lambda v: _scale(float(v), xlo, xhi, x0, x1)  # noqa: E731
     py = lambda v: _scale(float(v), ylo, yhi, y1, y0)  # noqa: E731
@@ -155,14 +156,9 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         out.append(_svg_text(cxb, ty, b["label"], "band-label", "middle", f"band-label-{b['id']}"))
         taken.append((cxb - tw / 2, ty - 12, cxb + tw / 2, ty + 3))
     # Tick labels that would touch are thinned, but ticks at a marked point or marker are kept first.
-    marked = keep_ticks  # the same for every variant, so tick labels do not jump when switching
+    # keep_ticks is the same for every variant, so tick labels do not jump when switching.
     ticks = [_tick(t, x.get("unit", "")) for t in x["ticks"]]
-    shown: list[tuple[float, float]] = []
-    keep = set()
-    for v, text in sorted(ticks, key=lambda t: (t[0] not in marked, t[0])):
-        gx, tw = px(v), _text_width(text)
-        if all(gx + tw / 2 + 6 <= a or gx - tw / 2 - 6 >= b for a, b in shown):
-            shown.append((gx - tw / 2, gx + tw / 2)); keep.add(v)
+    keep = choose_ticks(ticks, px, W, keep_ticks)
     for v, text in ticks:
         gx = px(v)
         out.append(f'<line class="axis-grid" x1="{gx:.2f}" y1="{y0:g}" x2="{gx:.2f}" y2="{y1:g}" data-key="xtick-{v:g}"/>')
@@ -179,8 +175,8 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
     if y.get("label"):
         # Above the plot from the left edge, so a long name is never cut off.
         # Just above the plot and below the marker labels, from the left edge so a long name is never cut off.
-        out.append(_svg_text(4, y0 - 6, y["label"], "axis-label", "start", "y-axis-label"))
-        taken.append((4, y0 - 18, 4 + _text_width(y["label"]), y0 - 3))
+        out.append(_svg_text(4, y0 - 14, y["label"], "axis-label", "start", "y-axis-label"))
+        taken.append((4, y0 - 26, 4 + _text_width(y["label"]), y0 - 11))
     for m in scene.get("markers", []):
         mx, anchor, row = marker_layout[m["id"]]
         tone = m.get("tone", "slate")

@@ -258,6 +258,26 @@ def _marker_layout(markers, lo, hi, x0, width, W, log=False):
     return {mid: (x, anchor, row) for mid, x, anchor, row in placed}, len(rows)
 
 
+def _label_span(x: float, text: str, W: float) -> tuple[float, float]:
+    """Where _axis_label actually draws a tick label: centred, or pulled inside the canvas at either end."""
+    tw = _text_width(text)
+    left = min(max(x - tw / 2, 2), W - 2 - tw)
+    return left, left + tw
+
+
+def choose_ticks(ticks: list[tuple[float, str]], to_x, W: float, marked: set) -> set:
+    """Tick values to label so no two labels touch: zero, the two ends, marked values, then the rest in order."""
+    first, last = ticks[0][0], ticks[-1][0]
+    order = sorted(ticks, key=lambda t: (t[0] != 0, t[0] not in (first, last), t[0] not in marked, t[0]))
+    spans: list[tuple[float, float]] = []
+    keep = set()
+    for value, text in order:
+        a, b = _label_span(to_x(value), text, W)
+        if all(b + 6 <= c or a - 6 >= d for c, d in spans):
+            spans.append((a, b)); keep.add(value)
+    return keep
+
+
 def _axis_label(x: float, y: float, text: str, W: float, key: str) -> str:
     """A tick label centred on its tick, pulled inside the canvas at either end."""
     tw = _text_width(text)
@@ -308,12 +328,9 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
         out.append(_svg_wrapped_text(24,cy-13,group['label'],'group-label',f'group-label-{gi}',9))
         summary=variant.get('group_summaries',[g.get('summary','')for g in spec.get('groups',[])])[gi]
         if summary:out.append(_svg_wrapped_text(24,cy+(12 if gh<60 else 22),summary,'group-summary',f'group-summary-{gi}',9))
-    # Tick labels that would touch are thinned: zero and ticks at any variant's marker first, then the rest in order.
-    marked={0.0}|{float(m['value']) for v in spec['variants'] for m in v.get('markers',[])}
-    ticks=[_tick(t,spec['unit']) for t in spec['ticks']];spans=[];keep=set()
-    for value,text in sorted(ticks,key=lambda t:(t[0] not in marked,t[0])):
-        x=_scale(value,lo,hi,x0,width);tw=_text_width(text)
-        if all(x+tw/2+6<=a or x-tw/2-6>=b for a,b in spans):spans.append((x-tw/2,x+tw/2));keep.add(value)
+    ticks=[_tick(t,spec['unit']) for t in spec['ticks']]
+    marked={float(m['value']) for v in spec['variants'] for m in v.get('markers',[])}
+    keep=choose_ticks(ticks,lambda v:_scale(v,lo,hi,x0,width),W,marked)
     for value,text in ticks:
         x=_scale(value,lo,hi,x0,width)
         out.append(f'<line x1="{x:.2f}" y1="{48+lift}" x2="{x:.2f}" y2="{h-28}" class="axis-grid" data-key="tick-{value:g}"/>')

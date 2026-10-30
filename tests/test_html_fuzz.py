@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "skills/html-explainer/scripts"))
 
+from charts import _text_width, render_chart  # noqa: E402
 from linechart import render_line  # noqa: E402
 from network import render_network  # noqa: E402
 from sequence import render_sequence  # noqa: E402
@@ -27,7 +28,53 @@ def inside(svg):
     return True
 
 
+TICK_RE = re.compile(r'<text x="(-?[\d.]+)" y="[\d.]+" class="axis-label" text-anchor="(\w+)" data-label="true" data-key="x?tick-label-([^"]+)">([^<]*)</text>')
+
+
+def tick_spans(svg):
+    """(left, right, value) of every drawn x tick label, as anchored."""
+    out = []
+    for x, anchor, value, text in TICK_RE.findall(svg):
+        x, w = float(x), _text_width(text)
+        left = x - w / 2 if anchor == "middle" else x - w if anchor == "end" else x
+        out.append((left, left + w, value))
+    return out
+
+
 class FuzzTests(unittest.TestCase):
+    def assert_ticks_readable(self, svg, ticks_have_zero, spec):
+        w = float(re.search(r'viewBox="0 0 ([\d.]+) ', svg).group(1))
+        spans = sorted(tick_spans(svg))
+        for (a, b, _), (c, d, _) in zip(spans, spans[1:]):
+            self.assertLessEqual(b, c + 0.5, (spans, spec))
+        self.assertTrue(all(a >= -0.5 and b <= w + 0.5 for a, b, _ in spans), (spans, spec))
+        if ticks_have_zero:
+            self.assertIn("0", [v for _, _, v in spans], spec)
+
+    def test_tick_labels_never_touch_and_keep_zero(self):
+        rnd = random.Random(11)
+        for _ in range(200):
+            lo = rnd.choice([0, -4, -60])
+            hi = lo + rnd.choice([8, 12, 100, 240])
+            n = rnd.randint(3, 13)
+            values = sorted({round(lo + (hi - lo) * i / (n - 1)) for i in range(n)} | ({0} if lo < 0 else set()))
+            ticks = [{"value": v, "label": rnd.choice(["審査", "最終締め日の翌営業日", f"{v}日"])} if rnd.random() < 0.2 else v for v in values]
+            markers = [{"id": f"m{k}", "value": rnd.choice(values), "label": "目印"} for k in range(rnd.randint(0, 2))]
+            spec = {"type": "timeline", "min": lo, "max": hi, "unit": "秒", "ticks": ticks,
+                    "lanes": [{"id": "a", "label": "処理"}],
+                    "variants": [{"label": "v", "segments": [{"id": "s", "lane": "a", "start": lo, "duration": (hi - lo) / 2, "label": "半分"}], "markers": markers}]}
+            line = {"type": "line", "x": {"min": lo, "max": hi, "unit": "人", "ticks": ticks},
+                    "y": {"min": 0, "max": 10, "unit": "", "ticks": [0, 10], "label": "月額費用（税込・円）"},
+                    "series": [{"id": "s", "label": "エンタープライズ年額", "points": [[lo, 5], [hi, 5]]}],
+                    "markers": [{"id": m["id"], "x": m["value"], "label": "今"} for m in markers]}
+            for narrow in (False, True):
+                for render, sp in ((render_chart, spec), (render_line, line)):
+                    try:
+                        svg = render(sp, "t", narrow=narrow)[0]
+                    except ValueError:
+                        continue
+                    self.assert_ticks_readable(svg, 0 in values, sp)
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):
