@@ -63,3 +63,5 @@
 .dg-narrow .dg-network .dg-edge-label text{font-size:12px}
 .dg-line .line-series-dots{stroke:none}.dg-line .line-dot{fill:var(--tone);stroke:var(--surface);stroke-width:1.5}
 .dg-line .series-key-dots{stroke-dasharray:0 8!important;stroke-width:7;stroke-linecap:round}
+/* Small multiples use the phone layout where a figure has one, so their text is not shrunk to a few pixels. */
+.dg-figure.dg-grid:has(.dg-narrow) .dg-wide{display:none!important}.dg-figure.dg-grid .dg-narrow{display:block!important}.dg-figure.dg-grid .dg-narrow .dg-static-scene .dg-scroll>svg{min-width:0}

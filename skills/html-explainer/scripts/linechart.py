@@ -274,7 +274,11 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         clear_spot = next((sp for sp in spots if fits(sp[0], sp[1], True)), None)
         loose = [sp for sp in spots if fits(sp[0], sp[1], False)]
         lx, ty, above = clear_spot or (min(loose, key=line_hits) if loose else spots[0])
-        leader = "" if above is None else f'<path d="M{cx:.2f} {cy - 8 if above else cy + 8:.2f}V{ty + 4 if above else ty - 16:.2f}" data-key="callout-{_esc(p["id"])}-leader"/>'
+        if above is None:  # beside the point: a short horizontal leader to the label's near edge
+            edge_x = lx - tw / 2 - 3 if lx > cx else lx + tw / 2 + 3
+            leader = f'<path d="M{cx + (8 if lx > cx else -8):.2f} {cy:.2f}L{edge_x:.2f} {ty - 4:.2f}" data-key="callout-{_esc(p["id"])}-leader"/>'
+        else:
+            leader = f'<path d="M{cx:.2f} {cy - 8 if above else cy + 8:.2f}V{ty + 4 if above else ty - 16:.2f}" data-key="callout-{_esc(p["id"])}-leader"/>'
         out.append(f'<g class="line-callout dg-tone-{tone}" data-key="callout-{_esc(p["id"])}"><circle cx="{cx:.2f}" cy="{cy:.2f}" r="6" data-key="callout-{_esc(p["id"])}-dot"/>{leader}</g>')
         out.append(_svg_text(lx, ty, p["label"], f"callout-label marker-label-{tone}", "middle", f"callout-label-{p['id']}"))
         taken.append((lx - tw / 2, ty - 12, lx + tw / 2, ty + 3))

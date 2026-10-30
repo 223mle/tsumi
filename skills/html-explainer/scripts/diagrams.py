@@ -119,7 +119,7 @@ def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
     nav=''
     if steps:
         texts=''.join(f'<template data-step-text="{i}"><b>{i+1}. {html.escape(st["label"])}</b>{(" "+prose(st["text"])) if st["text"] else ""}</template>' for i,st in enumerate(steps))
-        nav=f'<div class="dg-step-bar"><p class="dg-step-text" aria-live="polite"></p><div class="dg-step-nav"><button type="button" data-go="-1" aria-label="前の手順">←</button><span class="dg-step-count" aria-hidden="true">1 / {count}</span><button type="button" data-autoplay aria-pressed="false">自動で進める</button><button type="button" data-go="1" aria-label="次の手順">→</button></div>{texts}</div>'
+        nav=f'<div class="dg-step-bar"><p class="dg-step-text" aria-live="polite"></p><div class="dg-step-nav"><button type="button" data-go="-1" aria-label="前の手順">← 前へ</button><span class="dg-step-count" aria-hidden="true">1 / {count}</span><button type="button" data-autoplay aria-pressed="false">自動で進める</button><button type="button" data-go="1" aria-label="次の手順">次へ →</button></div>{texts}</div>'
     if notes:
         texts=''.join(f'<template data-step-text="{i}"><b>{html.escape(labels[i])}</b> {prose(n)}</template>' for i,n in enumerate(notes))
         nav=f'<div class="dg-step-bar dg-note-bar"><p class="dg-step-text" aria-live="polite"></p>{texts}</div>'
