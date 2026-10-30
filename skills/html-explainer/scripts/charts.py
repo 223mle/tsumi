@@ -308,13 +308,16 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
         out.append(_svg_wrapped_text(24,cy-13,group['label'],'group-label',f'group-label-{gi}',9))
         summary=variant.get('group_summaries',[g.get('summary','')for g in spec.get('groups',[])])[gi]
         if summary:out.append(_svg_wrapped_text(24,cy+(12 if gh<60 else 22),summary,'group-summary',f'group-summary-{gi}',9))
-    every=_tick_stride(spec,lo,hi,width)
-    values=[_tick(t,spec['unit'])[0] for t in spec['ticks']]
-    anchor_i=values.index(0) if 0 in values else 0  # keep the zero tick labelled and count from it
-    for ti,tick in enumerate(spec['ticks']):
-        value,text=_tick(tick,spec['unit']);x=_scale(value,lo,hi,x0,width)
+    # Tick labels that would touch are thinned: zero and ticks at any variant's marker first, then the rest in order.
+    marked={0.0}|{float(m['value']) for v in spec['variants'] for m in v.get('markers',[])}
+    ticks=[_tick(t,spec['unit']) for t in spec['ticks']];spans=[];keep=set()
+    for value,text in sorted(ticks,key=lambda t:(t[0] not in marked,t[0])):
+        x=_scale(value,lo,hi,x0,width);tw=_text_width(text)
+        if all(x+tw/2+6<=a or x-tw/2-6>=b for a,b in spans):spans.append((x-tw/2,x+tw/2));keep.add(value)
+    for value,text in ticks:
+        x=_scale(value,lo,hi,x0,width)
         out.append(f'<line x1="{x:.2f}" y1="{48+lift}" x2="{x:.2f}" y2="{h-28}" class="axis-grid" data-key="tick-{value:g}"/>')
-        if (ti-anchor_i)%every==0:out.append(_axis_label(x,h-9,text,W,f'tick-label-{value:g}'))
+        if value in keep:out.append(_axis_label(x,h-9,text,W,f'tick-label-{value:g}'))
     for i,lane in enumerate(lanes):
         y=top+i*row_height
         # Rows are 38px apart, so a phone-width lane name may take two lines at most.
