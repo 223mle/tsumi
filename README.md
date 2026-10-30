@@ -121,7 +121,7 @@ The entry point is `tsumi-mode`, which runs only when you invoke it by command. 
 | [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | you type `/tsumi-mode` (`/tsumi:tsumi-mode` in Claude Code). Writing "use tsumi" is not enough. |
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | you design an agent or skill, review a design, or keep seeing the same mistake or drifting output. |
 | [`unslop`](skills/unslop/SKILL.md) | you write a Japanese document, or ask to fix or clarify Japanese text. |
-| [`html-explainer`](skills/html-explainer/SKILL.md) | you ask for a Japanese explanatory HTML document with diagrams or animation. Opens with the key points, steps through sequences and request paths one message at a time, links glossary terms to the diagram, and checks the page in a browser. Uses unslop. |
+| [`html-explainer`](skills/html-explainer/SKILL.md) | you ask for a Japanese explanatory HTML document with diagrams or animation. Opens with the key points, steps through sequences and request paths one message at a time, shows break-even points on line charts, links glossary terms to the diagram, switches figures to phone layouts, and checks the page in a browser. Uses unslop. |
 | [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | you say "reflect" at the end of a conversation. Not for weekly reports or retrospectives. |
 
 <details>
