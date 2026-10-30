@@ -39,7 +39,7 @@ def _scene_name(labels,steps,j,n,notes=None,prose=html.escape):
         st=steps[j]; return f'{j+1}. {html.escape(st["label"])}'+(f'<span>{prose(st["text"])}</span>' if st['text'] else '')
     return html.escape(labels[j])+(f'<span>{prose(notes[j])}</span>' if notes else '')
 
-def render_diagram(bundle,prose=html.escape,source_titles=None):
+def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
     """Render a bundle as a figure. `prose` renders caption, notes and step texts; documents pass their inline markup."""
     if not isinstance(bundle,dict) or set(bundle)-{'id','title','caption','status','legend','panels','labels','motion','mode','steps','notes','slider','initial','source_ids'}:
         raise ValueError('diagram: unknown fields or not an object')
@@ -104,11 +104,12 @@ def render_diagram(bundle,prose=html.escape,source_titles=None):
         # Charts also get a phone layout; CSS shows one of the two and the script keeps both in step.
         spec=panels[i]['spec']
         narrow=None
-        if has_narrow_layout(spec): narrow=render_chart(spec,f"{bundle['id']}-p{i}n",narrow=True)
-        elif spec.get('type')=='line': narrow=render_line(spec,f"{bundle['id']}-p{i}n",narrow=True)
-        elif spec.get('type') in ('network','sequence'):
-            try: narrow=RENDERERS[spec['type']](spec,f"{bundle['id']}-p{i}n",narrow=True)
-            except ValueError: narrow=None  # something does not fit the phone layout; keep scrolling the wide one
+        phone=(render_chart if has_narrow_layout(spec) else RENDERERS.get(spec.get('type')) if spec.get('type') in ('line','network','sequence') else None)
+        if phone:
+            try: narrow=phone(spec,f"{bundle['id']}-p{i}n",narrow=True)
+            except ValueError as exc:
+                narrow=None  # something does not fit the phone layout; keep scrolling the wide one
+                if warnings is not None: warnings.append(f"{bundle['id']}: no phone layout, so phones scroll it sideways ({exc})")
         layouts=[(' dg-wide',scenes),(' dg-narrow',narrow)] if narrow else [('',scenes)]
         for cls,svgs in layouts:
             static=''.join(f'<div class="dg-static-scene" data-state="{j}"><p class="dg-scene-name">{_scene_name(labels,steps,j,len(svgs),notes,prose)}</p><div class="dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}">{svg}</div></div>' for j,svg in enumerate(svgs))

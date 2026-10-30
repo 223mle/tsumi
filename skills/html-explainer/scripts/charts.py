@@ -243,6 +243,8 @@ def _marker_layout(markers, lo, hi, x0, width, W, log=False):
     for m in sorted(markers, key=lambda m: float(m['value'])):
         x = _scale(float(m['value']), lo, hi, x0, width, log); tw = _text_width(m['label'])
         anchor, l, r = ('start', x + 5, x + 5 + tw) if x + 5 + tw <= W - 4 else ('end', x - 5 - tw, x - 5)
+        if l < 4:
+            raise ValueError(f"marker label is too long for the canvas: {m['label']}")
         row = next((i for i, used in enumerate(rows) if all(r + 8 <= a or l - 8 >= b for a, b in used)), len(rows))
         if row == len(rows): rows.append([])
         rows[row].append((l, r)); placed.append((m['id'], x, anchor, row))
@@ -261,9 +263,9 @@ def _svg_text(x: float, y: float, value: str, cls: str = "label", anchor: str = 
     return f'<text x="{x:.2f}" y="{y:.2f}" class="{cls}" text-anchor="{anchor}" data-label="true" data-key="{_esc(key)}">{_esc(value)}</text>'
 
 
-def _svg_wrapped_text(x, y, value, cls, key, max_chars=18, anchor="start"):
+def _svg_wrapped_text(x, y, value, cls, key, max_chars=18, anchor="start", max_lines=3):
     # max_chars counts 12px CJK glyphs; jawrap counts them as two units.
-    lines=wrap(value,max_chars*2,3) if value else [value]
+    lines=wrap(value,max_chars*2,max_lines) if value else [value]
     if lines is None: _fail(key,"label exceeds three lines; shorten it, mark the break with \\n, or move detail to the caption")
     spans="".join(f'<tspan x="0" dy="{0 if i==0 else 15}">{_esc(line)}</tspan>' for i,line in enumerate(lines))
     return f'<text transform="translate({x:.2f},{y:.2f})" class="{cls}" text-anchor="{anchor}" data-label="true" data-key="{_esc(key)}">{spans}</text>'
@@ -281,8 +283,8 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
         W=960;x0=330.0 if grouped else 200.0;width=800-x0;limit=940;lane_chars=12 if grouped else 14
     ext_x=W-144
     # Every variant shares the label rows so the canvas height stays fixed while switching.
-    label_rows=max([_marker_layout(v.get('markers',[]),lo,hi,x0,width,W)[1] for v in spec['variants']]+[2])
-    lift=(label_rows-2)*17
+    label_rows=max([_marker_layout(v.get('markers',[]),lo,hi,x0,width,W)[1] for v in spec['variants']]+[0])
+    lift=(label_rows-2)*17 if label_rows else -34  # no marker labels: no empty band above the first lane
     lanes=spec["lanes"];row_height=38;top=58+lift;h=top+len(lanes)*row_height+34
     title=variant["label"]
     # The text alternative carries the data itself, not a description of the chart type.
@@ -308,7 +310,9 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
         if (ti-anchor_i)%every==0:out.append(_axis_label(x,h-9,text,W,f'tick-label-{value:g}'))
     for i,lane in enumerate(lanes):
         y=top+i*row_height
-        out.append(_svg_wrapped_text(x0-12,y+15,lane['label'],'lane-label',f"lane-label-{lane['id']}",lane_chars,'end'))
+        # Rows are 38px apart, so a phone-width lane name may take two lines at most.
+        lines=len(wrap(lane['label'],lane_chars*2,2) or [1]) if narrow else 1
+        out.append(_svg_wrapped_text(x0-12,y+15-(lines-1)*7.5,lane['label'],'lane-label',f"lane-label-{lane['id']}",lane_chars,'end',2 if narrow else 3))
     external={}
     marker_xs=[_scale(float(m['value']),lo,hi,x0,width) for m in variant.get('markers',[])]
     ghosts={};placed={}

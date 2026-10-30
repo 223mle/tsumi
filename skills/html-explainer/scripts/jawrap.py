@@ -84,3 +84,11 @@ def _wrap_one(text: str, max_units: float, max_lines: int) -> list[str] | None:
 def plain(text: str) -> str:
     """The label without explicit line breaks, for accessible names and matching."""
     return re.sub(r"\s*\n\s*", "", text)
+
+
+MARKUP_RE = re.compile(r"\*\*(.+?)\*\*|`([^`]+)`|\[\[([^\]|]+?)(?:\|[^\]]+)?\]\]|\[([^\]]+)\]\([^)]+\)")
+
+
+def strip_markup(text: str) -> str:
+    """The document's inline markup reduced to the words a reader sees, for text alternatives and checks."""
+    return MARKUP_RE.sub(lambda m: next(g for g in m.groups() if g), plain(text))

@@ -42,7 +42,7 @@
 
 ## 基本図
 
-`figure` ブロックと `figures` の要素には、`id`、`kind`、`title`、`summary`、`caption`、`status` を必ず付ける。`status` は `measured`（計測値）、`inferred`（根拠からの推定）、`proposed`（提案）、`unknown`（未確定）、`illustrative`（説明用）から選ぶ。`measured` と `inferred` には対応する `source_ids` を付ける。広く知られた一般的な仕組みを簡略化した図や表は `illustrative` にし、captionで簡略化していることを書く。
+`figure` ブロックと `figures` の要素には、`id`、`kind`、`title`、`summary`、`caption`、`status` を必ず付ける。`status` は `measured`（計測値）、`inferred`（根拠からの推定）、`proposed`（提案）、`unknown`（未確定）、`illustrative`（説明用）から選ぶ。`measured` と `inferred` には対応する `source_ids` を付ける。広く知られた一般的な仕組みを簡略化した図や表は `illustrative` にし、captionで簡略化していることを書く。依頼に書かれた条件から計算した値（料金の合計、損益分岐の人数）は `inferred` にし、`sources` に依頼の条件を `note` 付きで置いて `source_ids` で結ぶ。captionに計算式を書く。
 
 - `flow`: `steps` に `label`・`detail` を順に並べ、最後以外に `to_next` を付ける
 - `bars`: `rows` に `label`・`value`。`unit` と必要なら `axis_max`

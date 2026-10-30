@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from blocks import validate_glossary, validate_block, block_html, check_inline, inline  # noqa: E402
 from diagrams import render_diagram  # noqa: E402
+from jawrap import strip_markup  # noqa: E402
 STATUSES = {"measured", "inferred", "proposed", "unknown", "illustrative"}
 KINDS = {"flow", "bars", "timeline", "table"}
 STATUS_LABELS = {"measured": "計測値", "inferred": "推定", "proposed": "提案", "unknown": "未確定", "illustrative": "説明用"}
@@ -62,7 +63,7 @@ def validate(doc: object) -> dict:
     sources = doc.get("sources", [])
     if not isinstance(sources, list): fail("document.sources: array required")
     source_ids: set[str] = set()
-    all_ids: set[str] = {"main", "sources"}
+    all_ids: set[str] = {"main", "sources", "glossary"}  # ids the page generates itself
     for i, source in enumerate(sources):
         if not isinstance(source, dict) or not {"id", "title"}.issubset(source) or set(source) - {"id", "title", "note", "url"}: fail(f"sources[{i}]: id and title required; note or url required")
         if not source.get("note") and not source.get("url"): fail(f"sources[{i}]: note or url required")
@@ -104,6 +105,8 @@ def check_diagram(bundle: object, where: str, seen: set[str], glossary: dict[str
     prose = [bundle["caption"], *bundle.get("notes", []), *(st.get("text", "") for st in bundle.get("steps", []))]
     prose += [m.get("text", "") for p in bundle["panels"] for m in p["spec"].get("messages", []) + p["spec"].get("edges", [])]
     for text in filter(None, prose): check_inline(text, where, glossary)
+
+WARNINGS: list[str] = []  # notes printed after a successful render, such as figures without a phone layout
 
 PROSE_KEYS = {"title", "lead", "takeaways", "text", "items", "paragraphs", "caption", "summary", "verdict", "notes", "definition", "callout"}
 
@@ -211,11 +214,16 @@ def fmt(v: float) -> str:
 
 def ticks(mx: float, count: int = 5) -> list[float]:
     """Round ticks (1, 2, 2.5 or 5 times a power of ten) from 0 up to mx; mx itself if no round step fits."""
-    if mx > 0 and math.isfinite(mx):
-        for step in sorted(m * 10 ** e for e in range(math.floor(math.log10(mx)) - 2, math.floor(math.log10(mx)) + 2) for m in (1, 2, 2.5, 5)):
-            n = mx / step
-            if n <= count + 1 and abs(n - round(n)) < 1e-9:
-                return [float(step * i) for i in range(round(n) + 1)]
+    try:
+        if mx > 0 and math.isfinite(mx):
+            for step in sorted(m * 10.0 ** e for e in range(math.floor(math.log10(mx)) - 2, math.floor(math.log10(mx)) + 2) for m in (1, 2, 2.5, 5)):
+                if not step or not math.isfinite(step):
+                    continue
+                n = mx / step
+                if n <= count + 1 and abs(n - round(n)) < 1e-9:
+                    return [float(step * i) for i in range(round(n) + 1)]
+    except (OverflowError, ZeroDivisionError):
+        pass  # extreme values: fall back to evenly divided ticks
     # Multiply by the fraction first: mx * i can overflow for a valid finite
     # max value even though every tick is within [0, mx].
     return [mx * (i / count) for i in range(count + 1)]
@@ -239,7 +247,7 @@ def figure_html(fig: dict, source_titles: dict[str, str] | None = None) -> str:
     else:
         head = ''.join(f'<th scope="col">{esc(c)}</th>' for c in fig["columns"])
         rows = ''.join('<tr>' + ''.join((f'<th scope="row">{esc(c)}</th>' if j == 0 else f'<td>{esc(c)}</td>') for j, c in enumerate(row)) + '</tr>' for row in fig["rows"])
-        body = f'<div class="table-wrap" tabindex="0" role="region" aria-label="表: {esc(fig["summary"])}。横にスクロールできます。"><p class="scroll-hint">横にスクロールして表全体を確認できます。</p><table><caption>{esc(fig["summary"])}</caption><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>'
+        body = f'<p class="table-summary">{esc(fig["summary"])}</p><div class="table-wrap" tabindex="0" role="region" aria-label="表: {esc(fig["summary"])}。横にスクロールできます。"><p class="scroll-hint">横にスクロールして表全体を確認できます。</p><table><caption class="visually-hidden">{esc(fig["summary"])}</caption><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>'
     source_titles = source_titles or {}
     status = esc(fig["status"]); refs = ''.join(f'<a class="source-ref" href="#{esc(x)}">{esc(source_titles.get(x, x))}</a>' for x in fig.get("source_ids", []))
     summary = f'<p class="summary">{esc(fig["summary"])}</p>' if kind != "table" else ""
@@ -259,7 +267,7 @@ def render(doc: dict) -> str:
     sections = []
     for num, sec in enumerate(doc["sections"], 1):
         paras = ''.join(f'<p>{inline(p, glossary)}</p>' for p in sec.get("paragraphs", [])); callout = f'<aside class="callout callout-key"><p>{esc(sec["callout"])}</p></aside>' if sec.get("callout") else ''
-        body = ''.join(block_html(b, glossary, lambda f: figure_html(f, source_titles), lambda d: render_diagram(d, lambda t: inline(t, glossary), source_titles)) for b in sec.get("blocks", []))
+        body = ''.join(block_html(b, glossary, lambda f: figure_html(f, source_titles), lambda d: render_diagram(d, lambda t: inline(t, glossary), source_titles, WARNINGS)) for b in sec.get("blocks", []))
         figs = ''.join(figure_html(f, source_titles) for f in sec.get("figures", []))
         sections.append(f'<section id="{esc(sec["id"])}"><h2><span class="section-number">{num}</span>{esc(sec["title"])}</h2>{paras}{callout}{body}{figs}</section>')
     takeaways = ''.join(f'<li>{inline(t, glossary)}</li>' for t in doc.get("takeaways", []))
@@ -285,8 +293,9 @@ def main() -> int:
     try:
         doc = validate(json.loads(args.input.read_text(encoding="utf-8")))
         output = render(doc)
+        for note in dict.fromkeys(WARNINGS): print(f"render: note: {note}", file=sys.stderr)
         if args.text_out:
-            plain = [re.sub(r"\*\*(.+?)\*\*|`([^`]+)`|\[\[([^\]|]+?)(?:\|[^\]]+)?\]\]|\[([^\]]+)\]\([^)]+\)", lambda m: next(g for g in m.groups() if g), t) for t in prose_strings(doc)]
+            plain = [strip_markup(t) for t in prose_strings(doc)]
             args.text_out.write_text("\n\n".join(plain) + "\n", encoding="utf-8")
         args.output.parent.mkdir(parents=True, exist_ok=True)
         fd, temp_name = tempfile.mkstemp(prefix=f".{args.output.name}.", dir=args.output.parent)

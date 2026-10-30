@@ -505,5 +505,33 @@ class LineChartTests(unittest.TestCase):
             render_line(bad)
 
 
+class EvalFiveTests(unittest.TestCase):
+    def test_hidden_node_frees_its_cell_for_that_variant(self):
+        spec = {"type": "network", "columns": 3, "rows": 2,
+                "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "B", "column": 2, "row": 1},
+                          {"id": "c", "label": "C", "column": 3, "row": 1}],
+                "variants": [{"label": "v", "hidden_nodes": ["b"], "edges": [{"id": "ac", "from": "a", "to": "c", "label": "直接", "kind": "file"}]}]}
+        svg = render_network(spec)[0]
+        d = re.search(r'data-key="edge:ac:path"[^>]* d="([^"]+)"', svg).group(1)
+        ys = {round(float(v)) for v in re.findall(r"-?\d+(?:\.\d+)?", d)[1::2]}
+        self.assertEqual(len(ys), 1)  # a straight line through the empty cell
+
+    def test_missing_phone_layout_is_reported(self):
+        spec = {"type": "network", "columns": 3, "rows": 3,
+                "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "B", "column": 1, "row": 2},
+                          {"id": "c", "label": "C", "column": 1, "row": 3}],
+                "variants": [{"label": "v", "edges": []}]}
+        notes = []
+        render_diagram({"id": "n", "title": "t", "caption": "c", "panels": [{"spec": spec}]}, warnings=notes)
+        self.assertTrue(notes and "no phone layout" in notes[0])
+
+    def test_table_summary_is_outside_the_scroller(self):
+        doc = {"title": "題", "lead": "導入", "sections": [{"id": "s", "title": "節", "figures": [
+            {"id": "t", "kind": "table", "title": "表", "summary": "要約の文", "caption": "c", "status": "illustrative", "columns": ["a", "b"], "rows": [["1", "2"]]}]}]}
+        p, html = render_doc(doc)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn('<p class="table-summary">要約の文</p><div class="table-wrap"', html)
+
+
 if __name__ == "__main__":
     unittest.main()

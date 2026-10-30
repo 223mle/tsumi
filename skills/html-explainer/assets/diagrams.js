@@ -51,7 +51,8 @@
     function startFlow(){
       cancelAnimationFrame(flowFrame);removeParticles();
       if(!playing||!visible||reduced.matches)return;
-      panels.forEach(({svg})=>svg.querySelectorAll('path[data-flow]').forEach((path,i)=>{
+      // Only the layout on screen gets dots; the other (wide or phone) one is display:none.
+      panels.filter(({svg})=>svg.getClientRects().length).forEach(({svg})=>svg.querySelectorAll('path[data-flow]').forEach((path,i)=>{
         const request=path.dataset.flow==='request';
         const node=document.createElementNS(SVG,request?'circle':'rect');
         node.setAttribute('class','dg-flow-particle'+(request?' dg-flow-request':''));node.setAttribute('aria-hidden','true');
@@ -148,7 +149,7 @@
       autoButton.setAttribute('aria-pressed','true');autoTimer=setTimeout(tick,reduced.matches?1600:2200);
     });
     if(stepButtons.length)figure.addEventListener('keydown',e=>{
-      if(e.target.closest('input,textarea'))return;
+      if(e.target.closest('input,textarea,.dg-scroll'))return;  // arrows inside a scroll box scroll it
       if(e.key==='ArrowRight'){stopAuto();go(1);e.preventDefault();}
       else if(e.key==='ArrowLeft'){stopAuto();go(-1);e.preventDefault();}
       else if(e.key==='Home'&&e.target.closest('[data-step]')){stopAuto();select(0);e.preventDefault();}

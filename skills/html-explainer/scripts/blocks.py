@@ -61,7 +61,7 @@ def inline(text: str, glossary: dict[str, str]) -> str:
         elif m.group(3) is not None:
             shown, term = m.group(3), (m.group(4) or m.group(3)).strip()
             definition = glossary.get(term, "")
-            tip = f"term-tip-{next(_TIP_IDS)}"
+            tip = f"term-tip:{next(_TIP_IDS)}"  # ":" is not allowed in author ids, so it cannot collide
             # The definition is a description of the term, not part of its name; Esc hides it (behavior.js).
             out.append(f'<span class="term" tabindex="0" data-term="{html.escape(term)}" aria-describedby="{tip}">{html.escape(shown)}'
                        f'<span class="term-tip" role="tooltip" id="{tip}" aria-hidden="true"><b>{html.escape(term)}</b>{html.escape(definition)}</span></span>')

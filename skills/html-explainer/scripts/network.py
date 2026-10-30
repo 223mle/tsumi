@@ -215,7 +215,7 @@ def _expand_steps(spec: dict[str, Any]) -> dict[str, Any]:
     out["variants"] = []
     for k in range(1, count + 1):
         current = [e for e in edges if e["step"] == k]
-        nodes = sorted({n for e in current for n in (e["from"], e["to"])})
+        nodes = sorted({n for e in current for n in (e.get("from"), e.get("to")) if isinstance(n, str)})
         out["variants"].append({"label": current[0].get("label") or f"手順{k}", "active_nodes": nodes, "edges": edges, "step": k,
                                 "marks": [{x: v for x, v in m.items() if x != "step"} for m in marks if m["step"] == k]})
     return out
@@ -254,7 +254,8 @@ def _layout(spec: dict[str, Any], margins: tuple[float, float] = MARGINS[0]) -> 
         top = max(top, 84.0)  # room for the boundary frame and its label above the first row
     used = sorted({n["row"] for n in spec["nodes"]})
     col_gap = (width - margin_x * 2) / max(1, spec["columns"] - 1)
-    height = top + bottom + (len(used) - 1) * row_gap + (20 if any(v.get("note") for v in spec["variants"]) else 0)
+    note_lines = max((len(_wrap(v["note"], 80)) for v in spec["variants"] if v.get("note")), default=0)
+    height = top + bottom + (len(used) - 1) * row_gap + (20 + 16 * (note_lines - 1) if note_lines else 0)
     return ({n["id"]: (margin_x + (n["column"] - 1) * col_gap,
                         top + used.index(n["row"]) * row_gap)
              for n in spec["nodes"]}, col_gap, height)
@@ -354,7 +355,8 @@ def _layout_narrow(spec: dict[str, Any]) -> tuple[dict[str, tuple[float, float]]
     xs = [NARROW_WIDTH / 2] if len(rows) == 1 else [NARROW_WIDTH / 2 - 105, NARROW_WIDTH / 2 + 105]
     top = 84.0 if spec.get("boundaries") else 64.0
     gap = 164.0 if any(v.get("marks") for v in spec["variants"]) else 132.0  # marks sit where vertical edges arrive
-    height = top + 64 + (len(cols) - 1) * gap + (20 if any(v.get("note") for v in spec["variants"]) else 0)
+    note_lines = max((len(_wrap(v["note"], 60)) for v in spec["variants"] if v.get("note")), default=0)
+    height = top + 64 + (len(cols) - 1) * gap + (20 + 16 * (note_lines - 1) if note_lines else 0)
     return ({n["id"]: (xs[rows.index(n["row"])], top + cols.index(n["column"]) * gap) for n in spec["nodes"]},
             gap, height)
 
@@ -442,6 +444,9 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             mw = units(mark["label"]) * 6.5 + 18
             # Straddle the node's top-right corner: clear of a centred label and of a boundary title at the top left.
             mx, top = nx + 72 - mw / 2 + 10, ny - 36 - 15
+            if not margins:
+                # Phone layout: edges arrive at the node's top centre, so keep the tag right of that line.
+                mx = min(nx + 14 + mw / 2, canvas - 4 - mw / 2)
             label_boxes.append((mx - mw / 2, top, mx + mw / 2, top + 22))
             mkey = f"mark:{mark['node']}"
             mark_parts.append(f'<g class="dg-mark dg-tone-{mark.get("tone", "red")}" data-key="{mkey}" transform="translate({mx:g},{top + 11:g})">'
@@ -449,7 +454,9 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                               f'<text data-key="{mkey}:label" data-label="true" text-anchor="middle" y="4">{_esc(mark["label"])}</text></g>')
         # Marks are the first label boxes; edges must route around them as around nodes.
         placed_paths: list[list[tuple[float, float]]] = []
-        edge_obstacles = dict(obstacles)
+        # A node hidden in this variant is not drawn, so its cell is free for this variant's edges.
+        node_obstacles = {k: v for k, v in obstacles.items() if k not in variant.get("hidden_nodes", [])}
+        edge_obstacles = dict(node_obstacles)
         edge_obstacles.update((f"mark:{mark['node']}", box) for mark, box in zip(variant.get("marks", []), label_boxes))
         for edge in variant["edges"]:
             sx, sy = positions[edge["from"]]; tx, ty = positions[edge["to"]]
@@ -494,7 +501,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                 if not wraps[0]:
                     choice=(candidate,mx,my,0,None,[]);break
                 for words in wraps:
-                    choice=_place_label(words,label_sides,mx,my,margins,obstacles,endpoint_ids,height,canvas,label_boxes,placed_paths,candidate)
+                    choice=_place_label(words,label_sides,mx,my,margins,node_obstacles,endpoint_ids,height,canvas,label_boxes,placed_paths,candidate)
                     if choice:break
                 if choice:break
             if choice is None:
@@ -554,7 +561,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
         note_lines = _wrap(variant.get("note", ""), 80 if margins else 60) if variant.get("note", "") else []
         note = "".join(f'<tspan x="{note_x}" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>'
                         for i, line in enumerate(note_lines))
-        parts.append(f'<text data-key="variant-note" class="dg-variant-note" x="{note_x}" y="{height - 14:g}" data-label="true">{note}</text></svg>')
+        parts.append(f'<text data-key="variant-note" class="dg-variant-note" x="{note_x}" y="{height - 14 - 16 * (len(note_lines) - 1 if note_lines else 0):g}" data-label="true">{note}</text></svg>')
         svg = "".join(parts)
         keys = re.findall(r'data-key="([^"]+)"', svg)
         if len(keys) != len(set(keys)):

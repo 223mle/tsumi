@@ -14,7 +14,7 @@ import sys as _sys
 from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parent))  # loadable by file path as well as by name
-from jawrap import plain, units, wrap
+from jawrap import plain, strip_markup, units, wrap
 
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 TONES = {"blue", "teal", "violet", "amber", "rose", "slate", "red"}
@@ -135,6 +135,8 @@ def _columns(spec: dict[str, Any], narrow: bool = False) -> tuple[dict[str, floa
     left = 56.0 if narrow else 110.0
     span_right = any(_span_actor(spec, sp) == spec["actors"][-1]["id"] for sp in spec.get("spans", []))
     right = (128.0 if span_right else 56.0) if narrow else (160.0 if span_right else 110.0)
+    if any(m["from"] == m["to"] == spec["actors"][-1]["id"] for m in spec["messages"]):
+        right += 70 if narrow else 120  # room for the label beside the rightmost actor's self-call loop
     gap = (_width(spec, narrow) - left - right) / (count - 1)
     return ({a["id"]: left + i * gap for i, a in enumerate(spec["actors"])}, gap, left)
 
@@ -149,7 +151,7 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
         raise ValueError("sequence: no phone layout for more than four actors")
     safe = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
     xs, gap, left = _columns(data, narrow)
-    canvas = _width(data, narrow)
+    canvas = _width(data, narrow)  # used below for self-call room
     max_lines = 3 if narrow else 2
     min_width = "" if narrow else f' style="--min-width:{canvas * 0.72:.0f}px"'
     msgs = data["messages"]
@@ -160,7 +162,10 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
     for i, msg in enumerate(msgs):
         self_call = msg["from"] == msg["to"]
         span_cols = 1 if self_call else round(abs(xs[msg["to"]] - xs[msg["from"]]) / gap)
-        units = label_units if self_call else max(label_units, int((abs(xs[msg["to"]] - xs[msg["from"]]) - 28) / 6.6))
+        # A self-call's label sits right of its loop, so it may only use the room left on the canvas.
+        units = min(label_units, int((canvas - (xs[msg["from"]] + SELF_W + 8) - 4) / 6.6)) if self_call else max(label_units, int((abs(xs[msg["to"]] - xs[msg["from"]]) - 28) / 6.6))
+        if self_call and units < 8:
+            _fail(f"sequence.messages[{i}].label", "no room right of this self-call; give the actor a neighbour on its right or shorten the label")
         lines = _wrap(msg["label"], units, f"sequence.messages[{i}].label", max_lines)
         extra = 18 * (len(lines) - 1)
         y += extra
@@ -176,7 +181,7 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
         cur = msgs[step]
         title = f"手順{step + 1}: {plain(cur['label'])}"
         parts = [f'<svg class="dg-sequence" viewBox="0 0 {canvas:g} {height:g}" role="img"{min_width} aria-labelledby="{vid}-title" aria-describedby="{vid}-desc">',
-                 f'<title id="{vid}-title">{_esc(title)}</title><desc id="{vid}-desc">{_esc(cur.get("text", cur["label"]))}</desc><defs>']
+                 f'<title id="{vid}-title">{_esc(title)}</title><desc id="{vid}-desc">{_esc(strip_markup(cur.get("text", cur["label"])))}</desc><defs>']
         for tone in sorted(TONES):
             parts.append(f'<marker id="{vid}-solid-{tone}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path class="dg-arrow-head dg-tone-{tone}" d="M0 0L10 5L0 10Z"/></marker>')
             parts.append(f'<marker id="{vid}-open-{tone}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path class="dg-arrow-open dg-tone-{tone}" d="M1 1L9 5L1 9"/></marker>')
