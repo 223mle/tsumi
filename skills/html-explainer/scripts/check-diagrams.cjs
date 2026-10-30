@@ -16,6 +16,9 @@ async function inspect(page){return page.evaluate(()=>{
         const q=sh.getBoundingClientRect();const w=Math.min(r.right,q.right)-Math.max(r.left,q.left),h=Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top);
         if(w>3&&h>3){errors.push(`label on a shape: ${t.textContent.trim()}`);break;}
       }});
+    // A tag's or an edge label's text must stay inside its own background, or its ends spill onto lines and arrowheads.
+    svg.querySelectorAll('.dg-mark,.dg-edge-label').forEach(g=>{const t=g.querySelector('text'),bg=g.querySelector('rect');if(!t||!bg||!shown(g)||!t.textContent.trim())return;
+      const a=t.getBoundingClientRect(),q=bg.getBoundingClientRect(),pad=g.matches('.dg-mark')?3:0;if(a.left<q.left+pad-1||a.right>q.right-pad+1)errors.push(`text too wide for its background: ${t.textContent.trim()}`);});
     // A tag drawn over an arrow's end hides the head, so the arrow seems to stop short of its node.
     const tags=[...svg.querySelectorAll('.dg-mark>rect')].filter(shown);
     svg.querySelectorAll('path[marker-end]').forEach(pa=>{if(!tags.length||!shown(pa))return;const m=pa.getScreenCTM();if(!m)return;const e=pa.getPointAtLength(pa.getTotalLength()).matrixTransform(m);

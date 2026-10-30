@@ -513,7 +513,8 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
         mark_parts = []
         for mark in variant.get("marks", []):
             nx, ny = positions[mark["node"]]
-            mw = units(mark["label"]) * 6.5 + 18
+            # 12px bold: a full-width character is about 13px and a Latin letter or digit about 8px in Japanese fonts.
+            mw = sum(13 if units(c) == 2 else 8 for c in mark["label"]) + 18
             # Straddle the node's top-right corner: clear of a centred label and of a boundary title at the top left.
             mx, top = nx + 72 - mw / 2 + 10, ny - 36 - 15
             if not margins:
