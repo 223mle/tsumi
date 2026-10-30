@@ -35,8 +35,9 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
         if(await radios.count()>1){
           const before=await snapshot(f);await radios.first().focus();await p.keyboard.press('ArrowRight');await p.waitForTimeout(280);const middle=await snapshot(f);
           await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);const after=await snapshot(f);
-          // A state that changes only colours or dashes has no geometry to interpolate.
-          check(`${theme}/${id}: interpolated transition`,JSON.stringify(before)===JSON.stringify(after)||(JSON.stringify(before)!==JSON.stringify(middle)&&JSON.stringify(middle)!==JSON.stringify(after)));
+          // Judge motion by geometry and opacity only: a state that changes only colours, dashes or label text has nothing to interpolate.
+          const geo=s=>JSON.stringify(s.map(([k,g])=>[k,g]));
+          check(`${theme}/${id}: interpolated transition`,geo(before)===geo(after)||(geo(before)!==geo(middle)&&geo(middle)!==geo(after)));
           check(`${theme}/${id}: synchronized state`,await f.getAttribute('data-rendered-state')==='1');
           // Compare all visible target labels with the selected static source, including reused edge IDs.
           const labels=await f.evaluate(fig=>[...fig.querySelectorAll('.dg-panel')].every(panel=>{

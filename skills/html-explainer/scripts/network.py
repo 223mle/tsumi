@@ -200,11 +200,15 @@ def _expand_steps(spec: dict[str, Any]) -> dict[str, Any]:
     steps = []
     for i, edge in enumerate(edges):
         step = edge.get("step") if isinstance(edge, dict) else None
+        if step is None and isinstance(edge, dict):
+            continue  # an edge without a step is context: drawn faintly in every step, never the current one
         if not isinstance(step, int) or isinstance(step, bool) or step < 1:
             _fail(f"network.edges[{i}].step", "positive integer required")
         if "text" in edge and (not isinstance(edge["text"], str) or not edge["text"].strip()):
             _fail(f"network.edges[{i}].text", "non-empty string required")
         steps.append(step)
+    if not steps:
+        _fail("network.edges", "at least one edge needs a step number")
     count = max(steps)
     if sorted(set(steps)) != list(range(1, count + 1)) or count < 2:
         _fail("network.edges", "steps must run 1, 2, 3 ... without gaps and have at least two steps")
@@ -214,7 +218,7 @@ def _expand_steps(spec: dict[str, Any]) -> dict[str, Any]:
     out = {k: v for k, v in spec.items() if k not in {"edges", "marks"}}
     out["variants"] = []
     for k in range(1, count + 1):
-        current = [e for e in edges if e["step"] == k]
+        current = [e for e in edges if e.get("step") == k]
         nodes = sorted({n for e in current for n in (e.get("from"), e.get("to")) if isinstance(n, str)})
         out["variants"].append({"label": current[0].get("label") or f"手順{k}", "active_nodes": nodes, "edges": edges, "step": k,
                                 "marks": [{x: v for x, v in m.items() if x != "step"} for m in marks if m["step"] == k]})
@@ -224,9 +228,9 @@ def _expand_steps(spec: dict[str, Any]) -> dict[str, Any]:
 def network_steps(spec: dict[str, Any]) -> list[dict[str, str]]:
     """Default step labels and texts for a network whose edges carry step numbers."""
     edges = spec["edges"]
-    return [{"label": re.sub(r"^\s*(?:[\u2460-\u2473]|\d+[.)．]?)\s*", "", plain(next(e.get("label", "") for e in edges if e["step"] == k))) or f"手順{k}",
-             "text": " ".join(e["text"] for e in edges if e["step"] == k and e.get("text"))}
-            for k in range(1, max(e["step"] for e in edges) + 1)]
+    return [{"label": re.sub(r"^\s*(?:[\u2460-\u2473]|\d+[.)．]?)\s*", "", plain(next(e.get("label", "") for e in edges if e.get("step") == k))) or f"手順{k}",
+             "text": " ".join(e["text"] for e in edges if e.get("step") == k and e.get("text"))}
+            for k in range(1, max(e["step"] for e in edges if e.get("step")) + 1)]
 
 
 def _visual_len(text: str) -> float:
@@ -488,6 +492,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                 parts.append(f'<marker id="{vid}-arrow-{marker_kind}-{marker_tone}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path class="dg-arrow-head dg-tone-{marker_tone}" d="M0 0L10 5L0 10Z"/></marker>')
         parts.append('</defs>')
         active = set(variant.get("active_nodes", []))
+        boundary_labels = []  # title boxes at each boundary's top left, which marks must not cover
         for boundary in data.get("boundaries", []):
             coords = [positions[n] for n in boundary["node_ids"]]
             xs = [p[0] for p in coords]; ys = [p[1] for p in coords]
@@ -499,6 +504,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                     if x <= ox <= x + w and y <= oy <= y + h:
                         _fail(f"network.boundaries[{boundary['id']}].node_ids", "boundary would swallow an unrelated node")
             key = f"boundary:{boundary['id']}"
+            boundary_labels.append((x + 18, y + 12, x + 18 + units(boundary["label"]) * 6.5, y + 30))
             parts.append(f'<g class="dg-boundary dg-tone-{boundary.get("tone", "violet")}" data-key="{_esc(key)}"><rect data-key="{_esc(key)}:rect" x="{x:g}" y="{y:g}" width="{w:g}" height="{h:g}" rx="14"/><text data-key="{_esc(key)}:label" x="{x+18:g}" y="{y+25:g}" class="dg-boundary-label" data-label="true">{_esc(boundary["label"])}</text></g>')
         edge_pairs: dict[tuple[str, str], int] = {}
         label_boxes = []
@@ -511,6 +517,13 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             if not margins:
                 # Phone layout: edges arrive at the node's top centre, so keep the tag right of that line.
                 mx = min(nx + 14 + mw / 2, canvas - 4 - mw / 2)
+            for bl in boundary_labels:
+                if mx - mw / 2 < bl[2] + 4 and mx + mw / 2 > bl[0] - 4 and top < bl[3] and top + 22 > bl[1]:
+                    # The tag would cover a boundary title: move it past the title, or else to the node's bottom edge.
+                    if bl[2] + 8 + mw <= canvas - 4:
+                        mx = bl[2] + 8 + mw / 2
+                    else:
+                        top = ny + 36 - 11
             label_boxes.append((mx - mw / 2, top, mx + mw / 2, top + 22))
             mkey = f"mark:{mark['node']}"
             mark_parts.append(f'<g class="dg-mark dg-tone-{mark.get("tone", "red")}" data-key="{mkey}" transform="translate({mx:g},{top + 11:g})">'
@@ -585,7 +598,9 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             placed_paths.append(_path_points((sx, sy),(tx, ty),route,40)[3:-3])
             d=_path((sx, sy),(tx, ty),route);tone=edge.get("tone","blue")
             state, opacity = "", ""
-            if "step" in variant:
+            if "step" in variant and "step" not in edge:
+                state, opacity = " is-context", ' opacity="0.4"'  # structure the steps never traverse, such as sibling branches
+            elif "step" in variant:
                 state = " is-current" if edge["step"] == variant["step"] else " is-done" if edge["step"] < variant["step"] else " is-future"
                 opacity = f' opacity="{"0.16" if state == " is-future" else "1"}"'
             if kind == "conflict":

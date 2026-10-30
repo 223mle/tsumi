@@ -165,7 +165,12 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
         self_call = msg["from"] == msg["to"]
         span_cols = 1 if self_call else round(abs(xs[msg["to"]] - xs[msg["from"]]) / gap)
         # A self-call's label sits right of its loop, so it may only use the room left on the canvas.
-        units = min(label_units, int((canvas - (xs[msg["from"]] + SELF_W + 8) - 4) / 6.6)) if self_call else max(label_units, int((abs(xs[msg["to"]] - xs[msg["from"]]) - 28) / 6.6))
+        # It stops before the next actor's lifeline, so the text does not read as part of that column;
+        # when that leaves fewer than 4 full-width characters, it may run on to the canvas edge as before.
+        start = xs[msg["from"]] + SELF_W + 8
+        to_next = int((min([x for x in xs.values() if x > xs[msg["from"]]] or [canvas + 2]) - 6 - start) / 6.6)
+        room = to_next if to_next >= 8 else int((canvas - start - 4) / 6.6)
+        units = min(label_units, room) if self_call else max(label_units, int((abs(xs[msg["to"]] - xs[msg["from"]]) - 28) / 6.6))
         if self_call and units < 8:
             _fail(f"sequence.messages[{i}].label", "no room right of this self-call; give the actor a neighbour on its right or shorten the label")
         lines = _wrap(msg["label"], units, f"sequence.messages[{i}].label", max_lines)

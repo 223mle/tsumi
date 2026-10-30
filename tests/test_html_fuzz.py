@@ -244,6 +244,17 @@ class FuzzTests(unittest.TestCase):
                 if lines and len(lines) > 1:
                     self.assertTrue(all(len(x) > 1 for x in lines), (text, width, lines))
 
+    def test_step_figures_can_draw_context_edges(self):
+        net = {"type": "network", "columns": 3, "rows": 2, "nodes": [{"id": "r", "label": "根", "column": 1, "row": 1}, {"id": "b", "label": "枝", "column": 2, "row": 1},
+                                                                      {"id": "o", "label": "別の枝", "column": 2, "row": 2}, {"id": "l", "label": "葉", "column": 3, "row": 1}],
+               "edges": [{"id": "e1", "from": "r", "to": "b", "label": "① 読む", "kind": "request", "step": 1},
+                         {"id": "e2", "from": "b", "to": "l", "label": "② 読む", "kind": "request", "step": 2},
+                         {"id": "c", "from": "r", "to": "o", "kind": "request"}]}
+        scenes = render_network(net, "w")
+        self.assertEqual(len(scenes), 2)
+        self.assertTrue(all("is-context" in svg for svg in scenes))
+        self.assertTrue(all('data-key="edge:c:path"' in svg for svg in scenes))
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):
