@@ -281,6 +281,17 @@ class FuzzTests(unittest.TestCase):
         render_diagram({"id": "reg", "title": "登録", "caption": "説明用。", "status": "illustrative", "mode": "steps", "panels": [{"spec": spec}]}, warnings=notes)
         self.assertTrue(any("wraps again" in n for n in notes), notes)
 
+    def test_default_blue_edges_under_a_blue_legend_are_noted(self):
+        sys.path.insert(0, str(Path(__file__).parents[1] / "skills/html-explainer/scripts"))
+        from diagrams import render_diagram
+        net = {"type": "network", "columns": 3, "rows": 2, "nodes": [{"id": "p", "label": "パスワード", "column": 1, "row": 1, "tone": "blue"},
+                                                                      {"id": "h", "label": "ハッシュ", "column": 3, "row": 1}],
+               "variants": [{"label": "v", "edges": [{"id": "e", "from": "p", "to": "h", "kind": "file", "label": "計算"}]}]}
+        notes = []
+        render_diagram({"id": "f", "title": "流れ", "caption": "説明用。", "status": "illustrative", "legend": [{"label": "パスワード", "tone": "blue"}],
+                        "panels": [{"spec": net}]}, warnings=notes)
+        self.assertTrue(any("drawn blue" in n for n in notes), notes)
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):
