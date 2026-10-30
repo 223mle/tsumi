@@ -221,7 +221,14 @@ def _tick(tick: Any, unit: str) -> tuple[float, str]:
     """A tick's value and its axis text."""
     if isinstance(tick, dict):
         return float(tick["value"]), tick["label"]
-    return float(tick), f"{tick:g}{unit}"
+    return float(tick), f"{_number(float(tick))}{unit}"
+
+
+def _number(v: float) -> str:
+    """Plain digits for readers: 1,000,000 rather than 1e+06; up to six significant digits otherwise."""
+    if v.is_integer() and abs(v) < 1e15:
+        return f"{int(v):,}" if abs(v) >= 10000 else str(int(v))
+    return f"{v:.6g}"
 
 
 def _tick_stride(spec: dict[str, Any], lo: float, hi: float, width: float, log: bool = False) -> int:

@@ -26,10 +26,9 @@ def _axis(spec: Any, path: str) -> dict[str, Any]:
         _fail(path + ".ticks", "2 to 12 ticks required")
     prev = None
     for i, tick in enumerate(ticks):
-        value = tick["value"] if isinstance(tick, dict) else tick
         if isinstance(tick, dict) and (set(tick) != {"value", "label"} or not isinstance(tick["label"], str) or len(tick["label"]) > 10):
             _fail(f"{path}.ticks[{i}]", "a number, or value and a label of at most 10 characters")
-        v = _num(value, f"{path}.ticks[{i}]")
+        v = _num(tick["value"] if isinstance(tick, dict) else tick, f"{path}.ticks[{i}]")
         if not lo <= v <= hi or (prev is not None and v <= prev):
             _fail(f"{path}.ticks[{i}]", "ticks must be increasing and inside the axis")
         prev = v
@@ -67,23 +66,37 @@ def _scene(spec: dict[str, Any], scene: dict[str, Any], path: str, x: dict[str, 
             last = px
         if "dashed" in s and not isinstance(s["dashed"], bool):
             _fail(p + ".dashed", "true or false")
+    xlo, xhi, ylo, yhi = float(x["min"]), float(x["max"]), float(y["min"]), float(y["max"])
+    for key in ("points", "markers", "bands"):
+        if not isinstance(scene.get(key, []), list):
+            _fail(f"{path}.{key}", "array required")
+    pids: set[str] = set()
     for i, pt in enumerate(scene.get("points", [])):
         p = f"{path}.points[{i}]"
         if not isinstance(pt, dict) or set(pt) - {"id", "x", "y", "label", "tone"} or not {"id", "x", "y", "label"} <= set(pt):
             _fail(p, "id, x, y and label required")
-        _num(pt["x"], p + ".x"); _num(pt["y"], p + ".y"); _text(pt["label"], p + ".label")
-        _tone(pt.get("tone", "red"), p + ".tone")
+        _id(pt["id"], p + ".id", pids)
+        if not (xlo <= _num(pt["x"], p + ".x") <= xhi and ylo <= _num(pt["y"], p + ".y") <= yhi):
+            _fail(p, "outside the axes")
+        _text(pt["label"], p + ".label"); _tone(pt.get("tone", "red"), p + ".tone")
+    mids: set[str] = set()
     for i, m in enumerate(scene.get("markers", [])):
         p = f"{path}.markers[{i}]"
         if not isinstance(m, dict) or set(m) - {"id", "x", "label", "tone"} or not {"id", "x", "label"} <= set(m):
             _fail(p, "id, x and label required")
-        _num(m["x"], p + ".x"); _text(m["label"], p + ".label"); _tone(m.get("tone", "slate"), p + ".tone")
+        _id(m["id"], p + ".id", mids)
+        if not xlo <= _num(m["x"], p + ".x") <= xhi:
+            _fail(p + ".x", "outside the x axis")
+        _text(m["label"], p + ".label"); _tone(m.get("tone", "slate"), p + ".tone")
+    bids: set[str] = set()
     for i, b in enumerate(scene.get("bands", [])):
         p = f"{path}.bands[{i}]"
         if not isinstance(b, dict) or set(b) - {"id", "from", "to", "label"} or not {"id", "from", "to", "label"} <= set(b):
             _fail(p, "id, from, to and label required")
-        if not _num(b["from"], p + ".from") < _num(b["to"], p + ".to"):
-            _fail(p, "from must be less than to")
+        _id(b["id"], p + ".id", bids)
+        lo_b, hi_b = _num(b["from"], p + ".from"), _num(b["to"], p + ".to")
+        if not lo_b < hi_b or hi_b <= xlo or lo_b >= xhi:
+            _fail(p, "from must be less than to, and the range must overlap the x axis")
         _text(b["label"], p + ".label")
 
 
@@ -117,24 +130,30 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
     xlo, xhi, ylo, yhi = float(x["min"]), float(x["max"]), float(y["min"]), float(y["max"])
     W = NARROW_WIDTH if narrow else 960
     x0, x1 = (64.0, W - 78.0) if narrow else (110.0, W - 190.0)
+    x0 = max(x0, 12 + max(_text_width(_tick(t, y.get("unit", ""))[1]) for t in y["ticks"]))  # room for the longest y label
     marker_layout, rows = _marker_layout([{"id": m["id"], "value": m["x"], "label": m["label"]} for m in scene.get("markers", [])], xlo, xhi, x0, x1 - x0, W)
     lift = max(0, rows - 1) * 17
     y0, y1 = 40.0 + lift, (230.0 if narrow else 270.0) + lift  # plot top and bottom
     H = y1 + 46
     px = lambda v: _scale(float(v), xlo, xhi, x0, x1)  # noqa: E731
     py = lambda v: _scale(float(v), ylo, yhi, y1, y0)  # noqa: E731
-    title = scene.get("label", "")
+    title = scene.get("label") or "、".join(plain(s["label"]) for s in scene["series"])
     desc = scene.get("summary") or "、".join(
         [f'{plain(s["label"])}: ' + "→".join(f'{_tick(p[0], x.get("unit", ""))[1]} {_tick(p[1], y.get("unit", ""))[1]}' for p in (s["points"][0], s["points"][-1])) for s in scene["series"]]
         + [plain(p["label"]) for p in scene.get("points", [])])
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" class="dg-line" viewBox="0 0 {W} {H:g}" role="img" aria-labelledby="{prefix}-{index}-title" aria-describedby="{prefix}-{index}-desc">'
            f'<title id="{prefix}-{index}-title">{_esc(title or "折れ線グラフ")}</title><desc id="{prefix}-{index}-desc">{_esc(desc)}</desc>']
-    taken = []  # label boxes already drawn, for the callouts to avoid
+    taken = []  # label boxes already drawn; later labels keep clear of them
+    def hit(box):
+        return any(box[0] < q[2] and box[2] > q[0] and box[1] < q[3] and box[3] > q[1] for q in taken)
     for b in scene.get("bands", []):
         bx0, bx1 = px(max(xlo, float(b["from"]))), px(min(xhi, float(b["to"])))
         out.append(f'<rect class="line-band" x="{bx0:.2f}" y="{y0:g}" width="{bx1 - bx0:.2f}" height="{y1 - y0:g}" data-key="band-{_esc(b["id"])}"/>')
-        out.append(_svg_text((bx0 + bx1) / 2, y0 + 14, b["label"], "band-label", "middle", f"band-label-{b['id']}"))
-        tw = _text_width(b["label"]); taken.append(((bx0 + bx1 - tw) / 2, y0 + 2, (bx0 + bx1 + tw) / 2, y0 + 18))
+        tw = _text_width(b["label"])
+        cxb = min(max((bx0 + bx1) / 2, x0 + tw / 2), x1 - tw / 2)
+        ty = next((t for t in (y0 + 14, y0 + 32, y0 + 50) if not hit((cxb - tw / 2, t - 12, cxb + tw / 2, t + 3))), y0 + 14)
+        out.append(_svg_text(cxb, ty, b["label"], "band-label", "middle", f"band-label-{b['id']}"))
+        taken.append((cxb - tw / 2, ty - 12, cxb + tw / 2, ty + 3))
     xs = {"ticks": x["ticks"], "unit": x.get("unit", "")}
     every = _tick_stride(xs, xlo, xhi, x1 - x0)
     for i, t in enumerate(x["ticks"]):
@@ -143,6 +162,7 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         out.append(f'<line class="axis-grid" x1="{gx:.2f}" y1="{y0:g}" x2="{gx:.2f}" y2="{y1:g}" data-key="xtick-{v:g}"/>')
         if i % every == 0:
             out.append(_axis_label(gx, y1 + 18, text, W, f"xtick-label-{v:g}"))
+    taken.append((0, y1 + 2, W, H))  # the x tick labels and the axis name below the plot
     for t in y["ticks"]:
         v, text = _tick(t, y.get("unit", ""))
         gy = py(v)
@@ -151,33 +171,47 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
     if x.get("label"):
         out.append(_svg_text((x0 + x1) / 2, H - 6, x["label"], "axis-label", "middle", "x-axis-label"))
     if y.get("label"):
-        out.append(_svg_text(x0 - 8, y0 - 14 - lift, y["label"], "axis-label", "end", "y-axis-label"))
+        # Above the plot from the left edge, so a long name is never cut off.
+        out.append(_svg_text(4, y0 - 14 - lift, y["label"], "axis-label", "start", "y-axis-label"))
+        taken.append((4, y0 - 26 - lift, 4 + _text_width(y["label"]), y0 - 11 - lift))
     for m in scene.get("markers", []):
         mx, anchor, row = marker_layout[m["id"]]
         tone = m.get("tone", "slate")
         out.append(f'<line class="marker marker-{tone}" x1="{mx:.2f}" y1="{y0 - 4:g}" x2="{mx:.2f}" y2="{y1:g}" data-key="marker-{_esc(m["id"])}"/>')
         out.append(_svg_text(mx - 5 if anchor == "end" else mx + 5, 18 + row * 17, m["label"], f"marker-label marker-label-{tone}", anchor, f"marker-label-{m['id']}"))
-    # Series are labelled at their right end; labels that would touch are pushed apart vertically.
-    ends = sorted(((py(s["points"][-1][1]), s) for s in scene["series"]), key=lambda e: e[0])
-    placed: list[float] = []
-    label_y = {}
-    for ey, s in ends:
-        ly = max(ey, placed[-1] + 16) if placed else ey
-        placed.append(ly)
-        label_y[s["id"]] = ly
+        tw = _text_width(m["label"])
+        taken.append((mx - 5 - tw, 6 + row * 17, mx - 5, 21 + row * 17) if anchor == "end" else (mx + 5, 6 + row * 17, mx + 5 + tw, 21 + row * 17))
+    # Series names go after each line's end, or, without room there (phone layout), above its start.
+    # Each group is spread so that no two names touch, then kept inside the plot.
+    groups: dict[str, list] = {"end": [], "start": []}
+    for s in scene["series"]:
+        end_x = px(s["points"][-1][0])
+        at_end = end_x + 30 + _text_width(s["label"]) <= W - 4
+        groups["end" if at_end else "start"].append((py(s["points"][-1][1]) if at_end else py(s["points"][0][1]) - 12, s))
+    label_at = {}
+    for where, items in groups.items():
+        items.sort(key=lambda e: e[0])
+        ys = []
+        for want, _ in items:
+            ys.append(max(want, ys[-1] + 16) if ys else want)
+        overflow = (ys[-1] - (y1 - 4)) if ys else 0
+        if overflow > 0:
+            ys = [v - overflow for v in ys]
+        ys = [max(v, y0 + 2) for v in ys]
+        for (_, s), ly in zip(items, ys):
+            lx = px(s["points"][-1][0]) if where == "end" else px(s["points"][0][0]) - 18
+            label_at[s["id"]] = (lx, ly)
     for s in scene["series"]:
         tone = s.get("tone") or "blue"
         d = "M" + " L".join(f"{px(p[0]):.2f} {py(p[1]):.2f}" for p in s["points"])
-        dash = ' stroke-dasharray="6 4"' if s.get("dashed") else ""
+        # Always state the dash, so switching to a solid variant clears it.
+        dash = f' stroke-dasharray="{"6 4" if s.get("dashed") else "none"}"'
         out.append(f'<path class="line-series dg-tone-{tone}" d="{d}"{dash} data-key="series-{_esc(s["id"])}"/>')
-        lx, ly = px(s["points"][-1][0]), label_y[s["id"]]
-        if lx + 30 + _text_width(s["label"]) > W - 4:
-            # No room after the line's end (phone layout): label it above its first point instead.
-            lx, ly = px(s["points"][0][0]) - 18, py(s["points"][0][1]) - 12
+        lx, ly = label_at[s["id"]]
         out.append(f'<path class="series-key dg-tone-{tone}" d="M{lx + 6:.2f} {ly:.2f}h16"{dash} data-key="series-key-{_esc(s["id"])}"/>')
         out.append(_svg_text(lx + 26, ly + 4, s["label"], f"series-label series-label-{tone}", "start", f"series-label-{s['id']}"))
         taken.append((lx + 6, ly - 8, lx + 26 + _text_width(s["label"]), ly + 8))
-        for p in s["points"]:
+        for p in s.get("shown", s["points"]):
             tip = f'{plain(s["label"])}: {_tick(p[0], x.get("unit", ""))[1]} → {_tick(p[1], y.get("unit", ""))[1]}'
             out.append(f'<circle class="line-point dg-tone-{tone}" cx="{px(p[0]):.2f}" cy="{py(p[1]):.2f}" r="3.5" data-tip="{_esc(tip)}" data-key="pt-{_esc(s["id"])}-{p[0]:g}"/>')
     line_samples = []  # points along every series, every few pixels, for label placement
@@ -190,23 +224,36 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         tone = p.get("tone", "red")
         cx, cy = px(p["x"]), py(p["y"])
         tw = _text_width(p["label"])
-        # Try above, below, right and left of the point; keep clear of other labels and of every line.
-        def clear(lx, ty):
-            l, r, t, b = lx - tw / 2, lx + tw / 2, ty - 12, ty + 3
-            if l < x0 - 4 or r > W - 4 or t < 4:
+        def fits(lx, ty, avoid_lines):
+            box = (lx - tw / 2, ty - 12, lx + tw / 2, ty + 3)
+            if box[0] < 4 or box[2] > W - 4 or box[1] < 4 or box[3] > y1 - 2:
                 return False
-            return not any(l < q[2] and r > q[0] and t < q[3] and b > q[1] for q in taken) and \
-                not any(l - 2 <= sx <= r + 2 and t - 2 <= sy <= b + 2 for sx, sy in line_samples)
+            if hit(box):
+                return False
+            return not avoid_lines or not any(box[0] - 2 <= sx <= box[2] + 2 and box[1] - 2 <= sy <= box[3] + 2 for sx, sy in line_samples)
         mid = min(max(cx, x0 + tw / 2), x1 - tw / 2)
-        spots = [(mid, cy - 28, True), (mid, cy + 36, False), (cx + 12 + tw / 2, cy + 4, None), (cx - 12 - tw / 2, cy + 4, None),
-                 (cx - 12 - tw / 2, cy - 22, None), (cx + 12 + tw / 2, cy - 22, None), (cx - 12 - tw / 2, cy + 30, None),
-                 (cx + 12 + tw / 2, cy + 30, None), (mid, cy - 50, True), (mid, cy + 58, False)]
-        lx, ty, above = next((sp for sp in spots if clear(sp[0], sp[1])), spots[0])
-        leader = "" if above is None else f'<path d="M{cx:.2f} {cy - 8 if above else cy + 8:.2f}V{cy - 22 if above else cy + 22:.2f}" data-key="callout-{_esc(p["id"])}-leader"/>'
+        r, l = cx + 12 + tw / 2, cx - 12 - tw / 2
+        spots = [(mid, cy - 28, True), (mid, cy + 36, False), (r, cy + 4, None), (l, cy + 4, None), (l, cy - 22, None), (r, cy - 22, None),
+                 (l, cy + 30, None), (r, cy + 30, None), (mid, cy - 50, True), (mid, cy + 58, False), (mid, cy - 72, True), (mid, cy + 80, False)]
+        # First keep clear of lines and labels; then accept touching a line; never sit on another label.
+        lx, ty, above = next((sp for sp in spots if fits(sp[0], sp[1], True)), None) or next((sp for sp in spots if fits(sp[0], sp[1], False)), spots[0])
+        leader = "" if above is None else f'<path d="M{cx:.2f} {cy - 8 if above else cy + 8:.2f}V{ty + 4 if above else ty - 16:.2f}" data-key="callout-{_esc(p["id"])}-leader"/>'
         out.append(f'<g class="line-callout dg-tone-{tone}" data-key="callout-{_esc(p["id"])}"><circle cx="{cx:.2f}" cy="{cy:.2f}" r="6" data-key="callout-{_esc(p["id"])}-dot"/>{leader}</g>')
         out.append(_svg_text(lx, ty, p["label"], f"callout-label marker-label-{tone}", "middle", f"callout-label-{p['id']}"))
         taken.append((lx - tw / 2, ty - 12, lx + tw / 2, ty + 3))
     return "".join(out) + "</svg>"
+
+
+def _resample(points, xs):
+    """Linear interpolation of a polyline at the given x values inside its own range."""
+    pts = [(float(a), float(b)) for a, b in points]
+    out = []
+    for x in sorted(v for v in xs if pts[0][0] <= v <= pts[-1][0]):
+        for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+            if ax <= x <= bx:
+                out.append([x, ay + (by - ay) * ((x - ax) / (bx - ax) if bx != ax else 0)])
+                break
+    return out
 
 
 def render_line(spec: Any, prefix: str = "line", narrow: bool = False) -> list[str]:
@@ -217,4 +264,12 @@ def render_line(spec: Any, prefix: str = "line", narrow: bool = False) -> list[s
         _fail("prefix", "valid identifier required")
     base = {k: data[k] for k in ("series", "points", "markers", "bands") if k in data}
     scenes = [{**base, **v} for v in data["variants"]] if "variants" in data else [base]
+    # The same series must have the same number of vertices in every variant for the path to morph,
+    # so each copy is resampled at the union of its x values; only the given points get dots.
+    xs_by_id: dict[str, set] = {}
+    for sc in scenes:
+        for s in sc["series"]:
+            xs_by_id.setdefault(s["id"], set()).update(float(p[0]) for p in s["points"])
+    for sc in scenes:
+        sc["series"] = [{**s, "shown": s["points"], "points": _resample(s["points"], xs_by_id[s["id"]])} for s in sc["series"]]
     return [_line_svg(data, scene, i, safe, narrow) for i, scene in enumerate(scenes)]

@@ -490,7 +490,7 @@ class LineChartTests(unittest.TestCase):
         self.assertIn('viewBox="0 0 960 ', wide)
         self.assertIn('viewBox="0 0 420 ', narrow)
         self.assertIn("約97人で同額", wide)
-        self.assertRegex(wide, r'<desc[^>]*>スタンダード: 0人 50000円→100人 125000円')
+        self.assertRegex(wide, r'<desc[^>]*>スタンダード: 0人 50,000円→100人 125,000円')
         html = render_diagram({"id": "c", "title": "t", "caption": "c", "panels": [{"spec": self.spec()}]})
         self.assertIn("dg-panel dg-narrow", html)
 
