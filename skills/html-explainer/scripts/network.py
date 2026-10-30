@@ -629,9 +629,9 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             d=_path((sx, sy),(tx, ty),route);tone=edge.get("tone","blue")
             state, opacity = "", ""
             if "step" in variant and "step" not in edge:
-                # Structure the steps never traverse, such as sibling branches: grey and as faint as a step still to come,
-                # so it never outranks the next hop.
-                state, opacity, tone = " is-context", ' opacity="0.16"', "slate"
+                # Structure the steps never traverse, such as sibling branches: grey, fainter than any hop taken but
+                # clearer than a step still to come (0.16), so the branch the walk skips can still be seen.
+                state, opacity, tone = " is-context", ' opacity="0.4"', "slate"
             elif "step" in variant:
                 state = " is-current" if edge["step"] == variant["step"] else " is-done" if edge["step"] < variant["step"] else " is-future"
                 opacity = f' opacity="{"0.16" if state == " is-future" else "1"}"'
