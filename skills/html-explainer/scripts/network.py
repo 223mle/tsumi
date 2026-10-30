@@ -55,10 +55,12 @@ def validate_network(spec: object) -> dict[str, Any]:
     """
     if not isinstance(spec, dict):
         _fail("network", "must be an object")
-    allowed = {"type", "columns", "rows", "nodes", "boundaries", "variants"}
+    allowed = {"type", "columns", "rows", "nodes", "boundaries", "variants", "edges"}
     extra = set(spec) - allowed
     if extra:
         _fail("network", f"unknown fields {sorted(extra)}")
+    if "edges" in spec:
+        spec = _expand_steps(spec)
     if spec.get("type") != "network":
         _fail("network.type", "must be network")
     columns, rows = spec.get("columns"), spec.get("rows")
@@ -125,7 +127,7 @@ def validate_network(spec: object) -> dict[str, Any]:
         path = f"network.variants[{vi}]"
         if not isinstance(variant, dict):
             _fail(path, "must be an object")
-        if set(variant) - {"label", "active_nodes", "edges", "note"}:
+        if set(variant) - {"label", "active_nodes", "edges", "note", "step"}:
             _fail(path, "unknown fields")
         _text(variant.get("label"), path + ".label")
         active = variant.get("active_nodes", [])
@@ -142,7 +144,7 @@ def validate_network(spec: object) -> dict[str, Any]:
             ep = f"{path}.edges[{ei}]"
             if not isinstance(edge, dict):
                 _fail(ep, "must be an object")
-            if set(edge) - {"id", "from", "to", "label", "kind", "tone", "route", "label_side"}:
+            if set(edge) - {"id", "from", "to", "label", "kind", "tone", "route", "label_side", "step", "text"}:
                 _fail(ep, "unknown fields")
             _id(edge.get("id"), ep + ".id", edge_ids)
             source, target = edge.get("from"), edge.get("to")
@@ -160,6 +162,45 @@ def validate_network(spec: object) -> dict[str, Any]:
             if len(edge["label"]) > 38:
                 _fail(ep + ".label", "too long for an edge label")
     return spec
+
+
+def _expand_steps(spec: dict[str, Any]) -> dict[str, Any]:
+    """Turn top-level edges numbered by `step` into one variant per step.
+
+    Every variant draws every edge so routes and labels stay put; the step
+    decides which edges are done, current or still to come.
+    """
+    if "variants" in spec:
+        _fail("network", "use either variants or edges with step numbers, not both")
+    edges = spec["edges"]
+    if not isinstance(edges, list) or not edges:
+        _fail("network.edges", "must be a non-empty array")
+    steps = []
+    for i, edge in enumerate(edges):
+        step = edge.get("step") if isinstance(edge, dict) else None
+        if not isinstance(step, int) or isinstance(step, bool) or step < 1:
+            _fail(f"network.edges[{i}].step", "positive integer required")
+        if "text" in edge and (not isinstance(edge["text"], str) or not edge["text"].strip()):
+            _fail(f"network.edges[{i}].text", "non-empty string required")
+        steps.append(step)
+    count = max(steps)
+    if sorted(set(steps)) != list(range(1, count + 1)) or count < 2:
+        _fail("network.edges", "steps must run 1, 2, 3 ... without gaps and have at least two steps")
+    out = {k: v for k, v in spec.items() if k != "edges"}
+    out["variants"] = []
+    for k in range(1, count + 1):
+        current = [e for e in edges if e["step"] == k]
+        nodes = sorted({n for e in current for n in (e["from"], e["to"])})
+        out["variants"].append({"label": current[0]["label"], "active_nodes": nodes, "edges": edges, "step": k})
+    return out
+
+
+def network_steps(spec: dict[str, Any]) -> list[dict[str, str]]:
+    """Default step labels and texts for a network whose edges carry step numbers."""
+    edges = spec["edges"]
+    return [{"label": re.sub(r"^\s*(?:[\u2460-\u2473]|\d+[.)．]?)\s*", "", next(e["label"] for e in edges if e["step"] == k)) or str(k),
+             "text": " ".join(e["text"] for e in edges if e["step"] == k and e.get("text"))}
+            for k in range(1, max(e["step"] for e in edges) + 1)]
 
 
 def _visual_len(text: str) -> int:
@@ -315,7 +356,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
                  '<defs>']
         for marker_kind in ('file','request'):
             for marker_tone in sorted(TONES):
-                parts.append(f'<marker id="{vid}-arrow-{marker_kind}-{marker_tone}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="dg-arrow-head dg-tone-{marker_tone}" d="M0 0L10 5L0 10Z"/></marker>')
+                parts.append(f'<marker id="{vid}-arrow-{marker_kind}-{marker_tone}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path class="dg-arrow-head dg-tone-{marker_tone}" d="M0 0L10 5L0 10Z"/></marker>')
         parts.append('</defs>')
         active = set(variant.get("active_nodes", []))
         for boundary in data.get("boundaries", []):
@@ -364,21 +405,25 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
                 raise _NoRoute(f"network.variants[{vi}].edges[{edge['id']}]: no route and label slot fit; rearrange nodes or shorten the label")
             route,lx,ly,offset,box=choice;label_boxes.append(box)
             d=_path((sx, sy),(tx, ty),route);tone=edge.get("tone","blue")
-            parts.append(f'<path data-key="{_esc(key)}:path" data-flow="{kind}" class="dg-edge dg-tone-{_esc(tone)}" d="{d}" marker-end="url(#{vid}-arrow-{kind}-{tone})"/>')
+            state, opacity = "", ""
+            if "step" in variant:
+                state = " is-current" if edge["step"] == variant["step"] else " is-done" if edge["step"] < variant["step"] else " is-future"
+                opacity = f' opacity="{"0.16" if state == " is-future" else "1"}"'
+            parts.append(f'<path data-key="{_esc(key)}:path" data-flow="{kind}" class="dg-edge dg-tone-{_esc(tone)}{state}"{opacity} d="{d}" marker-end="url(#{vid}-arrow-{kind}-{tone})"/>')
             tspans = "".join(
                 f'<tspan x="0" dy="{20 if j else 0}">{_esc(word)}</tspan>'
                 for j, word in enumerate(words)
             )
             label_width = _visual_len(max(words, key=_visual_len)) * 6.2 + 8
             parts.append(
-                f'<g data-key="{_esc(key)}:label" class="dg-edge-label" data-label="true" '
+                f'<g data-key="{_esc(key)}:label" class="dg-edge-label{state}" data-label="true"{opacity} '
                 f'transform="translate({lx:g},{ly+offset:g})"><rect x="{-label_width/2:g}" '
                 f'y="{-10*len(words)-2:g}" width="{label_width:g}" height="{20*len(words)+4:g}" '
                 f'rx="4"/><text text-anchor="middle">{tspans}</text></g>'
             )
         for node in data["nodes"]:
             x, y = positions[node["id"]]; key = f"node:{node['id']}"; node_w, node_h = 144, 72
-            border = " active" if node["id"] in active else " inactive" if active else ""
+            border = " active" if node["id"] in active else " inactive" if active and "step" not in variant else ""
             label_lines = _wrap(node["label"]); detail_lines = _wrap(node.get("detail", "")) if node.get("detail", "") else []
             if len(label_lines) + len(detail_lines) > 3:
                 _fail(f"network.nodes[{node['id']}]", "label and detail exceed three lines; move detail to caption")

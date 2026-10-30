@@ -101,6 +101,34 @@ class StepModeTests(unittest.TestCase):
         self.assertIn("BがAへ返します。", html)
 
 
+class NetworkStepTests(unittest.TestCase):
+    def spec(self, **extra):
+        spec = {"type": "network", "columns": 3, "rows": 2,
+                "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "B", "column": 2, "row": 1},
+                          {"id": "c", "label": "C", "column": 3, "row": 1}],
+                "edges": [{"id": "e1", "from": "a", "to": "b", "label": "① 送る", "kind": "request", "step": 1, "text": "AがBへ送ります。"},
+                          {"id": "e2", "from": "b", "to": "c", "label": "② 渡す", "kind": "file", "step": 2}]}
+        spec.update(extra)
+        return spec
+
+    def test_numbered_edges_become_steps_with_all_edges_drawn(self):
+        scenes = render_network(self.spec())
+        self.assertEqual(len(scenes), 2)
+        self.assertIn('class="dg-edge dg-tone-blue is-current" opacity="1"', scenes[0])
+        self.assertRegex(scenes[0], r'data-key="edge:e2:path" data-flow="file" class="dg-edge dg-tone-blue is-future" opacity="0.16"')
+        self.assertNotIn(" inactive", scenes[0])
+        html = render_diagram({"id": "n", "title": "t", "caption": "c", "mode": "steps", "panels": [{"spec": self.spec()}]})
+        self.assertIn("<b>1. 送る</b> AがBへ送ります。", html)
+
+    def test_step_numbers_must_be_contiguous(self):
+        bad = self.spec()
+        bad["edges"][1]["step"] = 3
+        with self.assertRaisesRegex(ValueError, "without gaps"):
+            render_network(bad)
+        with self.assertRaisesRegex(ValueError, "either"):
+            render_network(self.spec(variants=[]))
+
+
 class NetworkLayoutTests(unittest.TestCase):
     def test_single_row_without_detours_is_compact(self):
         spec = {"type": "network", "columns": 3, "rows": 3,

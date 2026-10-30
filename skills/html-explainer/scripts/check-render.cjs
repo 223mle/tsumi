@@ -70,6 +70,8 @@ async function main() {
           await page.emulateMedia({media:'print'});
           await page.screenshot({path:path.join(dest,'print.png'),fullPage:true});
           const print = {mode:'print', ...await inspect(page)};
+          const hidden = await page.evaluate(()=>[...document.querySelectorAll('details > :not(summary)')].filter(e=>!e.getBoundingClientRect().height).length);
+          if (hidden) print.errors.push(`${hidden} collapsed details blocks print empty`);
           report.checks.push(print);report.errors.push(...print.errors.map(e=>`print: ${e}`));
         }
         await context.close();

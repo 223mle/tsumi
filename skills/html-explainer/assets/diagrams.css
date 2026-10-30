@@ -19,3 +19,4 @@
 .dg-step-notes{margin:12px 0 0;padding-left:1.6em;font-size:13.5px;line-height:1.7}.dg-step-notes li{margin:3px 0}.dg-step-notes b{margin-right:.5em}.dg-enhanced .dg-step-notes{display:none}[data-mode=steps] .dg-static-scene:not(:last-child){display:none}[data-mode=steps] .dg-static-scene .dg-scene-name{display:none}
 .dg-node.is-linked rect,.dg-actor.is-linked rect{stroke:var(--tone);stroke-width:3;filter:drop-shadow(0 0 6px color-mix(in srgb,var(--tone) 45%,transparent))}.dg-node.is-linked{opacity:1!important}.term.is-linked{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:3px}
 @media print{.dg-enhanced .dg-step-notes{display:block}}
+.dg-network .dg-edge.is-current{stroke-width:3.4}.dg-network .dg-edge-label.is-current text{font-weight:700}.dg-network .dg-edge-label.is-current rect{stroke:var(--line-strong,var(--line));stroke-width:1}

@@ -60,3 +60,5 @@
     if (part && !part.contains(e.relatedTarget)) link(part.dataset.ref, false);
   });
 })();
+addEventListener('beforeprint', () => document.querySelectorAll('details:not([open])').forEach(d => { d.open = true; d.dataset.printOpened = ''; }));
+addEventListener('afterprint', () => document.querySelectorAll('details[data-print-opened]').forEach(d => { d.open = false; delete d.dataset.printOpened; }));

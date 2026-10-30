@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 from charts import render_chart
-from network import render_network
+from network import render_network, network_steps
 from decisions import render_decision
 from sequence import render_sequence, sequence_steps
 
@@ -20,8 +20,10 @@ def _steps(bundle,panels,count):
     steps=bundle.get('steps')
     if steps is None:
         seq=[p['spec'] for p in panels if p['spec'].get('type')=='sequence']
-        if not seq: raise ValueError('steps: required unless a panel is a sequence')
-        steps=sequence_steps(seq[0])
+        net=[p['spec'] for p in panels if p['spec'].get('type')=='network' and 'edges' in p['spec']]
+        if seq: steps=sequence_steps(seq[0])
+        elif net: steps=network_steps(net[0])
+        else: raise ValueError('steps: required unless a panel is a sequence or a network with numbered edges')
     if not isinstance(steps,list) or len(steps)!=count or count<2: raise ValueError('steps: one step per scene (at least two) required')
     out=[]
     for i,st in enumerate(steps):

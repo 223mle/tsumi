@@ -1,0 +1,11 @@
+id: trigger-html-explainer-004
+title: 流れを動く図で説明する依頼でhtml-explainerを読む
+targets: [html-explainer]
+tags: [trigger, ja]
+source: 手書き。手順を1段階ずつ見せたいという依頼。2026-10-30にステップ再生を追加した際に作成。
+trials: 3
+prompt: |
+  社内向けに、Webアプリのログインでブラウザー・アプリ・認証サーバーの間で何が順番にやり取りされるのかを説明したいです。1手ずつ進められる図やアニメーションを使って、新人にも分かるHTMLの解説ページを作ってください。架空の構成で構いません。
+checks:
+  - type: must_read
+    glob: "**/html-explainer/SKILL.md"
