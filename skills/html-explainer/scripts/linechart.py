@@ -147,14 +147,15 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
     if narrow:
         row, used = [], 0.0
         for sr in spec_series_names:
-            wd = 26 + _text_width(sr) + 14
+            wd = 26 + _text_width(sr) + 22
             if row and used + wd > W - 8:
                 key_rows.append(row); row, used = [], 0.0
             row.append(sr); used += wd
         if row:
             key_rows.append(row)
-    key_top = H
-    H += len(key_rows) * 18 + (6 if key_rows else 0)
+    x_name_y = H - 6
+    key_top = H + (10 if key_rows else 0)  # a clear gap, so the x-axis name does not read as part of the key
+    H = key_top + len(key_rows) * 18 + (6 if key_rows else 0)
     px = lambda v: _scale(float(v), xlo, xhi, x0, x1)  # noqa: E731
     py = lambda v: _scale(float(v), ylo, yhi, y1, y0)  # noqa: E731
     title = scene.get("label") or "、".join(plain(s["label"]) for s in scene["series"])
@@ -190,7 +191,7 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         out.append(f'<line class="axis-grid" x1="{x0:g}" y1="{gy:.2f}" x2="{x1:g}" y2="{gy:.2f}" data-key="ytick-{v:g}"/>')
         out.append(_svg_text(x0 - 8, gy + 4, text, "axis-label", "end", f"ytick-label-{v:g}"))
     if x.get("label"):
-        out.append(_svg_text((x0 + x1) / 2, key_top - 6, x["label"], "axis-label", "middle", "x-axis-label"))
+        out.append(_svg_text((x0 + x1) / 2, x_name_y, x["label"], "axis-label", "middle", "x-axis-label"))
     if y.get("label"):
         # Above the plot from the left edge, so a long name is never cut off.
         # Just above the plot and below the marker labels, from the left edge so a long name is never cut off.
@@ -229,7 +230,7 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
             cx = 8.0
             for name in row:
                 positions[name] = (cx - 6, key_top + 6 + r * 18)
-                cx += 26 + _text_width(name) + 14
+                cx += 26 + _text_width(name) + 22
         for s in scene["series"]:
             label_at[s["id"]] = positions[s["label"]]
     for s in sorted(scene["series"], key=lambda s: bool(s.get("dots"))):  # data dots on top of fitted lines
