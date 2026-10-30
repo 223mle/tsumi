@@ -172,7 +172,7 @@ def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
             ty = HEAD_Y + HEAD_H / 2 - (len(lines) - 1) * 8
             tspans = "".join(f'<tspan x="{x:g}" dy="{0 if j == 0 else 16}">{_esc(line)}</tspan>' for j, line in enumerate(lines))
             w = min(gap - 16, 176)
-            parts.append(f'<g class="dg-actor dg-tone-{actor.get("tone", "slate")}{state}" data-key="{key}">'
+            parts.append(f'<g class="dg-actor dg-tone-{actor.get("tone", "slate")}{state}" data-key="{key}" data-ref="{_esc(actor["label"])}">'
                          f'<line class="dg-lifeline" data-key="{key}:life" x1="{x:g}" y1="{HEAD_Y + HEAD_H:g}" x2="{x:g}" y2="{height - 8:g}"/>'
                          f'<rect data-key="{key}:box" x="{x - w / 2:g}" y="{HEAD_Y}" width="{w:g}" height="{HEAD_H}" rx="8"/>'
                          f'<text data-key="{key}:label" class="dg-actor-label" data-label="true" x="{x:g}" y="{ty + 5:g}" text-anchor="middle">{tspans}</text></g>')

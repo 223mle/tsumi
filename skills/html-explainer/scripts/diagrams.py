@@ -82,6 +82,8 @@ def render_diagram(bundle):
     if steps:
         texts=''.join(f'<template data-step-text="{i}"><b>{i+1}. {html.escape(st["label"])}</b>{(" "+html.escape(st["text"])) if st["text"] else ""}</template>' for i,st in enumerate(steps))
         nav=f'<div class="dg-step-bar"><p class="dg-step-text" aria-live="polite"></p><div class="dg-step-nav"><button type="button" data-go="-1" aria-label="前の手順">←</button><span class="dg-step-count" aria-hidden="true">1 / {count}</span><button type="button" data-autoplay aria-pressed="false">自動で進める</button><button type="button" data-go="1" aria-label="次の手順">→</button></div>{texts}</div>'
+    if steps:
+        nav+='<ol class="dg-step-notes">'+''.join(f'<li><b>{html.escape(st["label"])}</b>{(" "+html.escape(st["text"])) if st["text"] else ""}</li>' for st in steps)+'</ol>'
     mode_attr=' data-mode="steps"' if steps else ''
     return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="0"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="status status-{status}">{STATUSES[status]}</span>{html.escape(bundle["caption"])}</figcaption></figure>'
 

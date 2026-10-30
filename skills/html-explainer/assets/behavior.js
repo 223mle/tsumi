@@ -39,3 +39,24 @@
   addEventListener('resize', update);
   update();
 })();
+(() => {
+  // A glossary term and the diagram parts with the same name light up together.
+  const terms = document.querySelectorAll('.term[data-term]');
+  function link(name, on) {
+    document.querySelectorAll('[data-ref]').forEach(el => { if (el.dataset.ref === name) el.classList.toggle('is-linked', on); });
+    document.querySelectorAll('.term[data-term]').forEach(el => { if (el.dataset.term === name) el.classList.toggle('is-linked', on); });
+  }
+  terms.forEach(term => {
+    const name = term.dataset.term;
+    ['mouseenter', 'focus'].forEach(ev => term.addEventListener(ev, () => link(name, true)));
+    ['mouseleave', 'blur'].forEach(ev => term.addEventListener(ev, () => link(name, false)));
+  });
+  document.addEventListener('mouseover', e => {
+    const part = e.target.closest && e.target.closest('[data-ref]');
+    if (part && !part.contains(e.relatedTarget)) link(part.dataset.ref, true);
+  });
+  document.addEventListener('mouseout', e => {
+    const part = e.target.closest && e.target.closest('[data-ref]');
+    if (part && !part.contains(e.relatedTarget)) link(part.dataset.ref, false);
+  });
+})();

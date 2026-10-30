@@ -42,18 +42,37 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
           await f.screenshot({path:path.join(out,`${theme}-${id}-after.png`)});
           await radios.first().check();await radios.nth(1).check();await radios.first().check();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);check(`${theme}/${id}: rapid reversal`,await f.getAttribute('data-rendered-state')==='0');
         }
+        const stepButtons=f.locator('[data-step]');
+        if(await stepButtons.count()>1){
+          const n=await stepButtons.count();const text0=await f.locator('.dg-step-text').textContent();
+          const before=await snapshot(f);await f.locator('[data-go="1"]').click();await p.waitForTimeout(280);const middle=await snapshot(f);
+          await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);const after=await snapshot(f);
+          check(`${theme}/${id}: step interpolates`,JSON.stringify(before)!==JSON.stringify(middle)&&JSON.stringify(middle)!==JSON.stringify(after));
+          check(`${theme}/${id}: step text follows`,(await f.getAttribute('data-rendered-state'))==='1'&&(await f.locator('.dg-step-text').textContent())!==text0&&(await stepButtons.nth(1).getAttribute('aria-current'))==='step');
+          await f.locator('[data-go="1"]').focus();await p.keyboard.press('ArrowLeft');await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+          check(`${theme}/${id}: arrow keys step`,(await f.getAttribute('data-rendered-state'))==='0');
+          await stepButtons.nth(n-1).click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+          check(`${theme}/${id}: last step disables next`,await f.locator('[data-go="1"]').isDisabled());
+          const errors=await inspect(p);check(`${theme}/${id}: step geometry`,!errors.length,errors.join('; '));
+          await f.screenshot({path:path.join(out,`${theme}-${id}-last-step.png`)});
+          await stepButtons.first().click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+        }
         const play=f.locator('.dg-play');if(await play.count()){
           await play.click();await p.waitForTimeout(120);const x=await f.locator('.dg-flow-particle').evaluateAll(es=>es.map(e=>e.getAttribute('transform')));await p.waitForTimeout(240);const y=await f.locator('.dg-flow-particle').evaluateAll(es=>es.map(e=>e.getAttribute('transform')));check(`${theme}/${id}: moving flow`,x.length>0&&JSON.stringify(x)!==JSON.stringify(y));await play.click();check(`${theme}/${id}: stop flow`,await f.locator('.dg-flow-particle').count()===0);
         }
       }
-      await p.emulateMedia({media:'print'});check(`${theme}: print scenes`,await p.locator('.dg-static-scene').evaluateAll(es=>es.every(e=>e.getBoundingClientRect().height>0)));await c.close();
+      await p.emulateMedia({media:'print'});check(`${theme}: print scenes`,await p.locator('[data-diagram]').evaluateAll(fs=>fs.every(f=>{const scenes=[...f.querySelectorAll('.dg-static-scene')];const shown=s=>s.getBoundingClientRect().height>0;
+        // A step-through figure prints its final, complete scene plus every step as text.
+        if(f.dataset.mode==='steps')return shown(scenes.at(-1))&&f.querySelector('.dg-step-notes').getBoundingClientRect().height>0;return scenes.every(shown);})));await c.close();
     }
     const c=await b.newContext({viewport:{width:390,height:1000},reducedMotion:'reduce'});const p=await c.newPage();await p.goto(pathToFileURL(path.resolve(input)).href);
     for(const f of await p.locator('[data-diagram]').all()){
       const radios=f.locator('.dg-switch input');if(await radios.count()>1){await radios.nth(1).check();check('reduced motion: immediate state',await f.getAttribute('data-animating')==='false');}
+      const next=f.locator('[data-go="1"]');if(await next.count()){await next.click();check('reduced motion: immediate step',await f.getAttribute('data-animating')==='false');}
     }
     check('mobile: geometry',!(await inspect(p)).length,(await inspect(p)).join('; '));await p.screenshot({path:path.join(out,'mobile.png'),fullPage:true});await c.close();
-    const nc=await b.newContext({javaScriptEnabled:false,viewport:{width:390,height:1000}});const np=await nc.newPage();await np.goto(pathToFileURL(path.resolve(input)).href);check('no JS: every scene visible',await np.locator('.dg-static-scene').evaluateAll(es=>es.length>0&&es.every(e=>e.getBoundingClientRect().height>0)));await nc.close();
+    const nc=await b.newContext({javaScriptEnabled:false,viewport:{width:390,height:1000}});const np=await nc.newPage();await np.goto(pathToFileURL(path.resolve(input)).href);check('no JS: every scene or step visible',await np.locator('[data-diagram]').evaluateAll(fs=>fs.length>0&&fs.every(f=>{const scenes=[...f.querySelectorAll('.dg-static-scene')];const shown=s=>s.getBoundingClientRect().height>0;
+      if(f.dataset.mode==='steps')return shown(scenes.at(-1))&&f.querySelectorAll('.dg-step-notes li').length===scenes.length;return scenes.every(shown);})));await nc.close();
   }finally{await b.close();report.passed=report.errors.length===0;fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');}
   console.log(JSON.stringify({passed:report.passed,checks:report.checks.length,errors:report.errors,evidence:out}));process.exitCode=report.passed?0:1;
 }

@@ -1,6 +1,8 @@
 # 図の入力
 
-`diagrams.py`は1つのbundleからfigureを生成する。`compose.py`は `{"figures": [bundle, ...]}` の順番で元HTMLの全figureを置き換える。入力はJSON。生のHTML・CSS・SVG・座標は受け付けない。検証と配置は `diagrams.py`、`charts.py`、`network.py`、`decisions.py` が行う。
+目次: [bundle](#bundle) / [比較とステップ](#比較とステップ) / [sequence](#sequence) / [timeline](#timeline) / [threshold](#threshold) / [network](#network) / [decision](#decision) / [一度の生成で確認する例](#一度の生成で確認する例)
+
+`diagrams.py`は1つのbundleからfigureを生成する。`render.py`の文書では、`diagram`ブロックの`bundle`に同じものを入れる。`compose.py`は `{"figures": [bundle, ...]}` の順番で元HTMLの全figureを置き換える。入力はJSON。生のHTML・CSS・SVG・座標は受け付けない。検証と配置は `diagrams.py`、`charts.py`、`network.py`、`sequence.py`、`decisions.py` が行う。
 
 ## bundle
 
@@ -19,7 +21,37 @@
 
 `spec`には下記の種類を指定する。全panelのvariant数は同じにする。1つだけの静的panelは比較図に併用できる。`status`は `measured` / `inferred` / `proposed` / `unknown` / `illustrative` / `code`。根拠と測定条件はcaptionに書く。
 
+## 比較とステップ
+
+`mode` は `compare`（既定）か `steps`。
+
+- `compare`: variantを切り替えボタンで選ぶ。前後比較や、条件ごとの違いに使う。
+- `steps`: 前へ・次へ・自動で進めるボタンと、←→キーで1段階ずつ進める。各段階の説明文が図の上に出る。`steps: [{"label": "コードを渡す", "text": "ブラウザーがコードをアプリへ届けます。"}]` をscene数と同じ数だけ書く。`label` は40字以内、`text` は160字以内。panelが `sequence` なら、`steps` を省略するとメッセージから作る。
+
+印刷とJS無効のときは、`compare` は全variantを、`steps` は最後のsceneと全段階の文章を表示する。
+
 `tone`は `blue` / `teal` / `violet` / `amber` / `rose` / `slate` / `red`。名前は色の指定だが、作成前に文書全体で対象との対応を決め、legendでも示す。色名が同じなら明暗テーマで一貫して変わる。
+
+## sequence
+
+```json
+{
+  "type": "sequence",
+  "actors": [{"id": "browser", "label": "ブラウザー", "tone": "slate"}, {"id": "api", "label": "API", "tone": "blue"}],
+  "messages": [
+    {"id": "req", "from": "browser", "to": "api", "label": "商品ページを要求", "text": "ブラウザーがAPIに商品情報を要求します。"},
+    {"id": "res", "from": "api", "to": "browser", "label": "商品ページ", "kind": "reply"}
+  ],
+  "spans": [{"from": "req", "to": "res", "label": "約120ms"}]
+}
+```
+
+参加者は2〜6、メッセージは1〜14。メッセージが14を超える往復は2つの図に分ける。参加者は左から順に等間隔で並び、時間は下へ進む。1メッセージが1 sceneになり、現在のメッセージを太く、済んだものを通常、これからのものを薄く描く。
+
+- `kind`: `call`（実線・塗りの矢じり、既定）、`reply`（破線）、`async`（実線・開いた矢じり）。`from` と `to` が同じなら自己呼び出しのループになる。
+- `label`: 矢印に載る短い動詞句。列の間に入らない長さは2行まで折り返し、3行になると拒否する。詳しい説明は `text` に書く。
+- `step_label`: ステップ一覧で `label` と違う名前を使うときだけ指定する。
+- `spans`: `from` から `to` までのメッセージにかかる時間や待ちを示す寸法線。最大3個、ラベルは全角7字まで。処理する参加者が端にいれば、その生存線の横に描く。
 
 ## timeline
 
@@ -72,7 +104,7 @@
 }
 ```
 
-列は3または4、行は2または3。1セルに1ノード。`detail`は短い補足、`active_nodes`は当該状態で使うノードの一覧。使わないノードは薄く残す。全variantで位置を保ち、経路の変更を見せる。
+列は3または4、行は2または3。1セルに1ノード。ノードのない行は詰め、迂回経路が必要なときだけ上下に余白を足す。ノードの `label` が `glossary` の用語と同じなら、本文の用語と連動して強調される。`detail`は短い補足、`active_nodes`は当該状態で使うノードの一覧。使わないノードは薄く残す。全variantで位置を保ち、経路の変更を見せる。
 
 `request`は破線、`file`は実線。`route`は通常省略し、必要なときだけ `above` / `below`、`label_side`は `above` / `below`を指定する。第三のノードや既存のラベルとぶつかる経路は迂回し、収まらなければ入力を拒否する。拒否時はラベルを短くするか、認可ノードを別の行へ移す。任意のトポロジーに完全自動で最適配置する道具ではない。
 
