@@ -9,6 +9,7 @@ from charts import render_chart, has_narrow_layout
 from network import render_network, network_steps
 from decisions import render_decision
 from sequence import NOTES as sequence_notes, render_sequence, sequence_steps
+from charts import NOTES as chart_notes
 from linechart import render_line
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -141,13 +142,13 @@ def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
         narrow=None
         phone=(render_chart if has_narrow_layout(spec) else RENDERERS.get(spec.get('type')) if spec.get('type') in ('line','network','sequence','decision') else None)
         if phone:
-            sequence_notes.clear()
+            sequence_notes.clear();chart_notes.clear()
             try: narrow=phone(spec,f"{bundle['id']}-p{i}n",narrow=True)
             except ValueError as exc:
                 narrow=None  # something does not fit the phone layout; keep scrolling the wide one
                 if warnings is not None: warnings.append(f"{bundle['id']}: no phone layout, so phones scroll it sideways ({exc})")
-        if warnings is not None: warnings.extend(f"{bundle['id']}: {n}" for n in dict.fromkeys(sequence_notes))
-        sequence_notes.clear()
+        if warnings is not None: warnings.extend(f"{bundle['id']}: {n}" for n in dict.fromkeys(sequence_notes+chart_notes))
+        sequence_notes.clear();chart_notes.clear()
         layouts=[(' dg-wide',scenes),(' dg-narrow',narrow)] if narrow else [('',scenes)]
         for cls,svgs in layouts:
             static=''.join(f'<div class="dg-static-scene" data-state="{j}"><p class="dg-scene-name">{_scene_name(labels,steps,j,len(svgs),notes,prose)}</p><div class="dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}">{svg}</div></div>' for j,svg in enumerate(svgs))

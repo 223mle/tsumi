@@ -263,7 +263,20 @@ def _label_span(x: float, text: str, W: float) -> tuple[float, float]:
     return left, left + tw
 
 
+NOTES: list[str] = []  # non-fatal layout notes; diagrams.py moves them into the render notes
+
+
 def choose_ticks(ticks: list[tuple[float, str]], to_x, W: float, marked: set, named: set = frozenset()) -> set:
+    keep = _choose_ticks(ticks, to_x, W, marked, named)
+    dropped = [t for v, t in ticks if v in named and v not in keep]
+    gaps = [to_x(b) - to_x(a) for (a, _), (b, _) in zip(ticks, ticks[1:])]
+    regular = max(gaps) - min(gaps) < 2 if gaps else True  # an even grid (1, 10, 100 … on a log axis) is only thinned for density
+    if dropped and len(named) < len(ticks) and not regular:  # a tick the author placed and named on purpose is gone
+        NOTES.append(f"axis: labelled ticks dropped to avoid overlap: {'、'.join(dropped)}; move the axis min or space the ticks")
+    return keep
+
+
+def _choose_ticks(ticks: list[tuple[float, str]], to_x, W: float, marked: set, named: set = frozenset()) -> set:
     """Tick values to label so no two labels touch: zero, ticks the author named, the two ends, marked values, then the rest."""
     first, last = ticks[0][0], ticks[-1][0]
     # First try every k-th tick, so the labelled steps stay even (1, 100, 1万 rather than 1, 10, 1000, 100万).

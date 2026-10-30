@@ -16,11 +16,12 @@ from jawrap import units, plain
 
 def _axis(spec: Any, path: str) -> dict[str, Any]:
     if not isinstance(spec, dict) or set(spec) - {"min", "max", "unit", "ticks", "label"}:
-        _fail(path, "min, max, unit, ticks and an optional label required")
+        _fail(path, "min, max and ticks; optional unit and label")
     lo, hi = _num(spec.get("min"), path + ".min"), _num(spec.get("max"), path + ".max")
     if not lo < hi:
         _fail(path, "min must be less than max")
-    _text(spec.get("unit"), path + ".unit", required=False)
+    if "unit" in spec:
+        _text(spec["unit"], path + ".unit", required=False)
     ticks = spec.get("ticks")
     if not isinstance(ticks, list) or not 2 <= len(ticks) <= 12:
         _fail(path + ".ticks", "2 to 12 ticks required")

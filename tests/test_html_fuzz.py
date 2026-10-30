@@ -218,6 +218,16 @@ class FuzzTests(unittest.TestCase):
         spec["series"][0]["vertices"] = True
         self.assertIn('data-key="pt-i-', render_line(spec, "l")[0])
 
+    def test_a_dropped_labelled_tick_is_noted(self):
+        sys.path.insert(0, str(Path(__file__).parents[1] / "skills/html-explainer/scripts"))
+        from diagrams import render_diagram
+        spec = {"type": "line", "x": {"min": 0, "max": 1000, "ticks": [0, {"value": 100, "label": "100万行"}, {"value": 1000, "label": "1000万行"}]},
+                "y": {"min": 0, "max": 10, "unit": "倍", "ticks": [0, 10]},
+                "series": [{"id": "s", "label": "全件読み", "points": [[100, 1], [1000, 10]]}]}
+        notes = []
+        render_diagram({"id": "g", "title": "伸び", "caption": "説明用。", "status": "illustrative", "panels": [{"spec": spec}]}, warnings=notes)
+        self.assertTrue(any("100万行" in n for n in notes), notes)
+
     def test_one_line_needs_no_phone_key(self):
         spec = {"type": "line", "x": {"min": 0, "max": 4, "unit": "回", "ticks": [0, 4]}, "y": {"min": 0, "max": 6, "unit": "件", "ticks": [0, 6], "label": "新しい不明瞭点"},
                 "series": [{"id": "a", "label": "新しい不明瞭点", "points": [[0, 5], [4, 0]]}]}
