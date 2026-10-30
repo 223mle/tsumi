@@ -235,7 +235,7 @@ class DocumentBlockTests(unittest.TestCase):
         doc = json.loads((ROOT / "skills/html-explainer/assets/showcase.json").read_text(encoding="utf-8"))
         p, html = render_doc(doc)
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertEqual(html.count("data-diagram data-state"), 4)
+        self.assertEqual(html.count("data-diagram data-state"), 5)
 
 
 

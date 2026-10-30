@@ -180,16 +180,30 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         for p in s["points"]:
             tip = f'{plain(s["label"])}: {_tick(p[0], x.get("unit", ""))[1]} → {_tick(p[1], y.get("unit", ""))[1]}'
             out.append(f'<circle class="line-point dg-tone-{tone}" cx="{px(p[0]):.2f}" cy="{py(p[1]):.2f}" r="3.5" data-tip="{_esc(tip)}" data-key="pt-{_esc(s["id"])}-{p[0]:g}"/>')
+    line_samples = []  # points along every series, every few pixels, for label placement
+    for s in scene["series"]:
+        for a, b in zip(s["points"], s["points"][1:]):
+            ax, ay, bx, by = px(a[0]), py(a[1]), px(b[0]), py(b[1])
+            n = max(1, int(max(abs(bx - ax), abs(by - ay)) / 4))
+            line_samples += [(ax + (bx - ax) * k / n, ay + (by - ay) * k / n) for k in range(n + 1)]
     for p in scene.get("points", []):
         tone = p.get("tone", "red")
         cx, cy = px(p["x"]), py(p["y"])
         tw = _text_width(p["label"])
-        lx = min(max(cx, x0 + tw / 2), x1 - tw / 2)
-        hits = lambda ty: any(lx - tw / 2 < r[2] and lx + tw / 2 > r[0] and ty - 12 < r[3] and ty + 2 > r[1] for r in taken)  # noqa: E731
-        above = cy - y0 > 40 and not hits(cy - 28)
-        out.append(f'<g class="line-callout dg-tone-{tone}" data-key="callout-{_esc(p["id"])}"><circle cx="{cx:.2f}" cy="{cy:.2f}" r="6" data-key="callout-{_esc(p["id"])}-dot"/>'
-                   f'<path d="M{cx:.2f} {cy - 8 if above else cy + 8:.2f}V{cy - 22 if above else cy + 22:.2f}" data-key="callout-{_esc(p["id"])}-leader"/></g>')
-        out.append(_svg_text(lx, cy - 28 if above else cy + 36, p["label"], f"callout-label marker-label-{tone}", "middle", f"callout-label-{p['id']}"))
+        # Try above, below, right and left of the point; keep clear of other labels and of every line.
+        def clear(lx, ty):
+            l, r, t, b = lx - tw / 2, lx + tw / 2, ty - 12, ty + 3
+            if l < x0 - 4 or r > W - 4 or t < 4:
+                return False
+            return not any(l < q[2] and r > q[0] and t < q[3] and b > q[1] for q in taken) and \
+                not any(l - 2 <= sx <= r + 2 and t - 2 <= sy <= b + 2 for sx, sy in line_samples)
+        spots = [(min(max(cx, x0 + tw / 2), x1 - tw / 2), cy - 28, True), (min(max(cx, x0 + tw / 2), x1 - tw / 2), cy + 36, False),
+                 (cx + 12 + tw / 2, cy + 4, None), (cx - 12 - tw / 2, cy + 4, None)]
+        lx, ty, above = next((sp for sp in spots if clear(sp[0], sp[1])), spots[0])
+        leader = "" if above is None else f'<path d="M{cx:.2f} {cy - 8 if above else cy + 8:.2f}V{cy - 22 if above else cy + 22:.2f}" data-key="callout-{_esc(p["id"])}-leader"/>'
+        out.append(f'<g class="line-callout dg-tone-{tone}" data-key="callout-{_esc(p["id"])}"><circle cx="{cx:.2f}" cy="{cy:.2f}" r="6" data-key="callout-{_esc(p["id"])}-dot"/>{leader}</g>')
+        out.append(_svg_text(lx, ty, p["label"], f"callout-label marker-label-{tone}", "middle", f"callout-label-{p['id']}"))
+        taken.append((lx - tw / 2, ty - 12, lx + tw / 2, ty + 3))
     return "".join(out) + "</svg>"
 
 
