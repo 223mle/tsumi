@@ -10,7 +10,7 @@ import re
 from typing import Any
 
 from charts import (_axis_label, _esc, _fail, _id, _marker_layout, _num, _svg_text, _text, _text_width,
-                    _tick, _tick_stride, _tone, ID_RE, NARROW_WIDTH)
+                    _tick, _tone, ID_RE, NARROW_WIDTH)
 from jawrap import plain
 
 
@@ -154,13 +154,19 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         ty = next((t for t in (y0 + 14, y0 + 32, y0 + 50) if not hit((cxb - tw / 2, t - 12, cxb + tw / 2, t + 3))), y0 + 14)
         out.append(_svg_text(cxb, ty, b["label"], "band-label", "middle", f"band-label-{b['id']}"))
         taken.append((cxb - tw / 2, ty - 12, cxb + tw / 2, ty + 3))
-    xs = {"ticks": x["ticks"], "unit": x.get("unit", "")}
-    every = _tick_stride(xs, xlo, xhi, x1 - x0)
-    for i, t in enumerate(x["ticks"]):
-        v, text = _tick(t, x.get("unit", ""))
+    # Tick labels that would touch are thinned, but ticks at a marked point or marker are kept first.
+    marked = {float(p["x"]) for p in scene.get("points", [])} | {float(m["x"]) for m in scene.get("markers", [])}
+    ticks = [_tick(t, x.get("unit", "")) for t in x["ticks"]]
+    shown: list[tuple[float, float]] = []
+    keep = set()
+    for v, text in sorted(ticks, key=lambda t: (t[0] not in marked, t[0])):
+        gx, tw = px(v), _text_width(text)
+        if all(gx + tw / 2 + 6 <= a or gx - tw / 2 - 6 >= b for a, b in shown):
+            shown.append((gx - tw / 2, gx + tw / 2)); keep.add(v)
+    for v, text in ticks:
         gx = px(v)
         out.append(f'<line class="axis-grid" x1="{gx:.2f}" y1="{y0:g}" x2="{gx:.2f}" y2="{y1:g}" data-key="xtick-{v:g}"/>')
-        if i % every == 0:
+        if v in keep:
             out.append(_axis_label(gx, y1 + 18, text, W, f"xtick-label-{v:g}"))
     taken.append((0, y1 + 2, W, H))  # the x tick labels and the axis name below the plot
     for t in y["ticks"]:
@@ -172,8 +178,9 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         out.append(_svg_text((x0 + x1) / 2, H - 6, x["label"], "axis-label", "middle", "x-axis-label"))
     if y.get("label"):
         # Above the plot from the left edge, so a long name is never cut off.
-        out.append(_svg_text(4, y0 - 14 - lift, y["label"], "axis-label", "start", "y-axis-label"))
-        taken.append((4, y0 - 26 - lift, 4 + _text_width(y["label"]), y0 - 11 - lift))
+        # Just above the plot and below the marker labels, from the left edge so a long name is never cut off.
+        out.append(_svg_text(4, y0 - 6, y["label"], "axis-label", "start", "y-axis-label"))
+        taken.append((4, y0 - 18, 4 + _text_width(y["label"]), y0 - 3))
     for m in scene.get("markers", []):
         mx, anchor, row = marker_layout[m["id"]]
         tone = m.get("tone", "slate")

@@ -42,8 +42,9 @@ def _scene_name(labels,steps,j,n,notes=None,prose=html.escape):
 
 def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
     """Render a bundle as a figure. `prose` renders caption, notes and step texts; documents pass their inline markup."""
-    if not isinstance(bundle,dict) or set(bundle)-{'id','title','caption','status','legend','panels','labels','motion','mode','steps','notes','slider','initial','source_ids'}:
-        raise ValueError('diagram: unknown fields or not an object')
+    if not isinstance(bundle,dict): raise ValueError('diagram: object required')
+    extra=set(bundle)-{'id','title','caption','status','legend','panels','labels','motion','mode','steps','notes','slider','initial','source_ids'}
+    if extra: raise ValueError(f'diagram: unknown fields {sorted(extra)} (chart options such as baseline go in panels[].spec)')
     for key in ('id','title','caption'):
         if not isinstance(bundle.get(key),str) or not bundle[key].strip(): raise ValueError(f'diagram.{key}: text required')
     if not re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]*',bundle['id']): raise ValueError('diagram.id: invalid identifier')
