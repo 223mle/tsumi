@@ -144,7 +144,7 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
     H = y1 + 46
     # On the phone layout series names go in a key below the plot, where they cannot sit on a line.
     key_rows = []
-    if narrow:
+    if narrow and len(spec_series_names) > 1:  # one line needs no key: the title and y-axis name already say what it is
         row, used = [], 0.0
         for sr in spec_series_names:
             wd = 26 + _text_width(sr) + 22
@@ -172,6 +172,11 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         out.append(f'<rect class="line-band" x="{bx0:.2f}" y="{y0:g}" width="{bx1 - bx0:.2f}" height="{y1 - y0:g}" data-key="band-{_esc(b["id"])}"/>')
         tw = _text_width(b["label"])
         cxb = min(max((bx0 + bx1) / 2, x0 + tw / 2), x1 - tw / 2)
+        for m in scene.get("markers", []):
+            # A marker line through the label cuts it in two; slide the label off the line, inside the plot.
+            mx = px(m["x"])
+            if cxb - tw / 2 - 4 < mx < cxb + tw / 2 + 4:
+                cxb = mx - 8 - tw / 2 if mx >= cxb and mx - 8 - tw >= x0 else mx + 8 + tw / 2 if mx + 8 + tw <= x1 else cxb
         ty = next((t for t in (y0 + 14, y0 + 32, y0 + 50) if not hit((cxb - tw / 2, t - 12, cxb + tw / 2, t + 3))), y0 + 14)
         out.append(_svg_text(cxb, ty, b["label"], "band-label", "middle", f"band-label-{b['id']}"))
         taken.append((cxb - tw / 2, ty - 12, cxb + tw / 2, ty + 3))
@@ -232,7 +237,8 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
                 positions[name] = (cx - 6, key_top + 6 + r * 18)
                 cx += 26 + _text_width(name) + 22
         for s in scene["series"]:
-            label_at[s["id"]] = positions[s["label"]]
+            if s["label"] in positions:
+                label_at[s["id"]] = positions[s["label"]]
     for s in sorted(scene["series"], key=lambda s: bool(s.get("dots"))):  # data dots on top of fitted lines
         tone = s.get("tone") or "blue"
         d = "M" + " L".join(f"{px(p[0]):.2f} {py(p[1]):.2f}" for p in s["points"])
@@ -240,11 +246,12 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         dash = f' stroke-dasharray="{"6 4" if s.get("dashed") else "none"}"'
         cls = "line-series line-series-dots" if s.get("dots") else "line-series"  # dots: the path is kept, unstroked, for morphing
         out.append(f'<path class="{cls} dg-tone-{tone}" d="{d}"{dash} data-key="series-{_esc(s["id"])}"/>')
-        lx, ly = label_at[s["id"]]
-        key_cls = "series-key series-key-dots" if s.get("dots") else "series-key"
-        out.append(f'<path class="{key_cls} dg-tone-{tone}" d="M{lx + 6:.2f} {ly:.2f}h16"{dash} data-key="series-key-{_esc(s["id"])}"/>')
-        out.append(_svg_text(lx + 26, ly + 4, s["label"], f"series-label series-label-{tone}", "start", f"series-label-{s['id']}"))
-        taken.append((lx + 6, ly - 8, lx + 26 + _text_width(s["label"]), ly + 8))
+        if s["id"] in label_at:
+            lx, ly = label_at[s["id"]]
+            key_cls = "series-key series-key-dots" if s.get("dots") else "series-key"
+            out.append(f'<path class="{key_cls} dg-tone-{tone}" d="M{lx + 6:.2f} {ly:.2f}h16"{dash} data-key="series-key-{_esc(s["id"])}"/>')
+            out.append(_svg_text(lx + 26, ly + 4, s["label"], f"series-label series-label-{tone}", "start", f"series-label-{s['id']}"))
+            taken.append((lx + 6, ly - 8, lx + 26 + _text_width(s["label"]), ly + 8))
         for p in s.get("shown", s["points"]):
             tip = f'{plain(s["label"])}: {_tick(p[0], x.get("unit", ""))[1]} → {_tick(p[1], y.get("unit", ""))[1]}'
             dot = ' line-dot" r="5' if s.get("dots") else '" r="3.5'

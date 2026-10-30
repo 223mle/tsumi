@@ -207,8 +207,16 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
             a, b = order.index(span["from"]), order.index(span["to"])
             y1, y2 = rows[a], rows[b]
             # Measure beside the rightmost actor taking part in the measured messages, where no arrow of the span passes.
-            edge_x = xs[_span_actor(data, span)]
-            bx, lx, anchor = edge_x + 42, edge_x + 54, "start"
+            edge_id = _span_actor(data, span)
+            edge_x = xs[edge_id]
+            bx = edge_x + 42
+            for j in range(a, b + 1):
+                # A self-call on that actor puts its loop and label right of the lifeline; measure past them.
+                if layouts[j][1] and msgs[j]["from"] == edge_id:
+                    bx = max(bx, edge_x + SELF_W + 8 + max(_units(line) for line in layouts[j][0]) * 6.6 + 16)
+            lx, anchor = bx + 12, "start"
+            if lx + _units(span["label"]) * 6.6 > canvas:
+                _fail(f"sequence.spans[{si}]", "no room right of the measured messages; shorten the label or end the span before the self-call")
             op = "1" if step >= b else "0.35"
             key = f"span:{si}"
             mid = (y1 + y2) / 2

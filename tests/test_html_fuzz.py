@@ -146,6 +146,24 @@ class FuzzTests(unittest.TestCase):
         self.assertNotIn("ghost-label", before)
         self.assertIn(">導入前 110ms<", after)
 
+    def test_a_span_clears_a_self_call_beside_it(self):
+        spec = {"type": "sequence", "actors": [{"id": "w", "label": "書き手"}, {"id": "r", "label": "実行者"}, {"id": "l", "label": "台帳"}, {"id": "n", "label": "次の実行者"}],
+                "messages": [{"id": "m1", "from": "w", "to": "r", "label": "起動契約を渡す"}, {"id": "m2", "from": "r", "to": "r", "label": "シナリオを実行"},
+                             {"id": "m3", "from": "r", "to": "w", "label": "成果物と申告", "kind": "reply"}],
+                "spans": [{"from": "m1", "to": "m3", "label": "白紙で実行"}]}
+        for narrow in (False, True):
+            svg = render_sequence(spec, "s", narrow=narrow)[0]
+            span_x = float(re.search(r'data-key="span:0:label"[^>]*x="([\d.]+)"', svg).group(1))
+            label = re.search(r'data-key="msg:m2:label" x="([\d.]+)"[^>]*>(.*?)</text>', svg)
+            right = float(label.group(1)) + max(_text_width(t) for t in re.findall(r">([^<]+)</tspan>", label.group(2)))
+            self.assertGreater(span_x, right, narrow)
+
+    def test_one_line_needs_no_phone_key(self):
+        spec = {"type": "line", "x": {"min": 0, "max": 4, "unit": "回", "ticks": [0, 4]}, "y": {"min": 0, "max": 6, "unit": "件", "ticks": [0, 6], "label": "新しい不明瞭点"},
+                "series": [{"id": "a", "label": "新しい不明瞭点", "points": [[0, 5], [4, 0]]}]}
+        self.assertNotIn("series-key", render_line(spec, "l", narrow=True)[0])
+        self.assertIn("series-label-a", render_line(spec, "l")[0])
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):
