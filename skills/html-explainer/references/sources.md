@@ -34,4 +34,4 @@ visual-explainerの「SVGを既定にする」と、今回の「繰り返し使�
 | Claude の artifact-diagramming | 仕組みを描き、名前だけの箱を描かない。矢印に動詞を付ける。比較では差分の辺を描く | — |
 | Claude の dataviz | 色は役割（区別・量・状態）ごとに決め、色だけに頼らない。値に近い位置へラベルを置く | ホバーのツールチップを全チャートの既定にすること。値を常に表示する図では重複する |
 
-この追加で、`sequence` 部品、`mode: "steps"` と `mode: "slider"`、スマートフォン用の配置（時間軸・閾値・2行以内の経路図・4人以内のシーケンス図）、`mode: "steps"`、文書の `takeaways`・`glossary`・ブロック（`stats`・`compare`・`callout`・`code`・`details`）、本文の用語と図のノードの連動、読書位置の表示、句単位の改行（`word-break: auto-phrase`）を入れた。
+この追加で、`sequence` 部品、`mode: "steps"` と `mode: "slider"`、スマートフォン用の配置（時間軸・閾値・2行以内の経路図・4人以内のシーケンス図）、文書の `takeaways`・`glossary`・ブロック（`stats`・`compare`・`callout`・`code`・`details`）、本文の用語と図のノードの連動、読書位置の表示、句単位の改行（`word-break: auto-phrase`）を入れた。
