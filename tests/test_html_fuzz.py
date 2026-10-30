@@ -365,6 +365,23 @@ class FuzzTests(unittest.TestCase):
             inside = mx - width / 2 - 6 < ex < mx + width / 2 + 6 and top - 6 < ey < top + 28
             self.assertFalse(inside, (narrow, mx, width, top, ex, ey))
 
+    def test_tags_on_side_by_side_boxes_line_up_when_one_drops_to_the_bottom(self):
+        spec = {"type": "network", "columns": 3, "rows": 2, "nodes": [{"id": f"{r}{c}", "label": f"{r}{c}", "column": c, "row": 1 if r == "a" else 2}
+                                                                      for r in "ab" for c in (1, 3)],
+                "variants": [{"label": "v", "edges": [{"id": f"{r}", "from": f"{r}1", "to": f"{r}3", "label": "保存", "kind": "file"} for r in "ab"],
+                              "marks": [{"node": "a3", "label": "Y", "tone": "slate"}, {"node": "b3", "label": "Z（違う値）", "tone": "slate"}]}]}
+        svg = render_network(spec, "n", narrow=True)[0]
+        ys = [float(re.search(rf'data-key="mark:{n}" transform="translate\([\d.]+,([\d.]+)\)', svg).group(1)) for n in ("a3", "b3")]
+        self.assertEqual(ys[0], ys[1])
+
+    def test_a_band_with_a_tone_is_painted_in_that_tone(self):
+        spec = {"type": "line", "x": {"min": 0, "max": 15, "ticks": [0, 10, 15]}, "y": {"min": 0, "max": 10, "ticks": [0, 10]},
+                "series": [{"id": "t", "label": "残り", "points": [[0, 10], [10, 0], [15, 0]]}],
+                "bands": [{"id": "ok", "from": 0, "to": 10, "label": "通る"}, {"id": "ng", "from": 10, "to": 15, "label": "429", "tone": "red"}]}
+        svg = render_line(spec, "l")[0]
+        self.assertIn('class="line-band dg-tone-red"', svg)
+        self.assertIn('class="line-band" ', svg)
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):

@@ -99,8 +99,10 @@ def _scene(spec: dict[str, Any], scene: dict[str, Any], path: str, x: dict[str, 
     bids: set[str] = set()
     for i, b in enumerate(scene.get("bands", [])):
         p = f"{path}.bands[{i}]"
-        if not isinstance(b, dict) or set(b) - {"id", "from", "to", "label"} or not {"id", "from", "to", "label"} <= set(b):
-            _fail(p, "id, from, to and label required")
+        if not isinstance(b, dict) or set(b) - {"id", "from", "to", "label", "tone"} or not {"id", "from", "to", "label"} <= set(b):
+            _fail(p, "id, from, to and label required; optional tone")
+        if "tone" in b:
+            _tone(b["tone"], p + ".tone")
         _id(b["id"], p + ".id", bids)
         lo_b, hi_b = _num(b["from"], p + ".from"), _num(b["to"], p + ".to")
         if not lo_b < hi_b or hi_b <= xlo or lo_b >= xhi:
@@ -177,7 +179,9 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         return any(box[0] < q[2] and box[2] > q[0] and box[1] < q[3] and box[3] > q[1] for q in taken)
     for b in scene.get("bands", []):
         bx0, bx1 = px(max(xlo, float(b["from"]))), px(min(xhi, float(b["to"])))
-        out.append(f'<rect class="line-band" x="{bx0:.2f}" y="{y0:g}" width="{bx1 - bx0:.2f}" height="{y1 - y0:g}" data-key="band-{_esc(b["id"])}"/>')
+        # A band may take a tone to set one range apart (the requests that get 429); without one it is the plain accent wash.
+        band_tone = f' dg-tone-{b["tone"]}' if b.get("tone") else ""
+        out.append(f'<rect class="line-band{band_tone}" x="{bx0:.2f}" y="{y0:g}" width="{bx1 - bx0:.2f}" height="{y1 - y0:g}" data-key="band-{_esc(b["id"])}"/>')
         tw = _text_width(b["label"])
         cxb = min(max((bx0 + bx1) / 2, x0 + tw / 2), x1 - tw / 2)
         for m in scene.get("markers", []):

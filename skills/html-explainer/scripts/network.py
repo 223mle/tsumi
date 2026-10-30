@@ -511,6 +511,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
         edge_pairs: dict[tuple[str, str], int] = {}
         label_boxes = []
         mark_parts = []
+        placed_marks = []
         for mark in variant.get("marks", []):
             nx, ny = positions[mark["node"]]
             # 12px bold: a full-width character is about 13px and a Latin letter or digit about 8px in Japanese fonts.
@@ -539,6 +540,15 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                         mx = bl[2] + 8 + mw / 2
                     else:
                         top = ny + 36 - 2  # centred 9px below the bottom edge: the text rises about 8px above its centre line
+            placed_marks.append([mark, mx, top, mw, nx, ny, ends])
+        # Tags on boxes side by side are read against each other (A's value, B's value): when one had to drop to its
+        # box's bottom edge, drop the others in that row too where nothing leaves from below, so the values line up.
+        dropped_rows = {pm[5] for pm in placed_marks if pm[2] > pm[5]}
+        for pm in placed_marks:
+            mark, mx, top, mw, nx, ny, ends = pm
+            if ny in dropped_rows and top < ny and not any(ox == nx and oy > ny for ox, oy in ends):
+                pm[2] = ny + 36 - 2
+        for mark, mx, top, mw, nx, ny, ends in placed_marks:
             label_boxes.append((mx - mw / 2, top, mx + mw / 2, top + 22))
             mkey = f"mark:{mark['node']}"
             mark_parts.append(f'<g class="dg-mark dg-tone-{mark.get("tone", "red")}" data-key="{mkey}" transform="translate({mx:g},{top + 11:g})">'
