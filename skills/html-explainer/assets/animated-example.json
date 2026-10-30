@@ -1,0 +1,28 @@
+{
+  "id": "handoff",
+  "title": "準備を先に進める",
+  "caption": "架空の説明用データです。実測値ではありません。",
+  "status": "illustrative",
+  "labels": ["送信後に準備", "入力中に準備"],
+  "motion": true,
+  "legend": [{"label": "準備", "tone": "blue"}, {"label": "実行", "tone": "teal"}],
+  "panels": [
+    {"title": "時間の並び", "spec": {
+      "type": "timeline", "min": -4, "max": 8, "unit": "秒", "ticks": [-4, -2, 0, 2, 4, 6, 8],
+      "lanes": [{"id": "prep", "label": "準備", "tone": "blue"}, {"id": "run", "label": "実行", "tone": "teal"}],
+      "variants": [
+        {"label": "前", "segments": [{"id": "p", "lane": "prep", "start": 0, "duration": 3, "label": "3秒"}, {"id": "r", "lane": "run", "start": 3, "duration": 2, "label": "2秒"}], "markers": [{"id": "send", "value": 0, "label": "送信", "tone": "slate"}]},
+        {"label": "後", "segments": [{"id": "p", "lane": "prep", "start": -3, "duration": 3, "label": "3秒"}, {"id": "r", "lane": "run", "start": 0, "duration": 2, "label": "2秒"}], "markers": [{"id": "send", "value": 0, "label": "送信", "tone": "slate"}]}
+      ]
+    }},
+    {"title": "ファイルの経路", "spec": {
+      "type": "network", "columns": 3, "rows": 2,
+      "nodes": [{"id": "files", "label": "保存先", "column": 1, "row": 2, "tone": "slate"}, {"id": "api", "label": "API", "column": 2, "row": 2, "tone": "blue"}, {"id": "worker", "label": "処理環境", "column": 3, "row": 2, "tone": "teal"}],
+      "boundaries": [{"id": "runtime", "label": "隔離した領域", "node_ids": ["worker"], "tone": "violet"}],
+      "variants": [
+        {"label": "前", "edges": [{"id": "load", "from": "files", "to": "api", "label": "① 読む", "kind": "file", "tone": "teal"}, {"id": "reply", "from": "api", "to": "worker", "label": "② 返す", "kind": "file", "tone": "teal"}]},
+        {"label": "後", "edges": [{"id": "load", "from": "files", "to": "api", "label": "① 先に読む", "kind": "file", "tone": "teal"}, {"id": "reply", "from": "api", "to": "worker", "label": "② 準備済み", "kind": "file", "tone": "teal"}]}
+      ]
+    }}
+  ]
+}
