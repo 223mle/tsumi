@@ -75,6 +75,21 @@ class FuzzTests(unittest.TestCase):
                         continue
                     self.assert_ticks_readable(svg, 0 in values, sp)
 
+    def test_unknown_label_clears_its_question_mark(self):
+        for start, before in [(s, b) for s in (2, 5, 8, 9) for b in (True, False)]:
+            segments = [{"id": "s", "lane": "a", "start": 0, "duration": start, "label": "コピー"}] if before else []
+            segments.append({"id": "u", "lane": "a", "start": start, "unknown": True, "label": "次の移行日は未定"})
+            spec = {"type": "timeline", "min": 0, "max": 10, "unit": "日", "ticks": [0, 5, 10], "lanes": [{"id": "a", "label": "作業"}],
+                    "variants": [{"label": "v", "segments": segments}]}
+            for narrow in (False, True):
+                svg = render_chart(spec, "t", narrow=narrow)[0]
+                q = float(re.search(r'<text x="([\d.]+)"[^>]*data-key="unknown-marker-u"', svg).group(1))
+                label = re.search(r'<text x="([\d.]+)"[^>]*text-anchor="(\w+)"[^>]*data-key="segment-label-u">([^<]*)<', svg)
+                if label:
+                    x, anchor, text = float(label.group(1)), label.group(2), label.group(3)
+                    left = x if anchor == "start" else x - _text_width(text)
+                    self.assertTrue(left >= q + 6 or left + _text_width(text) <= q - 6, (start, narrow, svg))
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):
