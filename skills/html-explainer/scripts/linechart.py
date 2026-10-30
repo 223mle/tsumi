@@ -197,8 +197,10 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
                 return False
             return not any(l < q[2] and r > q[0] and t < q[3] and b > q[1] for q in taken) and \
                 not any(l - 2 <= sx <= r + 2 and t - 2 <= sy <= b + 2 for sx, sy in line_samples)
-        spots = [(min(max(cx, x0 + tw / 2), x1 - tw / 2), cy - 28, True), (min(max(cx, x0 + tw / 2), x1 - tw / 2), cy + 36, False),
-                 (cx + 12 + tw / 2, cy + 4, None), (cx - 12 - tw / 2, cy + 4, None)]
+        mid = min(max(cx, x0 + tw / 2), x1 - tw / 2)
+        spots = [(mid, cy - 28, True), (mid, cy + 36, False), (cx + 12 + tw / 2, cy + 4, None), (cx - 12 - tw / 2, cy + 4, None),
+                 (cx - 12 - tw / 2, cy - 22, None), (cx + 12 + tw / 2, cy - 22, None), (cx - 12 - tw / 2, cy + 30, None),
+                 (cx + 12 + tw / 2, cy + 30, None), (mid, cy - 50, True), (mid, cy + 58, False)]
         lx, ty, above = next((sp for sp in spots if clear(sp[0], sp[1])), spots[0])
         leader = "" if above is None else f'<path d="M{cx:.2f} {cy - 8 if above else cy + 8:.2f}V{cy - 22 if above else cy + 22:.2f}" data-key="callout-{_esc(p["id"])}-leader"/>'
         out.append(f'<g class="line-callout dg-tone-{tone}" data-key="callout-{_esc(p["id"])}"><circle cx="{cx:.2f}" cy="{cy:.2f}" r="6" data-key="callout-{_esc(p["id"])}-dot"/>{leader}</g>')

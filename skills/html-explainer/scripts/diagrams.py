@@ -104,7 +104,7 @@ def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
         # Charts also get a phone layout; CSS shows one of the two and the script keeps both in step.
         spec=panels[i]['spec']
         narrow=None
-        phone=(render_chart if has_narrow_layout(spec) else RENDERERS.get(spec.get('type')) if spec.get('type') in ('line','network','sequence') else None)
+        phone=(render_chart if has_narrow_layout(spec) else RENDERERS.get(spec.get('type')) if spec.get('type') in ('line','network','sequence','decision') else None)
         if phone:
             try: narrow=phone(spec,f"{bundle['id']}-p{i}n",narrow=True)
             except ValueError as exc:
