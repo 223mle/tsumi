@@ -287,7 +287,11 @@ def _controls(source: tuple[float, float], target: tuple[float, float], route: s
         off = 40 if near and sx == tx and abs(ty - sy) <= 140 else 140  # clears a node half-width (72) at the curve's turn
         lane = min(sx, tx) - off if route.endswith("above") else max(sx, tx) + off
         return (sx, sy), (lane, sy), (lane, ty), (tx, ty)
-    off = 40 if near and sy == ty and abs(tx - sx) <= 140 else 100
+    # A detour leaves and enters through the box's top or bottom edge, so the arrowhead points into the box.
+    edge = -36 if route.endswith("above") else 36
+    toward = 36 if target[0] >= source[0] else -36  # off centre, toward the other box, clear of edges that leave straight down
+    sx, sy, tx, ty = source[0] + toward, source[1] + edge, target[0] - toward, target[1] + edge
+    off = 40 if near and sy == ty and abs(tx - sx) <= 140 else 64
     lane = min(sy, ty) - off if route.endswith("above") else max(sy, ty) + off
     return (sx, sy), (sx, lane), (tx, lane), (tx, ty)
 
