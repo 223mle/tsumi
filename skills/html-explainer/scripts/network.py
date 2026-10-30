@@ -518,13 +518,14 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             # Straddle the node's top-right corner: clear of a centred label and of a boundary title at the top left.
             mx, top = nx + 72 - mw / 2 + 10, ny - 36 - 15
             if not margins:
-                # Phone layout: edges arrive at the node's top centre, so keep the tag right of that line.
-                mx = min(nx + 14 + mw / 2, canvas - 4 - mw / 2)
-                ends = [positions[e["to"] if e["from"] == mark["node"] else e["from"]] for e in variant["edges"] if mark["node"] in (e["from"], e["to"])]
-                if mx - mw / 2 < nx + 8 and any(ox == nx and oy < ny for ox, oy in ends):
-                    # A line from the box above meets the top centre and the tag is too long to fit right of it:
-                    # put it left of the line instead.
-                    mx = max(nx - 14 - mw / 2, 4 + mw / 2)
+                # Phone layout: the grid is turned on its side, so keep the tag right of the node's top centre.
+                mx = min(nx + 16 + mw / 2, canvas - 4 - mw / 2)
+            ends = [positions[e["to"] if e["from"] == mark["node"] else e["from"]] for e in variant["edges"] if mark["node"] in (e["from"], e["to"])]
+            if mx - mw / 2 < nx + 10 and any(ox == nx and oy < ny for ox, oy in ends):
+                # A line from the box above meets the top centre, and a long tag would cover its arrowhead (in either
+                # layout): move the tag right of the line, or left of it when the canvas ends first.
+                right = nx + 16 + mw / 2
+                mx = right if right + mw / 2 <= canvas - 4 else max(nx - 16 - mw / 2, 4 + mw / 2)
             for bl in boundary_labels:
                 if mx - mw / 2 < bl[2] + 4 and mx + mw / 2 > bl[0] - 4 and top < bl[3] and top + 22 > bl[1]:
                     # The tag would cover a boundary title: move it past the title, or else to the node's bottom edge.

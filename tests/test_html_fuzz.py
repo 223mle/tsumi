@@ -346,6 +346,22 @@ class FuzzTests(unittest.TestCase):
         self.assertGreater(float(under.group(1)), float(over.group(1)) + 2)
         self.assertLess(svg.index('data-key="pt-scan-100"'), svg.index('data-key="pt-index-100"'))
 
+    def test_a_long_tag_on_a_node_entered_from_above_clears_the_arrowhead_in_both_layouts(self):
+        spec = {"type": "network", "columns": 3, "rows": 2,
+                "nodes": [{"id": "n", "label": "注文を追加", "column": 1, "row": 1}, {"id": "t", "label": "テーブル", "column": 2, "row": 1},
+                          {"id": "i", "label": "インデックス", "column": 2, "row": 2}],
+                "variants": [{"label": "v", "edges": [{"id": "w1", "from": "n", "to": "t", "label": "行を書く", "kind": "file"},
+                                                     {"id": "w2", "from": "t", "to": "i", "label": "IDを足す", "kind": "file"}],
+                              "marks": [{"node": "i", "label": "容量が増える", "tone": "slate"}]}]}
+        for narrow in (False, True):
+            svg = render_network(spec, "n", narrow=narrow)[0]
+            mx = float(re.search(r'data-key="mark:i" transform="translate\(([\d.]+),', svg).group(1))
+            width = float(re.search(r'data-key="mark:i:rect" x="[-\d.]+" y="-11" width="([\d.]+)"', svg).group(1))
+            top = float(re.search(r'data-key="mark:i" transform="translate\([\d.]+,([\d.]+)\)', svg).group(1)) - 11
+            ex, ey = map(float, re.search(r'data-key="edge:w2:path"[^>]*d="[^"]* ([\d.]+) ([\d.]+)"', svg).groups())
+            inside = mx - width / 2 - 6 < ex < mx + width / 2 + 6 and top - 6 < ey < top + 28
+            self.assertFalse(inside, (narrow, mx, width, top, ex, ey))
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):
