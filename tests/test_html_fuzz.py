@@ -145,6 +145,9 @@ class FuzzTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "legend does not name"):
             render_diagram(bundle)
         bundle["legend"].append({"label": "読み出し", "tone": "violet"})
+        with self.assertRaisesRegex(ValueError, "nothing in the figure is drawn in \\['blue'\\]"):
+            render_diagram(bundle)  # the blue entry names nothing on the page
+        bundle["legend"] = [{"label": "読み出し", "tone": "violet"}]
         render_diagram(bundle)
 
     def test_a_removed_step_keeps_a_labelled_outline(self):
@@ -167,6 +170,15 @@ class FuzzTests(unittest.TestCase):
             label = re.search(r'data-key="msg:m2:label" x="([\d.]+)"[^>]*>(.*?)</text>', svg)
             right = float(label.group(1)) + max(_text_width(t) for t in re.findall(r">([^<]+)</tspan>", label.group(2)))
             self.assertGreater(span_x, right, narrow)
+
+    def test_a_span_with_no_room_on_the_right_moves_left(self):
+        spec = {"type": "sequence", "actors": [{"id": "b", "label": "ブラウザー"}, {"id": "w", "label": "Webアプリ"}, {"id": "a", "label": "認可サーバー"}, {"id": "api", "label": "APIサーバー"}],
+                "messages": [{"id": "m1", "from": "b", "to": "w", "label": "ログイン"}, {"id": "m2", "from": "w", "to": "a", "label": "コードと検証値"},
+                             {"id": "m3", "from": "a", "to": "a", "label": "チャレンジと照合"}, {"id": "m4", "from": "a", "to": "w", "label": "トークン", "kind": "reply"}],
+                "spans": [{"from": "m2", "to": "m4", "label": "直接の通信"}]}
+        svg = render_sequence(spec, "s", narrow=True)[0]
+        self.assertRegex(svg, r'data-key="span:0:label"[^>]*text-anchor="end"')
+        self.assertTrue(inside(svg))
 
     def test_one_line_needs_no_phone_key(self):
         spec = {"type": "line", "x": {"min": 0, "max": 4, "unit": "回", "ticks": [0, 4]}, "y": {"min": 0, "max": 6, "unit": "件", "ticks": [0, 6], "label": "新しい不明瞭点"},

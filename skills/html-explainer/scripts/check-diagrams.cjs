@@ -96,6 +96,23 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
       const next=f.locator('[data-go="1"]');if(await next.count()){await next.click();check('reduced motion: immediate step',await f.getAttribute('data-animating')==='false');}
     }
     check('mobile: geometry',!(await inspect(p)).length,(await inspect(p)).join('; '));await p.screenshot({path:path.join(out,'mobile.png'),fullPage:true});await c.close();
+    {
+      // On a phone screen, every step's current arrow stays between the sticky contents bar and the sticky step bar.
+      const sc=await b.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});const sp=await sc.newPage();await sp.goto(pathToFileURL(path.resolve(input)).href);
+      for(const f of await sp.locator('[data-diagram][data-mode=steps]').all()){
+        await f.scrollIntoViewIfNeeded();const next=f.locator('[data-go="1"]');const hidden=[];
+        for(let i=0;i<20;i++){
+          const at=await f.evaluate(fig=>{const svg=[...fig.querySelectorAll('.dg-live svg')].find(s=>s.getClientRects().length);const cur=svg&&svg.querySelector('.dg-msg.is-current .dg-msg-line,.dg-edge.is-current');if(!cur)return null;
+            const toc=document.querySelector('.toc'),bar=fig.querySelector('.dg-step-bar');const r=cur.getBoundingClientRect();
+            const top=toc&&getComputedStyle(toc).position==='sticky'?toc.getBoundingClientRect().bottom:0,bottom=bar&&getComputedStyle(bar).position==='sticky'?bar.getBoundingClientRect().top:innerHeight;
+            return r.bottom<top||r.top>bottom?fig.dataset.state:null;});
+          if(at!==null&&i>0)hidden.push(Number(at)+1);  // the first state sits wherever the reader scrolled; later ones follow the buttons
+          if(await next.getAttribute('aria-disabled')==='true')break;await next.click();await sp.waitForTimeout(120);
+        }
+        check(`mobile: ${await f.getAttribute('id')} current step stays on screen`,!hidden.length,`steps ${hidden.join(', ')} hidden by the sticky bars`);
+      }
+      await sc.close();
+    }
     const nc=await b.newContext({javaScriptEnabled:false,viewport:{width:390,height:1000}});const np=await nc.newPage();await np.goto(pathToFileURL(path.resolve(input)).href);check('no JS: every scene or step visible',await np.locator('[data-diagram]').evaluateAll(fs=>fs.length>0&&fs.every(f=>{const scenes=[...f.querySelectorAll('.dg-static-scene')].filter(s=>getComputedStyle(s.closest('.dg-panel')).display!=='none');const shown=s=>s.getBoundingClientRect().height>0;
       if(f.dataset.mode==='steps')return shown(scenes.at(-1))&&f.querySelectorAll('.dg-step-notes li').length===scenes.length;return scenes.every(shown);})));await nc.close();
   }finally{await b.close();report.passed=report.errors.length===0;fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');}

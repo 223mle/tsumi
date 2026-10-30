@@ -47,7 +47,7 @@ async function main() {
   const dest = path.resolve(evidence);
   fs.mkdirSync(dest, {recursive:true});
   const browser = await chromium.launch({headless:true, ...(process.env.CHROME_PATH ? {executablePath:process.env.CHROME_PATH} : {})});
-  const report = {input:path.resolve(input), checks:[], errors:[]};
+  const report = {input:path.resolve(input), checks:[], errors:[], notes:[]};
   try {
     for (const width of [1440, 390]) {
       for (const theme of ['light', 'dark']) {
@@ -91,6 +91,18 @@ async function main() {
         await context.close();
       }
     }
+    {
+      // The first phone screen (390x844) must show the title and the first key point; later points are reported.
+      const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
+      const page = await context.newPage();
+      await page.goto(pathToFileURL(path.resolve(input)).href);
+      const fold = await page.evaluate(() => [...document.querySelectorAll('.takeaways li')].map(li => li.getBoundingClientRect().bottom));
+      if (fold.length && fold[0] > 844) report.errors.push(`first screen: the first key point ends at ${Math.round(fold[0])}px, below 844px; shorten the title or lead`);
+      const below = fold.filter(b => b > 844).length;
+      if (below && fold[0] <= 844) report.notes.push(`first screen: ${below} of ${fold.length} key points start or end below 844px; shorten the lead or the key points if they should all show`);
+      await page.screenshot({path:path.join(dest,'390-first-screen.png')});
+      await context.close();
+    }
     const context = await browser.newContext({javaScriptEnabled:false,viewport:{width:390,height:1000}});
     const page = await context.newPage();
     await page.goto(pathToFileURL(path.resolve(input)).href);
@@ -103,7 +115,7 @@ async function main() {
     report.passed = report.errors.length === 0;
     fs.writeFileSync(path.join(dest,'report.json'), JSON.stringify(report,null,2)+'\n');
   }
-  console.log(JSON.stringify({passed:report.passed,errors:report.errors,evidence:dest}));
+  console.log(JSON.stringify({passed:report.passed,errors:report.errors,notes:report.notes,evidence:dest}));
   process.exitCode = report.passed ? 0 : 1;
 }
 main().catch(e => { console.error(e.message); process.exitCode=2; });

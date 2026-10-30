@@ -107,6 +107,19 @@
       stepButtons.forEach((b,i)=>{b.setAttribute('aria-current',i===index?'step':'false');b.classList.toggle('is-done',i<index);b.tabIndex=i===index?0:-1;});
       if(stepFocused)stepButtons[index].focus();
       if(stepCount)stepCount.textContent=`${index+1} / ${stepButtons.length}`;
+      // A tall step figure on a phone: keep the current arrow between the sticky contents bar and the sticky step bar.
+      if(follow&&figure.dataset.mode==='steps')panels.forEach(({svg,scenes})=>{
+        if(!svg.isConnected||!svg.getClientRects().length)return;
+        const target=scenes[Math.min(index,scenes.length-1)];
+        const key=target.querySelector('.dg-msg.is-current .dg-msg-line,.dg-edge.is-current')?.dataset.key;
+        const el=key&&svg.querySelector(`[data-key="${CSS.escape(key)}"]`);if(!el)return;
+        const toc=document.querySelector('.toc'),bar=figure.querySelector('.dg-step-bar');
+        const top=(toc&&getComputedStyle(toc).position==='sticky'?toc.getBoundingClientRect().bottom:0)+12;
+        const bottom=(bar&&getComputedStyle(bar).position==='sticky'?bar.getBoundingClientRect().top:innerHeight)-12;
+        const r=el.getBoundingClientRect();
+        const delta=r.top<top?r.top-top-24:r.bottom>bottom?r.bottom-bottom+24:0;
+        if(delta)window.scrollBy({top:delta,behavior:reduced.matches?'auto':'smooth'});
+      });
       // On narrow screens the drawing scrolls sideways; bring the current step into view.
       if(follow)panels.forEach(({svg,scenes})=>{
         const box=svg.parentElement;if(box.scrollWidth<=box.clientWidth+2)return;

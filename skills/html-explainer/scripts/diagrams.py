@@ -18,6 +18,25 @@ STATUSES = {'measured':'計測値','inferred':'推定','planned':'予定','propo
 
 RENDERERS={'network':render_network,'decision':render_decision,'sequence':render_sequence,'line':render_line}
 
+def _used_tones(spec):
+    """Every colour a panel draws in: tones written in the spec, plus the defaults its parts fall back to."""
+    found=set()
+    def walk(o):
+        if isinstance(o,dict):
+            if isinstance(o.get('tone'),str): found.add(o['tone'])
+            for v in o.values(): walk(v)
+        elif isinstance(o,list):
+            for v in o: walk(v)
+    walk(spec)
+    if spec.get('type')=='network':
+        edges=spec.get('edges',[])+[e for v in spec.get('variants',[]) for e in v.get('edges',[])]
+        found|={('red' if e.get('kind')=='conflict' else 'blue') for e in edges if 'tone' not in e}
+        found|={'slate' for n in spec.get('nodes',[]) if 'tone' not in n}
+    else:
+        found|={'blue','slate','red'}  # defaults of bars, messages and thresholds
+    return found
+
+
 def _steps(bundle,panels,count):
     steps=bundle.get('steps')
     if steps is None:
@@ -96,6 +115,9 @@ def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
                 tone=edge.get('tone','blue')
                 if edge.get('kind')!='conflict' and tone!='slate' and tone not in named:  # grey reads as neutral
                     raise ValueError(f"legend: edge {edge.get('id')} is drawn in {tone}, which the legend does not name; add it to the legend or reuse a named colour")
+        # A legend entry nothing is drawn in sends the reader looking for a colour that is not there.
+        unused=named-set().union(*(_used_tones(p['spec']) for p in panels))
+        if unused: raise ValueError(f"legend: nothing in the figure is drawn in {sorted(unused)}; drop the entry or use the colour")
     controls=''
     if steps:
         controls='<ol class="dg-steps" aria-label="手順">'+''.join(f'<li><button type="button" data-step="{i}" aria-current="{"step" if i==0 else "false"}"><b>{i+1}</b><span class="dg-sr">{html.escape(st["label"])}</span></button></li>' for i,st in enumerate(steps))+'</ol>'

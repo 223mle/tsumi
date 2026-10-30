@@ -215,8 +215,14 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
                 if layouts[j][1] and msgs[j]["from"] == edge_id:
                     bx = max(bx, edge_x + SELF_W + 8 + max(_units(line) for line in layouts[j][0]) * 6.6 + 16)
             lx, anchor = bx + 12, "start"
-            if lx + _units(span["label"]) * 6.6 > canvas:
-                _fail(f"sequence.spans[{si}]", "no room right of the measured messages; shorten the label or end the span before the self-call")
+            label_w = _units(span["label"]) * 6.6
+            if lx + label_w > canvas:
+                # No room on the right: measure left of the leftmost actor in the span, past its step numbers.
+                touched = {x for m in msgs[a:b + 1] for x in (m["from"], m["to"])}
+                left_x = xs[min(touched, key=actor_order.index)]
+                bx, lx, anchor = left_x - 42, left_x - 54, "end"
+                if lx - label_w < 4:
+                    _fail(f"sequence.spans[{si}]", "no room on either side of the measured messages; shorten the label")
             op = "1" if step >= b else "0.35"
             key = f"span:{si}"
             mid = (y1 + y2) / 2
