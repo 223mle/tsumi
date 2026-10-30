@@ -115,6 +115,12 @@
           const now=edges(target),before=edges(prev);
           keys=[...now].filter(k=>!before.has(k));if(!keys.length)keys=[...before].filter(k=>!now.has(k));
         }
+        if(!keys.length){
+          // Charts: follow the bars and markers that move or appear in this state.
+          const geo=sc=>new Map([...sc.querySelectorAll('[data-key^="segment-"],[data-key^="marker-"],[data-key^="unknown-marker-"]')].map(e=>[e.dataset.key,['x','width','x1'].map(a=>e.getAttribute(a)).join()]));
+          const prev=geo(scenes[Math.min(Number(figure.dataset.renderedState||0),scenes.length-1)]);
+          keys=[...geo(target)].filter(([k,v])=>prev.get(k)!==v).map(([k])=>k);
+        }
         const els=keys.map(k=>svg.querySelector(`[data-key="${CSS.escape(k)}"]`)).filter(Boolean);
         if(!els.length)return;
         const rs=els.map(e=>e.getBoundingClientRect());

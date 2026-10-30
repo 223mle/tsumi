@@ -247,7 +247,7 @@ def _timeline_svg(spec, variant, index, prefix):
         out.append(_svg_wrapped_text(x0-12,y+15,lane['label'],'lane-label',f"lane-label-{lane['id']}",12 if grouped else 14,'end'))
     external={}
     marker_xs=[_scale(float(m['value']),lo,hi,x0,width) for m in variant.get('markers',[])]
-    ghosts={}
+    ghosts={};placed={}
     if spec.get('baseline') and index>0:
         # The first variant stays as a faint outline so the reader sees what each change removed.
         for seg in spec['variants'][0].get('segments',[]):
@@ -263,10 +263,11 @@ def _timeline_svg(spec, variant, index, prefix):
         bounds=[(_scale(float(o['start']),lo,hi,x0,width),_scale(float(o['start'])+float(o.get('duration',0)),lo,hi,x0,width)) for o in variant.get('segments',[]) if o['lane']==seg['lane'] and o is not seg and not o.get('unknown')]
         bounds+=[(mx-3,mx+3) for mx in marker_xs]+ghosts.get(seg['lane'],[])
         free=lambda l,r:l>=x0-4 and r<=940 and all(not(a<r+4 and b>l-4) for a,b in bounds)
-        spots=[(right_edge+6,'start'),(left_edge-6,'end')]+[(b+6,'start') for a,b in sorted(bounds) if b>right_edge]
-        for sx,anchor in spots:
+        bounds+=placed.get(seg['lane'],[])
+        for sx,anchor in [(right_edge+6,'start'),(left_edge-6,'end')]:
             l,r=(sx,sx+text_width) if anchor=='start' else (sx-text_width,sx)
             if free(l,r):
+                placed.setdefault(seg['lane'],[]).append((l,r))
                 out.append(_svg_text(sx,y+16,label,'external-label',anchor,f"segment-label-{seg['id']}"));return True
         return False
 
@@ -289,7 +290,13 @@ def _timeline_svg(spec, variant, index, prefix):
         elif label and not place_beside(seg,x,x+w,y,label):
             external.setdefault(li,[]).append((seg['id'],label))
     for li,labels in external.items():
-        out.append(_svg_wrapped_text(816,top+li*row_height+15,' / '.join(x[1]for x in labels),'external-label',f"external-{lanes[li]['id']}",10))
+        # Labels that found no room beside their own bar go, in bar order, just past everything else on the row.
+        lane=lanes[li]['id'];text=' / '.join(x[1]for x in labels);text_width=sum(12 if ord(c)>255 else 6.8 for c in text)
+        ends=[_scale(float(o['start'])+float(o.get('duration',0)),lo,hi,x0,width) for o in variant.get('segments',[]) if o['lane']==lane and not o.get('unknown')]
+        ends+=[mx+3 for mx in marker_xs]+[b for a,b in ghosts.get(lane,[])+placed.get(lane,[])]
+        sx=max(ends)+8
+        if sx+text_width<=940:out.append(_svg_text(sx,top+li*row_height+16,text,'external-label','start',f"external-{lane}"))
+        else:out.append(_svg_wrapped_text(816,top+li*row_height+15,text,'external-label',f"external-{lane}",10))
     for mi,marker in enumerate(variant.get('markers',[])):
         x=_scale(float(marker['value']),lo,hi,x0,width);tone=marker.get('tone')or'red';key=_esc(marker['id'])
         out.append(f'<line x1="{x:.2f}" y1="44" x2="{x:.2f}" y2="{h-26}" class="marker marker-{tone}" data-key="marker-{key}"/>')

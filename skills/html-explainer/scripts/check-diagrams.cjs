@@ -8,7 +8,7 @@ async function inspect(page){return page.evaluate(()=>{
     const keys=[...svg.querySelectorAll('[data-key]')].map(e=>e.dataset.key);
     if(new Set(keys).size!==keys.length)errors.push('duplicate animation key');
     svg.querySelectorAll('[data-label]').forEach(el=>{if(!shown(el))return;const r=el.getBoundingClientRect();if(r.width&&r.height&&(r.left<bounds.left-2||r.right>bounds.right+2||r.top<bounds.top-2||r.bottom>bounds.bottom+2))errors.push(`clipped label: ${el.textContent.trim()}`);});
-    const labels=[...svg.querySelectorAll('.dg-edge-label')].filter(shown).map(el=>({text:el.textContent.trim(),r:el.getBoundingClientRect()}));
+    const labels=[...svg.querySelectorAll('.dg-edge-label,text[data-label]')].filter(el=>!el.closest('.dg-edge-label')||el.matches('.dg-edge-label')).filter(shown).filter(el=>el.textContent.trim()).map(el=>({text:el.textContent.trim(),r:el.getBoundingClientRect()}));
     for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){const a=labels[i],b=labels[j];const w=Math.min(a.r.right,b.r.right)-Math.max(a.r.left,b.r.left),h=Math.min(a.r.bottom,b.r.bottom)-Math.max(a.r.top,b.r.top);if(w>3&&h>3)errors.push(`overlapping labels: ${a.text} / ${b.text}`);}
   });
   if(document.documentElement.scrollWidth>innerWidth+1)errors.push('page overflow');
