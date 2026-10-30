@@ -137,3 +137,11 @@
     select(0,true);
   });
 })();
+(() => {
+  // One floating tooltip for chart marks that carry data-tip; the text follows variant changes because it is an attribute.
+  const tip=document.createElement('div');tip.className='dg-tip';tip.setAttribute('role','tooltip');tip.hidden=true;document.body.append(tip);
+  function show(el,x,y){tip.textContent=el.getAttribute('data-tip');tip.hidden=false;const r=tip.getBoundingClientRect();
+    tip.style.left=Math.max(8,Math.min(innerWidth-r.width-8,x-r.width/2))+'px';tip.style.top=Math.max(8,y-r.height-12)+'px';}
+  document.addEventListener('pointermove',e=>{const el=e.target.closest&&e.target.closest('.dg-live [data-tip]');if(el)show(el,e.clientX,e.clientY);else tip.hidden=true;});
+  document.addEventListener('scroll',()=>{tip.hidden=true;},{passive:true});
+})();

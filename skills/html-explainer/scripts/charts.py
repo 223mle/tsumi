@@ -251,7 +251,9 @@ def _timeline_svg(spec, variant, index, prefix):
             out.append(_svg_text(x,y+17,'？','unknown-duration','middle',f"unknown-marker-{seg['id']}"))
             continue
         w=float(seg['duration'])/(hi-lo)*width;tone=seg.get('tone') or lanes[li].get('tone') or 'blue'
-        out.append(f'<rect x="{x:.2f}" y="{y}" width="{w:.2f}" height="23" rx="3" class="bar bar-{tone}" data-key="segment-{_esc(seg["id"])}"/>')
+        start,end=float(seg['start']),float(seg['start'])+float(seg['duration']);unit=spec['unit']
+        tip=f"{lanes[li]['label']}: {start:g}〜{end:g}{unit}（{float(seg['duration']):g}{unit}）"
+        out.append(f'<rect x="{x:.2f}" y="{y}" width="{w:.2f}" height="23" rx="3" class="bar bar-{tone}" data-key="segment-{_esc(seg["id"])}" data-tip="{_esc(tip)}"/>')
         label=seg.get('label','');text_width=sum(12 if ord(c)>255 else 6.8 for c in label)
         if label and w>=text_width+12:
             out.append(_svg_text(x+w/2,y+16,label,'bar-label','middle',f"segment-label-{seg['id']}"))
@@ -285,11 +287,12 @@ def _threshold_svg(spec,prefix):
     for i,row in enumerate(spec['rows']):
         y=53+i*44;x=_scale(float(row['value']),lo,hi,x0,width,log);tone=row.get('tone','blue')
         out.append(_svg_wrapped_text(194,y+16,row['label'],'lane-label',f"row-label-{row['id']}",14,'end'))
-        out.append(f'<rect x="{x0}" y="{y}" width="{max(0,x-x0):.2f}" height="23" rx="3" class="bar bar-{tone}" data-key="row-{_esc(row["id"])}"/>')
+        value_label=row.get('value_label',f"{row['value']:g}{spec['unit']}");tip=f"{row['label']}: {value_label}"
+        out.append(f'<rect x="{x0}" y="{y}" width="{max(0,x-x0):.2f}" height="23" rx="3" class="bar bar-{tone}" data-key="row-{_esc(row["id"])}" data-tip="{_esc(tip)}"/>')
         if limit is not None and row['value']>limit:
             tx=_scale(limit,lo,hi,x0,width,log)
             out.append(f'<rect x="{tx:.2f}" y="{y}" width="{x-tx:.2f}" height="23" rx="3" class="bar-excess" data-key="excess-{_esc(row["id"])}"/>')
-        out.append(_svg_wrapped_text(810,y+15,row.get('value_label',f"{row['value']:g}{spec['unit']}"),'external-label',f"row-value-{row['id']}",10))
+        out.append(_svg_wrapped_text(810,y+15,value_label,'external-label',f"row-value-{row['id']}",10))
     for i,threshold in enumerate(thresholds):
         x=_scale(float(threshold['value']),lo,hi,x0,width,log);key=_esc(threshold['id']);tone=threshold.get('tone','red')
         out.append(f'<line x1="{x:.2f}" y1="42" x2="{x:.2f}" y2="{h-25}" class="marker marker-{tone}" data-key="threshold-{key}"/>')
