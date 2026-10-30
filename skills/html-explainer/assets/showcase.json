@@ -266,7 +266,7 @@
                     {
                       "id": "db",
                       "label": "データベース",
-                      "tone": "violet"
+                      "tone": "amber"
                     }
                   ],
                   "messages": [
@@ -408,7 +408,7 @@
                       "detail": "ディスク上",
                       "column": 3,
                       "row": 2,
-                      "tone": "violet"
+                      "tone": "amber"
                     }
                   ],
                   "variants": [
@@ -525,7 +525,7 @@
               },
               {
                 "label": "データベース",
-                "tone": "violet"
+                "tone": "amber"
               }
             ],
             "panels": [
@@ -558,7 +558,7 @@
                     {
                       "id": "sql",
                       "label": "データベース",
-                      "tone": "violet"
+                      "tone": "amber"
                     }
                   ],
                   "variants": [
