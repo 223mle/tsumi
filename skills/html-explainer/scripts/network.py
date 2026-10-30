@@ -265,10 +265,15 @@ def _layout(spec: dict[str, Any], margins: tuple[float, float] = MARGINS[0]) -> 
              for n in spec["nodes"]}, col_gap, height)
 
 
+# Half the width of a node box. The phone layout of a three-row grid puts three boxes side by side and narrows them;
+# _render sets it for the layout it draws and restores it afterwards.
+_NODE_HALF = 72.0
+
+
 def _ports(source: tuple[float, float], target: tuple[float, float]) -> tuple[tuple[float, float], tuple[float, float]]:
     sx, sy = source; tx, ty = target
     if abs(sx - tx) >= abs(sy - ty):
-        return ((sx + (72 if tx >= sx else -72), sy), (tx - (72 if tx >= sx else -72), ty))
+        return ((sx + (_NODE_HALF if tx >= sx else -_NODE_HALF), sy), (tx - (_NODE_HALF if tx >= sx else -_NODE_HALF), ty))
     return ((sx, sy + (36 if ty >= sy else -36)), (tx, ty - (36 if ty >= sy else -36)))
 
 
@@ -363,9 +368,9 @@ def _layout_narrow(spec: dict[str, Any], extra_gap: float = 0.0, bottom_room: bo
     """The phone layout: the grid turned on its side, so a left-to-right flow reads top to bottom."""
     rows = sorted({n["row"] for n in spec["nodes"]})
     cols = sorted({n["column"] for n in spec["nodes"]})
-    if len(rows) > 2:
-        raise ValueError("network: no phone layout for three rows; put the main path on two rows to get one")
-    xs = [NARROW_WIDTH / 2] if len(rows) == 1 else [NARROW_WIDTH / 2 - 124, NARROW_WIDTH / 2 + 124]
+    # Three rows put three narrower boxes (112px, see _NODE_HALF) side by side; labels between them must detour.
+    xs = ([NARROW_WIDTH / 2] if len(rows) == 1 else [NARROW_WIDTH / 2 - 124, NARROW_WIDTH / 2 + 124] if len(rows) == 2
+          else [NARROW_WIDTH / 2 - 140, NARROW_WIDTH / 2, NARROW_WIDTH / 2 + 140])
     top = 84.0 if spec.get("boundaries") else 64.0
     gap = 132.0 + extra_gap  # render_network retries with more room when a label or mark does not fit
     note_lines = max((len(_wrap(v["note"], 60)) for v in spec["variants"] if v.get("note")), default=0)
@@ -452,7 +457,7 @@ def _port_shifts(edges, positions):
     return {k: tuple(v) for k, v in shifts.items()}
 
 
-def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, height, canvas, label_boxes, placed_paths, route, vertical=False):
+def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, height, canvas, label_boxes, placed_paths, route, vertical=False, own=()):
     """A free spot for an edge label near the edge's middle, or None."""
     half = (max(_visual_len(word) for word in words) * _unit_px(canvas) + 8) / 2 + 6
     # On the phone layout a label may also sit beside a vertical line instead of on it.
@@ -468,6 +473,8 @@ def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, h
         box = (lx0 - bw / 2, ly + offset - bh / 2, lx0 + bw / 2, ly + offset + bh / 2)
         if any(box[0] < r[2] + 6 and box[2] > r[0] - 6 and box[1] < r[3] + 6 and box[3] > r[1] - 6 for r in label_boxes): continue
         if any(box[0] + 4 <= x <= box[2] - 4 and box[1] + 2 <= y <= box[3] - 2 for pts in placed_paths for x, y in pts): continue
+        # Nor may it hide most of its own line: a short detour under a wide label leaves no visible edge to follow.
+        if own and sum(box[0] <= x <= box[2] and box[1] <= y <= box[3] for x, y in own) > len(own) / 2: continue
         return (route, lx0, ly, offset, box, words)
     return None
 
@@ -475,12 +482,23 @@ def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, h
 def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | None, extra_gap: float = 0.0,
             beside_first: bool = True, strict: bool = True, bottom_room: bool = False) -> list[str]:
     """Draw every variant; margins None selects the narrow phone layout."""
+    global _NODE_HALF
+    three_on_phone = not margins and len({n["row"] for n in data["nodes"]}) > 2
+    _NODE_HALF = 56.0 if three_on_phone else 72.0
+    try:
+        return _render_layout(data, prefix, margins, extra_gap, beside_first, strict, bottom_room, three_on_phone)
+    finally:
+        _NODE_HALF = 72.0
+
+
+def _render_layout(data: dict[str, Any], prefix: str, margins: tuple[float, float] | None, extra_gap: float,
+                   beside_first: bool, strict: bool, bottom_room: bool, three_on_phone: bool) -> list[str]:
     safe_prefix = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
     positions, _, height = _layout(data, margins) if margins else _layout_narrow(data, extra_gap, bottom_room)
     canvas = 960 if margins else NARROW_WIDTH
     node_map = {n["id"]: n for n in data["nodes"]}
-    obstacles = {n["id"]: (positions[n["id"]][0] - 72, positions[n["id"]][1] - 36,
-                           positions[n["id"]][0] + 72, positions[n["id"]][1] + 36)
+    obstacles = {n["id"]: (positions[n["id"]][0] - _NODE_HALF, positions[n["id"]][1] - 36,
+                           positions[n["id"]][0] + _NODE_HALF, positions[n["id"]][1] + 36)
                  for n in data["nodes"]}
     out: list[str] = []
     for vi, variant in enumerate(data["variants"]):
@@ -522,7 +540,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             # 12px bold: a full-width character is about 13px and a Latin letter or digit about 8px in Japanese fonts.
             mw = sum(13 if units(c) == 2 else 8 for c in mark["label"]) + 18
             # Straddle the node's top-right corner: clear of a centred label and of a boundary title at the top left.
-            mx, top = nx + 72 - mw / 2 + 10, ny - 36 - 15
+            mx, top = nx + _NODE_HALF - mw / 2 + 10, ny - 36 - 15
             if not margins:
                 # Phone layout: the grid is turned on its side, so keep the tag right of the node's top centre.
                 mx = min(nx + 16 + mw / 2, canvas - 4 - mw / 2)
@@ -614,7 +632,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                 if not wraps[0]:
                     choice=(candidate,mx,my,0,None,[]);break
                 for words in wraps:
-                    choice=_place_label(words,label_sides,mx,my,margins,node_obstacles,endpoint_ids,height,canvas,label_boxes,placed_paths if strict else [],candidate,beside_first and abs(sx-tx)<abs(sy-ty))
+                    choice=_place_label(words,label_sides,mx,my,margins,node_obstacles,endpoint_ids,height,canvas,label_boxes,placed_paths if strict else [],candidate,beside_first and abs(sx-tx)<abs(sy-ty),_path_points((sx, sy),(tx, ty),candidate,40))
                     if choice:break
                 if choice:break
             if choice is None:
@@ -658,14 +676,15 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                 f'rx="4"/><text text-anchor="middle">{tspans}</text></g>'
             )
         for node in data["nodes"]:
-            x, y = positions[node["id"]]; key = f"node:{node['id']}"; node_w, node_h = 144, 72
+            x, y = positions[node["id"]]; key = f"node:{node['id']}"; node_w, node_h = 2 * _NODE_HALF, 72
             # Fading is an opacity attribute, not CSS, so the script can animate it and a hidden node stays hidden.
             border = " active" if node["id"] in active else " inactive" if active and "step" not in variant else ""
             hide = ""
             box_fade = ' opacity="0.35"' if border == " inactive" else ""  # the box fades; its text turns muted (diagrams.css)
             if node["id"] in variant.get("hidden_nodes", []):
                 border, hide = "", ' opacity="0" aria-hidden="true"'
-            label_lines = _wrap(node["label"]); detail_lines = _wrap(node.get("detail", "")) if node.get("detail", "") else []
+            wrap_units = 14 if three_on_phone else 18  # the narrower boxes of a three-row phone layout
+            label_lines = _wrap(node["label"], wrap_units); detail_lines = _wrap(node.get("detail", ""), wrap_units) if node.get("detail", "") else []
             if len(label_lines) + len(detail_lines) > 3:
                 _fail(f"network.nodes[{node['id']}]", "label and detail exceed three lines; move detail to caption")
             # Centre the label and detail block vertically inside the node.
@@ -674,7 +693,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             detail_y = label_y + 18 * len(label_lines) + (-1 if detail_lines else 0)
             label = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 18}">{_esc(line)}</tspan>' for i, line in enumerate(label_lines))
             detail = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>' for i, line in enumerate(detail_lines))
-            parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}"{hide} data-ref="{_esc(plain(node["label"]))}" data-obstacle="{x-72:g},{y-36:g},{node_w},{node_h}"><rect data-key="{_esc(key)}:rect" x="{x-72:g}" y="{y-36:g}" width="{node_w}" height="{node_h}" rx="8"{box_fade}/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
+            parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}"{hide} data-ref="{_esc(plain(node["label"]))}" data-obstacle="{x-_NODE_HALF:g},{y-36:g},{node_w:g},{node_h}"><rect data-key="{_esc(key)}:rect" x="{x-_NODE_HALF:g}" y="{y-36:g}" width="{node_w:g}" height="{node_h}" rx="8"{box_fade}/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
         parts.extend(mark_parts)
         note_x = 120 if margins else 16
         note_lines = _wrap(variant.get("note", ""), 80 if margins else 60) if variant.get("note", "") else []

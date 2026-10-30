@@ -132,10 +132,15 @@ def _width(spec: dict[str, Any], narrow: bool = False) -> float:
     return float(min(WIDTH, 260 * (len(spec["actors"]) - 1) + 220 + (50 if spec.get("spans") else 0)))
 
 
+def _actor_box(gap: float, left: float, narrow: bool, count: int) -> float:
+    """Width of an actor's name box: a little narrower than the gap, never wider than the margin allows at the edges."""
+    return min(gap - (16 if not narrow else 4 if count == 5 else 8), 176, 2 * left - 8)
+
+
 def _columns(spec: dict[str, Any], narrow: bool = False) -> tuple[dict[str, float], float, float]:
     count = len(spec["actors"])
     # On the phone canvas few actors get wider margins, so their boxes (up to 176 wide) stay inside it.
-    edge = {2: 100.0, 3: 76.0}.get(count, 56.0) if narrow else 110.0
+    edge = {2: 100.0, 3: 76.0, 5: 44.0}.get(count, 56.0) if narrow else 110.0  # five actors need every pixel between them
     left = edge
     span_right = any(_span_actor(spec, sp) == spec["actors"][-1]["id"] for sp in spec.get("spans", []))
     right = max(edge, 128.0) if narrow and span_right else edge if narrow else (160.0 if span_right else 110.0)
@@ -148,11 +153,11 @@ def _columns(spec: dict[str, Any], narrow: bool = False) -> tuple[dict[str, floa
 def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False) -> list[str]:
     """Return one SVG per message: earlier messages solid, the current one marked, later ones faint.
 
-    With `narrow`, lay out for a phone (up to four actors); labels that do not fit raise ValueError.
+    With `narrow`, lay out for a phone (up to five actors); labels that do not fit raise ValueError.
     """
     data = validate_sequence(spec)
-    if narrow and len(data["actors"]) > 4:
-        raise ValueError("sequence: no phone layout for more than four actors; merge or drop actors to get one")
+    if narrow and len(data["actors"]) > 5:
+        raise ValueError("sequence: no phone layout for more than five actors; merge or drop actors to get one")
     safe = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
     xs, gap, left = _columns(data, narrow)
     canvas = _width(data, narrow)  # used below for self-call room
@@ -186,7 +191,8 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
         y += ROW_GAP + (22 if self_call else 0)
     height = y + 4
     # Actor names are 14px wide-screen and 12px on the phone layout (see diagrams.css).
-    actor_lines = {a["id"]: _wrap(a["label"], int((min(gap, 200) - 20) / 7.2) if not narrow else int((gap - 10) / 6.7), f"sequence.actors[{a['id']}].label") for a in data["actors"]}
+    actor_units = int((min(gap, 200) - 20) / 7.2) if not narrow else int((_actor_box(gap, left, narrow, len(data["actors"])) - 10) / 6.7)
+    actor_lines = {a["id"]: _wrap(a["label"], actor_units, f"sequence.actors[{a['id']}].label") for a in data["actors"]}
     out = []
     for step in range(len(msgs)):
         vid = f"{safe}-s{step}"
@@ -206,7 +212,7 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
             lines = actor_lines[actor["id"]]
             ty = HEAD_Y + HEAD_H / 2 - (len(lines) - 1) * 8
             tspans = "".join(f'<tspan x="{x:g}" dy="{0 if j == 0 else 16}">{_esc(line)}</tspan>' for j, line in enumerate(lines))
-            w = min(gap - (8 if narrow else 16), 176, 2 * left - 8)  # never wider than the margin allows at the edges
+            w = _actor_box(gap, left, narrow, len(data["actors"]))
             parts.append(f'<g class="dg-actor dg-tone-{actor.get("tone", "slate")}{state}" data-key="{key}" data-ref="{_esc(plain(actor["label"]))}">'
                          f'<line class="dg-lifeline" data-key="{key}:life" x1="{x:g}" y1="{HEAD_Y + HEAD_H:g}" x2="{x:g}" y2="{height - 8:g}"/>'
                          f'<rect data-key="{key}:box" x="{x - w / 2:g}" y="{HEAD_Y}" width="{w:g}" height="{HEAD_H}" rx="8"/>'

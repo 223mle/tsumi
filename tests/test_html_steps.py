@@ -409,15 +409,34 @@ class PhoneNetworkTests(unittest.TestCase):
         html = render_diagram({"id": "n", "title": "t", "caption": "c", "panels": [{"spec": spec}]})
         self.assertIn("dg-panel dg-narrow", html)
 
-    def test_three_row_network_keeps_only_the_wide_layout(self):
+    def test_three_row_network_gets_three_narrow_columns_on_a_phone(self):
         spec = {"type": "network", "columns": 3, "rows": 3,
                 "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "B", "column": 1, "row": 2},
                           {"id": "c", "label": "C", "column": 1, "row": 3}],
                 "variants": [{"label": "v", "edges": []}]}
-        with self.assertRaises(ValueError):
-            render_network(spec, "n", narrow=True)
+        svg = render_network(spec, "n", narrow=True)[0]
+        self.assertIn('viewBox="0 0 420 ', svg)
+        self.assertEqual(re.findall(r'data-key="node:[abc]:rect" x="([\d.]+)"[^>]*width="([\d.]+)"', svg), [("14", "112"), ("154", "112"), ("294", "112")])
         html = render_diagram({"id": "n", "title": "t", "caption": "c", "panels": [{"spec": spec}]})
-        self.assertNotIn("dg-narrow", html)
+        self.assertIn("dg-narrow", html)
+
+    def test_long_labels_between_side_by_side_boxes_leave_most_of_their_line_visible(self):
+        # Every pair of side-by-side boxes is joined by a long label; on a phone the 28px gaps force detours,
+        # and a label may not hide more than half of its own line.
+        nodes = [{"id": f"{r}{c}", "label": f"{r}{c}", "column": c, "row": i + 1} for i, r in enumerate("abc") for c in (1, 2, 3)]
+        edges = [{"id": f"{x}{y}{c}", "from": f"{x}{c}", "to": f"{y}{c}", "label": "とても長いラベルを付けた辺", "kind": "request"}
+                 for c in (1, 2, 3) for x, y in (("a", "b"), ("b", "c"))]
+        spec = {"type": "network", "columns": 3, "rows": 3, "nodes": nodes, "variants": [{"label": "v", "edges": edges}]}
+        svg = render_network(spec, "n", narrow=True)[0]
+        for e in edges:
+            d = re.search(rf'data-key="edge:{e["id"]}:path"[^>]*d="M ([\d.-]+) ([\d.-]+) C ([\d.-]+) ([\d.-]+), ([\d.-]+) ([\d.-]+), ([\d.-]+) ([\d.-]+)"', svg)
+            p = [float(v) for v in d.groups()]
+            pts = [((1-t)**3*p[0] + 3*(1-t)**2*t*p[2] + 3*(1-t)*t*t*p[4] + t**3*p[6],
+                    (1-t)**3*p[1] + 3*(1-t)**2*t*p[3] + 3*(1-t)*t*t*p[5] + t**3*p[7]) for t in [i / 40 for i in range(41)]]
+            lx, ly = map(float, re.search(rf'data-key="edge:{e["id"]}:label"[^>]*transform="translate\(([\d.-]+),([\d.-]+)\)"', svg).groups())
+            rx, ry, rw, rh = map(float, re.search(rf'data-key="edge:{e["id"]}:label"[^>]*><rect x="([\d.-]+)" y="([\d.-]+)" width="([\d.-]+)" height="([\d.-]+)"', svg).groups())
+            hidden = sum(lx + rx <= x <= lx + rx + rw and ly + ry <= y <= ly + ry + rh for x, y in pts)
+            self.assertLessEqual(hidden, len(pts) / 2, e["id"])
 
 
 class PhoneSequenceTests(unittest.TestCase):
@@ -428,10 +447,12 @@ class PhoneSequenceTests(unittest.TestCase):
         html = render_diagram({"id": "s", "title": "t", "caption": "c", "mode": "steps", "panels": [{"spec": sequence_spec()}]})
         self.assertIn("dg-panel dg-narrow", html)
 
-    def test_five_actors_keep_scrolling(self):
-        spec = sequence_spec(actors=[{"id": x, "label": x.upper()} for x in "abcde"])
+    def test_five_actors_get_a_phone_layout_and_six_keep_scrolling(self):
+        svg = render_sequence(sequence_spec(actors=[{"id": x, "label": x.upper()} for x in "abcde"]), "s", narrow=True)[0]
+        self.assertIn('viewBox="0 0 420 ', svg)
         with self.assertRaises(ValueError):
-            render_sequence(spec, "s", narrow=True)
+            render_sequence(sequence_spec(actors=[{"id": x, "label": x.upper()} for x in "abcdef"]), "s", narrow=True)
+
 
 
 class EvalFourTests(unittest.TestCase):
@@ -518,13 +539,11 @@ class EvalFiveTests(unittest.TestCase):
         self.assertEqual(len(ys), 1)  # a straight line through the empty cell
 
     def test_missing_phone_layout_is_reported(self):
-        spec = {"type": "network", "columns": 3, "rows": 3,
-                "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "B", "column": 1, "row": 2},
-                          {"id": "c", "label": "C", "column": 1, "row": 3}],
-                "variants": [{"label": "v", "edges": []}]}
+        spec = {"type": "sequence", "actors": [{"id": f"a{i}", "label": f"参加者{i}"} for i in range(6)],
+                "messages": [{"id": "m", "from": "a0", "to": "a5", "label": "送る"}]}
         notes = []
         render_diagram({"id": "n", "title": "t", "caption": "c", "panels": [{"spec": spec}]}, warnings=notes)
-        self.assertTrue(notes and "no phone layout" in notes[0])
+        self.assertTrue(notes and "no phone layout" in notes[0], notes)
 
     def test_table_summary_is_outside_the_scroller(self):
         doc = {"title": "題", "lead": "導入", "sections": [{"id": "s", "title": "節", "figures": [
