@@ -125,7 +125,7 @@ def _scale(v: float, lo: float, hi: float, a: float, b: float) -> float:
     return a + (v - lo) / (hi - lo) * (b - a)
 
 
-def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: str, narrow: bool) -> str:
+def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: str, narrow: bool, keep_ticks: set) -> str:
     x, y = spec["x"], spec["y"]
     xlo, xhi, ylo, yhi = float(x["min"]), float(x["max"]), float(y["min"]), float(y["max"])
     W = NARROW_WIDTH if narrow else 960
@@ -155,7 +155,7 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         out.append(_svg_text(cxb, ty, b["label"], "band-label", "middle", f"band-label-{b['id']}"))
         taken.append((cxb - tw / 2, ty - 12, cxb + tw / 2, ty + 3))
     # Tick labels that would touch are thinned, but ticks at a marked point or marker are kept first.
-    marked = {float(p["x"]) for p in scene.get("points", [])} | {float(m["x"]) for m in scene.get("markers", [])}
+    marked = keep_ticks  # the same for every variant, so tick labels do not jump when switching
     ticks = [_tick(t, x.get("unit", "")) for t in x["ticks"]]
     shown: list[tuple[float, float]] = []
     keep = set()
@@ -279,4 +279,5 @@ def render_line(spec: Any, prefix: str = "line", narrow: bool = False) -> list[s
             xs_by_id.setdefault(s["id"], set()).update(float(p[0]) for p in s["points"])
     for sc in scenes:
         sc["series"] = [{**s, "shown": s["points"], "points": _resample(s["points"], xs_by_id[s["id"]])} for s in sc["series"]]
-    return [_line_svg(data, scene, i, safe, narrow) for i, scene in enumerate(scenes)]
+    keep_ticks = {float(p["x"]) for sc in scenes for p in sc.get("points", [])} | {float(m["x"]) for sc in scenes for m in sc.get("markers", [])}
+    return [_line_svg(data, scene, i, safe, narrow, keep_ticks) for i, scene in enumerate(scenes)]
