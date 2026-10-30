@@ -197,6 +197,20 @@ class FuzzTests(unittest.TestCase):
         self.assertRegex(svg, r'class="line-callout dg-tone-amber" data-key="callout-on"')
         self.assertRegex(svg, r'class="line-callout dg-tone-red" data-key="callout-cross"')
 
+    def test_a_span_on_a_middle_self_call_does_not_cross_the_next_lifeline(self):
+        spec = {"type": "sequence", "actors": [{"id": "u", "label": "利用者"}, {"id": "s", "label": "サーバー"}, {"id": "d", "label": "データベース"}],
+                "messages": [{"id": "m1", "from": "u", "to": "s", "label": "パスワードを送る"}, {"id": "m2", "from": "s", "to": "s", "label": "ハッシュ値を\n計算"},
+                             {"id": "m3", "from": "s", "to": "d", "label": "保存する"}],
+                "spans": [{"from": "m2", "to": "m2", "label": "約0.1秒"}]}
+        for narrow in (False, True):
+            svg = render_sequence(spec, "q", narrow=narrow)[0]
+            db_x = float(re.search(r'data-key="actor:d:label"[^>]*x="([\d.]+)"', svg).group(1))
+            x, anchor = re.search(r'data-key="span:0:label"[^>]*x="([\d.]+)"[^>]*text-anchor="(\w+)"', svg).groups()
+            right = float(x) + _text_width("約0.1秒") if anchor == "start" else float(x)
+            self.assertLess(right, db_x, narrow)
+            y1, y2 = map(float, re.search(r'data-key="span:0:line"[^>]*d="M[\d.]+ ([\d.]+)H[\d.]+M[\d.]+ [\d.]+V([\d.]+)', svg).groups())
+            self.assertGreater(y2 - y1, 10)
+
     def test_one_line_needs_no_phone_key(self):
         spec = {"type": "line", "x": {"min": 0, "max": 4, "unit": "回", "ticks": [0, 4]}, "y": {"min": 0, "max": 6, "unit": "件", "ticks": [0, 6], "label": "新しい不明瞭点"},
                 "series": [{"id": "a", "label": "新しい不明瞭点", "points": [[0, 5], [4, 0]]}]}

@@ -42,11 +42,11 @@
 
 ## 基本図
 
-`figure` ブロックと `figures` の要素には、`id`、`kind`、`title`、`summary`、`caption`、`status` を必ず付ける。`status` は `measured`（計測値）、`inferred`（根拠からの推定）、`planned`（決まった予定や手順）、`proposed`（提案）、`unknown`（未確定）、`illustrative`（説明用）から選ぶ。`measured` と `inferred` には対応する `source_ids` を付ける。広く知られた一般的な仕組みを簡略化した図や表は `illustrative` にし、captionで簡略化していることを書く。依頼に書かれた条件から計算した値（料金の合計、損益分岐の人数）は `inferred` にし、`sources` に依頼の条件を `note` 付きで置いて `source_ids` で結ぶ。captionに計算式を書く。依頼者が決めた作業手順や日程は、書き手の案ではないので `proposed` ではなく `planned` にする。予定（`planned`）の値に掛け算などの単純な計算をしただけの値（公開割合×全ユーザー数）は `planned` のままにし、captionに式を書く。依頼者が事実として示した値（応答に12秒かかった、20:00に急増した）は、架空の題材なら `illustrative`、実際の障害報告なら `measured` にし、どちらも `sources` に依頼を `note` 付きで置いて `source_ids` で結ぶ。
+`figure` ブロックと `figures` の要素には、`id`、`kind`、`title`、`summary`、`caption`、`status` を必ず付ける。`status` は `measured`（計測値）、`inferred`（根拠からの推定）、`planned`（決まった予定や手順）、`proposed`（提案）、`unknown`（未確定）、`illustrative`（説明用）から選ぶ。`measured` と `inferred` には対応する `source_ids` を付ける。広く知られた一般的な仕組みを簡略化した図や表は `illustrative` にし、captionで簡略化していることを書く。依頼に書かれた条件から計算した値（料金の合計、損益分岐の人数）は `inferred` にし、`sources` に依頼の条件を `note` 付きで置いて `source_ids` で結ぶ。captionに計算式を書く。依頼者が決めた作業手順や日程は、書き手の案ではないので `proposed` ではなく `planned` にする。計算の入力に、書き手が説明のために置いた仮定（候補は英小文字と数字の8文字、など）が1つでも入る図は `illustrative` にし、`source_ids` で依頼と結び、captionに仮定を書く。予定（`planned`）の値に掛け算などの単純な計算をしただけの値（公開割合×全ユーザー数）は `planned` のままにし、captionに式を書く。依頼者が事実として示した値（応答に12秒かかった、20:00に急増した）は、架空の題材なら `illustrative`、実際の障害報告なら `measured` にし、どちらも `sources` に依頼を `note` 付きで置いて `source_ids` で結ぶ。
 
 - `flow`: `steps` に `label`・`detail` を順に並べ、最後以外に `to_next` を付ける
 - `bars`: `rows` に `label`・`value`。`unit` と必要なら `axis_max`
 - `timeline`: `rows` に `label`・`start`・`duration`。`unit` と必要なら `axis_max`。開始は0以上、期間は正数
-- `table`: `columns` と `rows`。各行のセル数を列数と一致させる。セルは記法を解釈しないので、`**` や `[[用語]]`、リンクを書くと生成時に拒否される。強調やリンクは表の前後の本文に置く。4列以上の表は、幅600px以下で1行ずつのカード（左に列名）に変わる。1列目には行の名前（人数、案の名前）を置く
+- `table`: `columns` と `rows`。各行のセル数を列数と一致させる。セルは記法を解釈しないので、`**` や `[[用語]]`、リンクを書くと生成時に拒否される。強調やリンクは表の前後の本文に置く。4列以上の表は、幅600px以下で1行ずつのカード（左に列名）に変わる。カードの列名の欄は狭いため、2列目以降の列名は全角7字以内にする。超えると `render: note:` で知らせる。1列目には行の名前（人数、案の名前）を置く
 
 数値の図は入力値から棒幅・軸・目盛りを算出する。値を座標へ直接書かない。往復・分岐・前後比較・重なりがある図は、基本図ではなく `diagram` を使う。

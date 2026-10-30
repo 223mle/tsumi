@@ -206,6 +206,8 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
             order = [m["id"] for m in msgs]
             a, b = order.index(span["from"]), order.index(span["to"])
             y1, y2 = rows[a], rows[b]
+            if a == b and layouts[a][1]:
+                y2 = y1 + 22  # a span over one self-call measures the height of its loop, so it reads as a bracket
             # Measure beside the rightmost actor taking part in the measured messages, where no arrow of the span passes.
             edge_id = _span_actor(data, span)
             edge_x = xs[edge_id]
@@ -216,14 +218,17 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
                     bx = max(bx, edge_x + SELF_W + 8 + max(_units(line) for line in layouts[j][0]) * 6.6 + 16)
             lx, anchor = bx + 12, "start"
             label_w = _units(span["label"]) * 6.6
-            if lx + label_w > canvas:
-                # No room on the right: measure left of the leftmost actor in the span, past its step numbers.
-                right_room = canvas - lx
+            # On the right, the bracket and label must not cross another actor's lifeline or reach the canvas edge.
+            crosses = any(edge_x + 8 < xs[x] < lx + label_w + 6 for x in actor_order)
+            fits_right = lx + label_w <= canvas - 8
+            if crosses or not fits_right:
+                # Otherwise measure left of the leftmost actor in the span, past its step numbers.
                 touched = {x for m in msgs[a:b + 1] for x in (m["from"], m["to"])}
                 left_x = xs[min(touched, key=actor_order.index)]
-                bx, lx, anchor = left_x - 42, left_x - 54, "end"
-                if lx - label_w < 4:
-                    fits = int(max(right_room, lx - 4) / 13.2)
+                if left_x - 54 - label_w >= 4:
+                    bx, lx, anchor = left_x - 42, left_x - 54, "end"
+                elif not fits_right:
+                    fits = int(max(canvas - 8 - lx, left_x - 58) / 13.2)
                     _fail(f"sequence.spans[{si}]", f"no room on either side of the measured messages; about {fits} full-width characters fit here")
             op = "1" if step >= b else "0.35"
             key = f"span:{si}"

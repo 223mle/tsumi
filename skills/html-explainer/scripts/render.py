@@ -207,6 +207,10 @@ def validate_figure(fig: object, where: str, source_ids: set[str], seen: set[str
         cols, rows = fig.get("columns"), fig.get("rows")
         if not isinstance(cols, list) or not cols or not all(isinstance(x, str) and x.strip() for x in cols): fail(f"{where}.columns: non-empty strings required")
         if not isinstance(rows, list) or not rows: fail(f"{where}.rows: non-empty array required")
+        # From 4 columns a phone shows one card per row with the column names in a narrow left column (7.5em).
+        long_names = [c for c in cols[1:] if sum(2 if ord(ch) > 255 else 1 for ch in c) > 14]
+        if len(cols) >= 4 and long_names:
+            WARNINGS.append(f"{where}: column names longer than 7 full-width characters wrap mid-word on phone cards: {'、'.join(long_names)}")
         for i, row in enumerate(rows):
             if not isinstance(row, list) or len(row) != len(cols) or not all(isinstance(x, str) for x in row): fail(f"{where}.rows[{i}]: cell count/type mismatch")
             # Cells print as plain text, so markup would show its asterisks and brackets to the reader.
