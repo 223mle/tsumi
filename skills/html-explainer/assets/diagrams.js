@@ -142,6 +142,12 @@
       else if(e.key==='ArrowLeft'){stopAuto();go(-1);e.preventDefault();}
     });
     figure.querySelectorAll('.dg-switch input').forEach(input=>input.addEventListener('change',()=>{if(input.checked)select(Number(input.value));}));
+    const fitButton=figure.querySelector('.dg-fit-toggle');
+    if(fitButton)fitButton.addEventListener('click',()=>{
+      // On a phone the reader can trade legible labels for the whole picture, and back.
+      const on=fitButton.getAttribute('aria-pressed')!=='true';
+      fitButton.setAttribute('aria-pressed',String(on));fitButton.textContent=on?'拡大して読む':'全体を縮小表示';figure.classList.toggle('dg-fit',on);
+    });
     const gridButton=figure.querySelector('.dg-grid-toggle');
     if(gridButton)gridButton.addEventListener('click',()=>{
       // Small multiples: the static scenes, already in the page for print, side by side.

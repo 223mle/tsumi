@@ -30,3 +30,5 @@
 @media(max-width:600px){.dg-figure.dg-grid .dg-static{grid-template-columns:minmax(0,1fr)}}
 .dg-scroll .bar-ghost{fill:none;stroke:var(--muted);stroke-width:1.2;stroke-dasharray:4 3;opacity:.55}
 .dg-network .dg-edge-conflict{stroke-dasharray:6 4;stroke-width:2}.dg-conflict-cross circle{fill:var(--surface);stroke:var(--tone);stroke-width:2}.dg-conflict-cross path{stroke:var(--tone);stroke-width:2.2;stroke-linecap:round}
+.dg-fit-toggle{display:none;font-size:11px;padding:4px 9px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:5px;cursor:pointer}.dg-figure:has(.dg-panel.is-scrollable) .dg-fit-toggle,.dg-figure.dg-fit .dg-fit-toggle{display:inline-block}.dg-fit-toggle[aria-pressed=true]{color:var(--accent);border-color:currentColor}.dg-figure.dg-fit .dg-scroll>svg{min-width:0}.dg-figure.dg-fit .dg-panel::after{display:none}
+@media print{.dg-fit-toggle{display:none!important}}
