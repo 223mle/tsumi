@@ -246,5 +246,55 @@ class ComposeLinkTests(unittest.TestCase):
             self.assertEqual(safe_href(good), good)
 
 
+class NetworkVocabularyTests(unittest.TestCase):
+    def base(self):
+        return {"type": "network", "columns": 3, "rows": 2,
+                "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "B", "column": 2, "row": 1},
+                          {"id": "c", "label": "C", "column": 3, "row": 1}]}
+
+    def test_unlabelled_edges_hidden_nodes_and_conflicts(self):
+        spec = self.base()
+        spec["variants"] = [{"label": "前", "hidden_nodes": ["c"], "edges": [{"id": "ab", "from": "a", "to": "b", "kind": "file"}]},
+                            {"label": "後", "edges": [{"id": "ab", "from": "a", "to": "b", "kind": "file"},
+                                                     {"id": "bc", "from": "b", "to": "c", "kind": "conflict", "label": "衝突"}]}]
+        before, after = render_network(spec)
+        self.assertNotIn('data-key="edge:ab:label"', before)
+        self.assertRegex(before, r'data-key="node:c" class="[^"]*" opacity="0" aria-hidden="true"')
+        self.assertNotRegex(after, r'data-key="node:c" class="[^"]*" opacity="0"')
+        self.assertIn("dg-edge-conflict", after)
+        self.assertIn('data-key="edge:bc:cross"', after)
+        self.assertNotIn('edge:bc:path" data-flow', after)
+
+    def test_step_marks_attach_to_their_step(self):
+        spec = self.base()
+        spec["edges"] = [{"id": "ab", "from": "a", "to": "b", "kind": "file", "step": 1},
+                         {"id": "bc", "from": "b", "to": "c", "kind": "file", "step": 2}]
+        spec["marks"] = [{"node": "c", "label": "新しいID", "step": 2}]
+        first, second = render_network(spec)
+        self.assertNotIn("dg-mark", first)
+        self.assertIn('data-key="mark:c"', second)
+        html = render_diagram({"id": "n", "title": "t", "caption": "c", "mode": "steps", "panels": [{"spec": spec}]})
+        self.assertIn("<b>1. 手順1</b>", html)
+        bad = self.base()
+        bad["variants"] = [{"label": "v", "edges": []}]
+        bad["marks"] = [{"node": "a", "label": "x", "step": 1}]
+        with self.assertRaisesRegex(ValueError, "numbered edges"):
+            render_network(bad)
+
+    def test_document_markup_reaches_figure_captions_and_steps(self):
+        bundle = {"id": "seq", "title": "往復", "caption": "**説明用**の図", "mode": "steps",
+                  "steps": [{"label": "一", "text": "[[TTL]]を記録"}, {"label": "二"}, {"label": "三"}, {"label": "四"}],
+                  "panels": [{"spec": sequence_spec()}]}
+        doc = {"title": "題", "lead": "導入", "glossary": [{"term": "TTL", "definition": "有効期間"}],
+               "sections": [{"id": "s", "title": "節", "blocks": [{"type": "diagram", "bundle": bundle}]}]}
+        p, html = render_doc(doc)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("<strong>説明用</strong>の図", html)
+        self.assertIn('data-term="TTL"', html)
+        bundle["caption"] = "[[未定義]]"
+        p, _ = render_doc(doc)
+        self.assertIn("not in glossary", p.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

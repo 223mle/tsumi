@@ -19,7 +19,7 @@ from jawrap import plain, units, wrap
 
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 TONES = {"blue", "teal", "violet", "amber", "rose", "slate", "red"}
-KINDS = {"request", "file"}
+KINDS = {"request", "file", "conflict"}
 ROUTES = {"direct", "above", "below"}
 
 
@@ -61,10 +61,12 @@ def validate_network(spec: object) -> dict[str, Any]:
     """
     if not isinstance(spec, dict):
         _fail("network", "must be an object")
-    allowed = {"type", "columns", "rows", "nodes", "boundaries", "variants", "edges"}
+    allowed = {"type", "columns", "rows", "nodes", "boundaries", "variants", "edges", "marks"}
     extra = set(spec) - allowed
     if extra:
         _fail("network", f"unknown fields {sorted(extra)}")
+    if "marks" in spec and "edges" not in spec:
+        _fail("network.marks", "top-level marks need numbered edges; put marks in each variant otherwise")
     if "edges" in spec:
         spec = _expand_steps(spec)
     if spec.get("type") != "network":
@@ -133,8 +135,11 @@ def validate_network(spec: object) -> dict[str, Any]:
         path = f"network.variants[{vi}]"
         if not isinstance(variant, dict):
             _fail(path, "must be an object")
-        if set(variant) - {"label", "active_nodes", "edges", "note", "step", "marks"}:
+        if set(variant) - {"label", "active_nodes", "edges", "note", "step", "marks", "hidden_nodes"}:
             _fail(path, "unknown fields")
+        hidden = variant.get("hidden_nodes", [])
+        if not isinstance(hidden, list) or any(not isinstance(n, str) or n not in node_map for n in hidden):
+            _fail(path + ".hidden_nodes", "must contain existing node ids")
         marks = variant.get("marks", [])
         if not isinstance(marks, list) or len(marks) > 3:
             _fail(path + ".marks", "up to 3 marks")
@@ -165,15 +170,16 @@ def validate_network(spec: object) -> dict[str, Any]:
             if (not isinstance(source, str) or not isinstance(target, str)
                     or source not in node_map or target not in node_map or source == target):
                 _fail(ep, "from/to must name two different nodes")
-            _text(edge.get("label"), ep + ".label")
+            if "label" in edge:
+                _text(edge["label"], ep + ".label")
             if edge.get("kind") not in KINDS:
-                _fail(ep + ".kind", "must be request or file")
+                _fail(ep + ".kind", "must be request, file or conflict")
             _tone(edge.get("tone"), ep + ".tone", "blue")
             if edge.get("route", "direct") not in ROUTES:
                 _fail(ep + ".route", f"must be one of {sorted(ROUTES)}")
             if edge.get("label_side", "middle") not in {"middle", "above", "below"}:
                 _fail(ep + ".label_side", "must be middle, above or below")
-            if len(edge["label"]) > 38:
+            if len(edge.get("label", "")) > 38:
                 _fail(ep + ".label", "too long for an edge label")
     return spec
 
@@ -200,19 +206,23 @@ def _expand_steps(spec: dict[str, Any]) -> dict[str, Any]:
     count = max(steps)
     if sorted(set(steps)) != list(range(1, count + 1)) or count < 2:
         _fail("network.edges", "steps must run 1, 2, 3 ... without gaps and have at least two steps")
-    out = {k: v for k, v in spec.items() if k != "edges"}
+    marks = spec.get("marks", [])
+    if not isinstance(marks, list) or any(not isinstance(m, dict) or not isinstance(m.get("step"), int) or not 1 <= m["step"] <= count for m in marks):
+        _fail("network.marks", "each mark needs a step between 1 and the last step")
+    out = {k: v for k, v in spec.items() if k not in {"edges", "marks"}}
     out["variants"] = []
     for k in range(1, count + 1):
         current = [e for e in edges if e["step"] == k]
         nodes = sorted({n for e in current for n in (e["from"], e["to"])})
-        out["variants"].append({"label": current[0]["label"], "active_nodes": nodes, "edges": edges, "step": k})
+        out["variants"].append({"label": current[0].get("label") or f"手順{k}", "active_nodes": nodes, "edges": edges, "step": k,
+                                "marks": [{x: v for x, v in m.items() if x != "step"} for m in marks if m["step"] == k]})
     return out
 
 
 def network_steps(spec: dict[str, Any]) -> list[dict[str, str]]:
     """Default step labels and texts for a network whose edges carry step numbers."""
     edges = spec["edges"]
-    return [{"label": re.sub(r"^\s*(?:[\u2460-\u2473]|\d+[.)．]?)\s*", "", plain(next(e["label"] for e in edges if e["step"] == k))) or str(k),
+    return [{"label": re.sub(r"^\s*(?:[\u2460-\u2473]|\d+[.)．]?)\s*", "", plain(next(e.get("label", "") for e in edges if e["step"] == k))) or f"手順{k}",
              "text": " ".join(e["text"] for e in edges if e["step"] == k and e.get("text"))}
             for k in range(1, max(e["step"] for e in edges) + 1)]
 
@@ -402,7 +412,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
             endpoint_ids = {edge["from"], edge["to"]}
             candidates = (["direct", "above", "below"] if route == "direct"
                           else [route, "below" if route == "above" else "above"])
-            words = _wrap(edge["label"])
+            words = _wrap(edge["label"]) if edge.get("label") else []
             requested_side = edge.get("label_side", "middle")
             label_sides = [requested_side] if requested_side != "middle" else ["middle", "above", "below"]
             candidates += ["far-above", "far-below"]
@@ -410,6 +420,8 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
             for candidate in candidates:
                 if not _route_is_safe((sx, sy),(tx, ty),candidate,obstacles,endpoint_ids,height): continue
                 mx,my = _path_midpoint((sx, sy),(tx, ty),candidate)
+                if not words:
+                    choice=(candidate,mx,my,0,None);break
                 for side in label_sides:
                     if not _label_is_safe((mx,my),words,side,obstacles,endpoint_ids,height): continue
                     offset=-15 if side=="above" else 15 if side=="below" else 0
@@ -420,13 +432,23 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
                 if choice:break
             if choice is None:
                 raise _NoRoute(f"network.variants[{vi}].edges[{edge['id']}]: no route and label slot fit; rearrange nodes or shorten the label")
-            route,lx,ly,offset,box=choice;label_boxes.append(box)
+            route,lx,ly,offset,box=choice
+            if box: label_boxes.append(box)
             d=_path((sx, sy),(tx, ty),route);tone=edge.get("tone","blue")
             state, opacity = "", ""
             if "step" in variant:
                 state = " is-current" if edge["step"] == variant["step"] else " is-done" if edge["step"] < variant["step"] else " is-future"
                 opacity = f' opacity="{"0.16" if state == " is-future" else "1"}"'
-            parts.append(f'<path data-key="{_esc(key)}:path" data-flow="{kind}" class="dg-edge dg-tone-{_esc(tone)}{state}"{opacity} d="{d}" marker-end="url(#{vid}-arrow-{kind}-{tone})"/>')
+            if kind == "conflict":
+                # Two things that clash: a red dashed line with a cross at its middle, no direction.
+                parts.append(f'<path data-key="{_esc(key)}:path" class="dg-edge dg-edge-conflict dg-tone-{_esc(edge.get("tone", "red"))}{state}"{opacity} d="{d}"/>')
+                parts.append(f'<g data-key="{_esc(key)}:cross" class="dg-conflict-cross dg-tone-{_esc(edge.get("tone", "red"))}"{opacity} transform="translate({lx:g},{ly:g})"><circle r="9"/><path d="M-4 -4L4 4M4 -4L-4 4"/></g>')
+                if words:
+                    offset = offset or -22
+            else:
+                parts.append(f'<path data-key="{_esc(key)}:path" data-flow="{kind}" class="dg-edge dg-tone-{_esc(tone)}{state}"{opacity} d="{d}" marker-end="url(#{vid}-arrow-{kind}-{tone})"/>')
+            if not words:
+                continue
             tspans = "".join(
                 f'<tspan x="0" dy="{20 if j else 0}">{_esc(word)}</tspan>'
                 for j, word in enumerate(words)
@@ -441,6 +463,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
         for node in data["nodes"]:
             x, y = positions[node["id"]]; key = f"node:{node['id']}"; node_w, node_h = 144, 72
             border = " active" if node["id"] in active else " inactive" if active and "step" not in variant else ""
+            hide = ' opacity="0" aria-hidden="true"' if node["id"] in variant.get("hidden_nodes", []) else ""
             label_lines = _wrap(node["label"]); detail_lines = _wrap(node.get("detail", "")) if node.get("detail", "") else []
             if len(label_lines) + len(detail_lines) > 3:
                 _fail(f"network.nodes[{node['id']}]", "label and detail exceed three lines; move detail to caption")
@@ -450,7 +473,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
             detail_y = label_y + 18 * len(label_lines) + (-1 if detail_lines else 0)
             label = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 18}">{_esc(line)}</tspan>' for i, line in enumerate(label_lines))
             detail = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>' for i, line in enumerate(detail_lines))
-            parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}" data-ref="{_esc(plain(node["label"]))}" data-obstacle="{x-72:g},{y-36:g},{node_w},{node_h}"><rect data-key="{_esc(key)}:rect" x="{x-72:g}" y="{y-36:g}" width="{node_w}" height="{node_h}" rx="8"/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
+            parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}"{hide} data-ref="{_esc(plain(node["label"]))}" data-obstacle="{x-72:g},{y-36:g},{node_w},{node_h}"><rect data-key="{_esc(key)}:rect" x="{x-72:g}" y="{y-36:g}" width="{node_w}" height="{node_h}" rx="8"/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
         parts.extend(mark_parts)
         note_lines = _wrap(variant.get("note", ""), 80) if variant.get("note", "") else []
         note = "".join(f'<tspan x="120" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>'

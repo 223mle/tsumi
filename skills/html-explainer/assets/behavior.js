@@ -41,24 +41,17 @@
 })();
 (() => {
   // A glossary term and the diagram parts with the same name light up together.
-  const terms = document.querySelectorAll('.term[data-term]');
+  // Delegated, so terms inside step texts that are swapped in later also link.
   function link(name, on) {
     document.querySelectorAll('[data-ref]').forEach(el => { if (el.dataset.ref === name) el.classList.toggle('is-linked', on); });
     document.querySelectorAll('.term[data-term]').forEach(el => { if (el.dataset.term === name) el.classList.toggle('is-linked', on); });
   }
-  terms.forEach(term => {
-    const name = term.dataset.term;
-    ['mouseenter', 'focus'].forEach(ev => term.addEventListener(ev, () => link(name, true)));
-    ['mouseleave', 'blur'].forEach(ev => term.addEventListener(ev, () => link(name, false)));
-  });
-  document.addEventListener('mouseover', e => {
-    const part = e.target.closest && e.target.closest('[data-ref]');
-    if (part && !part.contains(e.relatedTarget)) link(part.dataset.ref, true);
-  });
-  document.addEventListener('mouseout', e => {
-    const part = e.target.closest && e.target.closest('[data-ref]');
-    if (part && !part.contains(e.relatedTarget)) link(part.dataset.ref, false);
-  });
+  function owner(e) { return e.target.closest && e.target.closest('.term[data-term], [data-ref]'); }
+  function name(el) { return el.dataset.term || el.dataset.ref; }
+  document.addEventListener('mouseover', e => { const el = owner(e); if (el && !el.contains(e.relatedTarget)) link(name(el), true); });
+  document.addEventListener('mouseout', e => { const el = owner(e); if (el && !el.contains(e.relatedTarget)) link(name(el), false); });
+  document.addEventListener('focusin', e => { const el = owner(e); if (el) link(name(el), true); });
+  document.addEventListener('focusout', e => { const el = owner(e); if (el) link(name(el), false); });
 })();
 addEventListener('beforeprint', () => document.querySelectorAll('details:not([open])').forEach(d => { d.open = true; d.dataset.printOpened = ''; }));
 addEventListener('afterprint', () => document.querySelectorAll('details[data-print-opened]').forEach(d => { d.open = false; delete d.dataset.printOpened; }));

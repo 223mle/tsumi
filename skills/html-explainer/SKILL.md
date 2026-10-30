@@ -68,6 +68,7 @@ python3 scripts/compose.py source.html figures.json --output rebuilt.html
   ```
 
   PlaywrightとChromiumを使う。必要なら `NODE_PATH` と `CHROME_PATH` を指定する。
+- [図と本文を食い違わせない](references/figure-selection.md#図と本文を食い違わせない)の項目を、全ステップ・全variantのスクリーンショットで確かめる。
 - 画像を見て、次の3点を確かめる。最初の画面で題と要点が読めるか。各図が1つの主張を示し、矢印の向きと動詞からラベルの所属が分かるか。390px幅で現在のステップが見えるか。
 - 元資料があるときは、同じ幅・同じ表示状態で図とページの高さを比べる。本文や注釈の削除、フォント縮小で帳尻を合わせない。
 

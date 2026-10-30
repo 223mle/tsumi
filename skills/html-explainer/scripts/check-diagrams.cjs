@@ -24,6 +24,7 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
       for(let i=0;i<await diagrams.count();i++){
         const f=diagrams.nth(i),id=await f.getAttribute('id');await f.scrollIntoViewIfNeeded();
         check(`${theme}/${id}: initial geometry`,(await inspect(p)).length===0,(await inspect(p)).join('; '));
+        await f.screenshot({path:path.join(out,`${theme}-${id}-initial.png`)});
         const radios=f.locator('.dg-switch input');
         if(await radios.count()>1){
           const before=await snapshot(f);await radios.first().focus();await p.keyboard.press('ArrowRight');await p.waitForTimeout(280);const middle=await snapshot(f);

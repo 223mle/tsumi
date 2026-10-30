@@ -32,13 +32,14 @@ def _steps(bundle,panels,count):
         out.append({'label':st['label'],'text':st.get('text','')})
     return out
 
-def _scene_name(labels,steps,j,n,notes=None):
+def _scene_name(labels,steps,j,n,notes=None,prose=html.escape):
     if n<=1: return ''
     if steps:
-        st=steps[j]; return f'{j+1}. {html.escape(st["label"])}'+(f'<span>{html.escape(st["text"])}</span>' if st['text'] else '')
-    return html.escape(labels[j])+(f'<span>{html.escape(notes[j])}</span>' if notes else '')
+        st=steps[j]; return f'{j+1}. {html.escape(st["label"])}'+(f'<span>{prose(st["text"])}</span>' if st['text'] else '')
+    return html.escape(labels[j])+(f'<span>{prose(notes[j])}</span>' if notes else '')
 
-def render_diagram(bundle):
+def render_diagram(bundle,prose=html.escape):
+    """Render a bundle as a figure. `prose` renders caption, notes and step texts; documents pass their inline markup."""
     if not isinstance(bundle,dict) or set(bundle)-{'id','title','caption','status','legend','panels','labels','motion','mode','steps','notes'}:
         raise ValueError('diagram: unknown fields or not an object')
     for key in ('id','title','caption'):
@@ -83,19 +84,19 @@ def render_diagram(bundle):
     output=[]
     for i,scenes in enumerate(variants):
         title=panels[i].get('title',''); heading=f'<h4 class="dg-panel-title">{html.escape(title)}</h4>' if title else ''
-        static=''.join(f'<div class="dg-static-scene" data-state="{j}"><p class="dg-scene-name">{_scene_name(labels,steps,j,len(scenes),notes)}</p><div class="dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}">{svg}</div></div>' for j,svg in enumerate(scenes))
+        static=''.join(f'<div class="dg-static-scene" data-state="{j}"><p class="dg-scene-name">{_scene_name(labels,steps,j,len(scenes),notes,prose)}</p><div class="dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}">{svg}</div></div>' for j,svg in enumerate(scenes))
         output.append(f'<div class="dg-panel">{heading}<div class="dg-live dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}"></div><div class="dg-static">{static}</div></div>')
     nav=''
     if steps:
-        texts=''.join(f'<template data-step-text="{i}"><b>{i+1}. {html.escape(st["label"])}</b>{(" "+html.escape(st["text"])) if st["text"] else ""}</template>' for i,st in enumerate(steps))
+        texts=''.join(f'<template data-step-text="{i}"><b>{i+1}. {html.escape(st["label"])}</b>{(" "+prose(st["text"])) if st["text"] else ""}</template>' for i,st in enumerate(steps))
         nav=f'<div class="dg-step-bar"><p class="dg-step-text" aria-live="polite"></p><div class="dg-step-nav"><button type="button" data-go="-1" aria-label="前の手順">←</button><span class="dg-step-count" aria-hidden="true">1 / {count}</span><button type="button" data-autoplay aria-pressed="false">自動で進める</button><button type="button" data-go="1" aria-label="次の手順">→</button></div>{texts}</div>'
     if notes:
-        texts=''.join(f'<template data-step-text="{i}"><b>{html.escape(labels[i])}</b> {html.escape(n)}</template>' for i,n in enumerate(notes))
+        texts=''.join(f'<template data-step-text="{i}"><b>{html.escape(labels[i])}</b> {prose(n)}</template>' for i,n in enumerate(notes))
         nav=f'<div class="dg-step-bar dg-note-bar"><p class="dg-step-text" aria-live="polite"></p>{texts}</div>'
     if steps:
-        nav+='<ol class="dg-step-notes">'+''.join(f'<li><b>{html.escape(st["label"])}</b>{(" "+html.escape(st["text"])) if st["text"] else ""}</li>' for st in steps)+'</ol>'
+        nav+='<ol class="dg-step-notes">'+''.join(f'<li><b>{html.escape(st["label"])}</b>{(" "+prose(st["text"])) if st["text"] else ""}</li>' for st in steps)+'</ol>'
     mode_attr=' data-mode="steps"' if steps else ''
-    return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="0"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="status status-{status}">{STATUSES[status]}</span>{html.escape(bundle["caption"])}</figcaption></figure>'
+    return f'<figure class="dg-figure" id="{bundle["id"]}" data-diagram data-state="0"{mode_attr}><h3 class="dg-title">{html.escape(bundle["title"])}</h3><div class="dg-toolbar">{controls}</div><div class="dg-legend">{"".join(legends)}</div>{nav}{"".join(output)}<figcaption><span class="status status-{status}">{STATUSES[status]}</span>{prose(bundle["caption"])}</figcaption></figure>'
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('input',type=Path);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--fragment',action='store_true');a=ap.parse_args()

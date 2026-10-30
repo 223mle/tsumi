@@ -59,7 +59,7 @@
         svg.insertBefore(node,svg.querySelector(':scope>.dg-edge-label,:scope>.dg-node'));particles.push({path,node});
       }));flowOrigin=performance.now();flowFrame=requestAnimationFrame(particleFrame);
     }
-    function select(index,instant=false){
+    function select(index,instant=false,follow=true){
       cancelAnimationFrame(transition);cancelAnimationFrame(flowFrame);removeParticles();
       const updates=[];
       panels.forEach(({svg,scenes})=>{
@@ -85,7 +85,7 @@
         });
         live.forEach((el,key)=>{if(!wanted.has(key))updates.push({el,attrs:[['opacity',interpolator(el.getAttribute('opacity')||'1','0')]],dest:null,text:false});});
       });
-      figure.dataset.state=String(index);figure.dataset.animating='true';syncSteps(index);
+      figure.dataset.state=String(index);figure.dataset.animating='true';syncSteps(index,follow);
       const duration=instant||reduced.matches?0:760;const start=performance.now();
       function frame(now){
         const linear=duration?Math.min(1,(now-start)/duration):1;const t=linear<.5?4*linear**3:1-(-2*linear+2)**3/2;
@@ -97,18 +97,24 @@
         if(linear<1)transition=requestAnimationFrame(frame);else{figure.dataset.animating='false';figure.dataset.renderedState=String(index);startFlow();}
       }frame(start);
     }
-    function syncSteps(index){
+    function syncSteps(index,follow=true){
       const tpl=figure.querySelector(`template[data-step-text="${index}"]`);
       if(stepText&&tpl)stepText.replaceChildren(tpl.content.cloneNode(true));
-      if(!stepButtons.length)return;
       stepButtons.forEach((b,i)=>{b.setAttribute('aria-current',i===index?'step':'false');b.classList.toggle('is-done',i<index);});
       if(stepCount)stepCount.textContent=`${index+1} / ${stepButtons.length}`;
       // On narrow screens the drawing scrolls sideways; bring the current step into view.
-      panels.forEach(({svg,scenes})=>{
+      if(follow)panels.forEach(({svg,scenes})=>{
         const box=svg.parentElement;if(box.scrollWidth<=box.clientWidth+2)return;
         // Follow what this state is about: the current message or edge, or a node's mark.
         const target=scenes[Math.min(index,scenes.length-1)];
-        const keys=[...target.querySelectorAll('.dg-msg.is-current .dg-msg-line,.dg-edge.is-current,.dg-mark')].map(e=>e.dataset.key);
+        let keys=[...target.querySelectorAll('.dg-msg.is-current .dg-msg-line,.dg-edge.is-current,.dg-mark')].map(e=>e.dataset.key);
+        if(!keys.length){
+          // Otherwise follow the edges this state adds, or failing that the ones it removes.
+          const prev=scenes[Math.min(Number(figure.dataset.renderedState||0),scenes.length-1)];
+          const edges=sc=>new Set([...sc.querySelectorAll('.dg-edge')].map(e=>e.dataset.key));
+          const now=edges(target),before=edges(prev);
+          keys=[...now].filter(k=>!before.has(k));if(!keys.length)keys=[...before].filter(k=>!now.has(k));
+        }
         const els=keys.map(k=>svg.querySelector(`[data-key="${CSS.escape(k)}"]`)).filter(Boolean);
         if(!els.length)return;
         const rs=els.map(e=>e.getBoundingClientRect());
@@ -147,7 +153,7 @@
     new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;startFlow();},{threshold:.05}).observe(figure);
     document.addEventListener('visibilitychange',startFlow);
     reduced.addEventListener('change',()=>{select(Number(figure.dataset.state||0),true);});
-    select(0,true);
+    select(0,true,false);
   });
 })();
 (() => {

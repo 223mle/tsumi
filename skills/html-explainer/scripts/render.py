@@ -86,18 +86,21 @@ def validate(doc: object) -> dict:
         for bi, block in enumerate(blocks):
             validate_block(block, f"sections[{si}].blocks[{bi}]", glossary,
                            lambda f, w: validate_figure(f, w, source_ids, figure_ids),
-                           lambda b, w: check_diagram(b, w, figure_ids))
+                           lambda b, w: check_diagram(b, w, figure_ids, glossary))
         figs = sec.get("figures", [])
         if not isinstance(figs, list): fail(f"sections[{si}].figures: array required")
         for fi, fig in enumerate(figs): validate_figure(fig, f"sections[{si}].figures[{fi}]", source_ids, figure_ids)
     return doc
 
-def check_diagram(bundle: object, where: str, seen: set[str]) -> None:
+def check_diagram(bundle: object, where: str, seen: set[str], glossary: dict[str, str]) -> None:
     try:
         render_diagram(bundle)
     except (ValueError, TypeError, KeyError) as exc:
         fail(f"{where}: {exc}")
     check_id(bundle["id"], where + ".id", seen)
+    prose = [bundle["caption"], *bundle.get("notes", []), *(st.get("text", "") for st in bundle.get("steps", []))]
+    prose += [m.get("text", "") for p in bundle["panels"] for m in p["spec"].get("messages", []) + p["spec"].get("edges", [])]
+    for text in filter(None, prose): check_inline(text, where, glossary)
 
 def reading_minutes(body_html: str) -> int:
     """Estimate reading time from visible prose at about 500 Japanese characters a minute."""
@@ -235,7 +238,7 @@ def render(doc: dict) -> str:
     sections = []
     for num, sec in enumerate(doc["sections"], 1):
         paras = ''.join(f'<p>{inline(p, glossary)}</p>' for p in sec.get("paragraphs", [])); callout = f'<aside class="callout callout-key"><p>{esc(sec["callout"])}</p></aside>' if sec.get("callout") else ''
-        body = ''.join(block_html(b, glossary, lambda f: figure_html(f, source_titles), render_diagram) for b in sec.get("blocks", []))
+        body = ''.join(block_html(b, glossary, lambda f: figure_html(f, source_titles), lambda d: render_diagram(d, lambda t: inline(t, glossary))) for b in sec.get("blocks", []))
         figs = ''.join(figure_html(f, source_titles) for f in sec.get("figures", []))
         sections.append(f'<section id="{esc(sec["id"])}"><h2><span class="section-number">{num}</span>{esc(sec["title"])}</h2>{paras}{callout}{body}{figs}</section>')
     takeaways = ''.join(f'<li>{inline(t, glossary)}</li>' for t in doc.get("takeaways", []))
