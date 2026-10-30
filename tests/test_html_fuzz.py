@@ -336,6 +336,16 @@ class FuzzTests(unittest.TestCase):
         line_x = float(re.search(r'data-key="edge:b:path"[^>]*d="M ([\d.]+)', svg).group(1))
         self.assertTrue(mx + width / 2 <= line_x - 8 or mx - width / 2 >= line_x + 8, (mx, width, line_x))
 
+    def test_a_vertex_shared_by_two_series_shows_both_colours(self):
+        spec = {"type": "line", "x": {"min": 100, "max": 1000, "ticks": [100, 1000]}, "y": {"min": 0, "max": 10, "ticks": [1, 10]},
+                "series": [{"id": "scan", "label": "全件読み", "tone": "amber", "points": [[100, 1], [1000, 10]]},
+                           {"id": "index", "label": "索引", "tone": "blue", "dots": True, "points": [[100, 1], [1000, 1.25]]}]}
+        svg = render_line(spec, "l")[0]
+        under = re.search(r'<circle class="line-point dg-tone-amber[^"]*" r="([\d.]+)"[^>]*data-key="pt-scan-100"', svg)
+        over = re.search(r'<circle class="line-point dg-tone-blue[^"]*" r="([\d.]+)"[^>]*data-key="pt-index-100"', svg)
+        self.assertGreater(float(under.group(1)), float(over.group(1)) + 2)
+        self.assertLess(svg.index('data-key="pt-scan-100"'), svg.index('data-key="pt-index-100"'))
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):

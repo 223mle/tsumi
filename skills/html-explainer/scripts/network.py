@@ -519,8 +519,10 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             if not margins:
                 # Phone layout: edges arrive at the node's top centre, so keep the tag right of that line.
                 mx = min(nx + 14 + mw / 2, canvas - 4 - mw / 2)
-                if mx - mw / 2 < nx + 8:
-                    # Too long to fit between that line and the canvas edge: put it left of the line instead.
+                ends = [positions[e["to"] if e["from"] == mark["node"] else e["from"]] for e in variant["edges"] if mark["node"] in (e["from"], e["to"])]
+                if mx - mw / 2 < nx + 8 and any(ox == nx and oy < ny for ox, oy in ends):
+                    # A line from the box above meets the top centre and the tag is too long to fit right of it:
+                    # put it left of the line instead.
                     mx = max(nx - 14 - mw / 2, 4 + mw / 2)
             for bl in boundary_labels:
                 if mx - mw / 2 < bl[2] + 4 and mx + mw / 2 > bl[0] - 4 and top < bl[3] and top + 22 > bl[1]:

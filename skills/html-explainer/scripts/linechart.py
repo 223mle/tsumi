@@ -257,8 +257,13 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         for s in scene["series"]:
             if s["label"] in positions:
                 label_at[s["id"]] = positions[s["label"]]
-    for s in sorted(scene["series"], key=lambda s: bool(s.get("dots"))):  # data dots on top of fitted lines
+    painted = sorted(scene["series"], key=lambda s: bool(s.get("dots")))  # data dots on top of fitted lines
+    vertex_sets = [{(p[0], p[1]) for p in ([] if s.get("vertices") is False else s.get("shown", s["points"]))} for s in painted]
+    for si, s in enumerate(painted):
         tone = s.get("tone") or "blue"
+        # A vertex that a later series also has (every series starts at 1x on a ratio axis) is drawn as a wider ring
+        # under the later dot, so both colours stay visible instead of one dot hiding the other.
+        later = lambda p: sum((p[0], p[1]) in v for v in vertex_sets[si + 1:])
         d = "M" + " L".join(f"{px(p[0]):.2f} {py(p[1]):.2f}" for p in s["points"])
         # Always state the dash, so switching to a solid variant clears it.
         dash = f' stroke-dasharray="{"6 4" if s.get("dashed") else "none"}"'
@@ -273,6 +278,8 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         for p in ([] if s.get("vertices") is False else s.get("shown", s["points"])):
             tip = f'{plain(s["label"])}: {_tick(p[0], x.get("unit", ""))[1]} → {_tick(p[1], y.get("unit", ""))[1]}'
             dot = ' line-dot" r="5' if s.get("dots") else '" r="3.5'
+            if later(p):
+                dot = f'{" line-dot" if s.get("dots") else ""}" r="{5 + 3 * later(p):g}'
             out.append(f'<circle class="line-point dg-tone-{tone}{dot}" cx="{px(p[0]):.2f}" cy="{py(p[1]):.2f}" data-tip="{_esc(tip)}" data-key="pt-{_esc(s["id"])}-{p[0]:g}"/>')
     line_samples = []  # points along every series, every few pixels, for label placement
     for s in scene["series"]:
