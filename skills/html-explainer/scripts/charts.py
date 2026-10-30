@@ -247,6 +247,7 @@ def _timeline_svg(spec, variant, index, prefix):
         out.append(_svg_wrapped_text(x0-12,y+15,lane['label'],'lane-label',f"lane-label-{lane['id']}",12 if grouped else 14,'end'))
     external={}
     marker_xs=[_scale(float(m['value']),lo,hi,x0,width) for m in variant.get('markers',[])]
+    ghosts={}
     if spec.get('baseline') and index>0:
         # The first variant stays as a faint outline so the reader sees what each change removed.
         for seg in spec['variants'][0].get('segments',[]):
@@ -254,12 +255,29 @@ def _timeline_svg(spec, variant, index, prefix):
             li=next(i for i,lane in enumerate(lanes)if lane['id']==seg['lane']);y=top+li*row_height
             gx=_scale(float(seg['start']),lo,hi,x0,width);gw=float(seg['duration'])/(hi-lo)*width
             out.append(f'<rect x="{gx:.2f}" y="{y}" width="{gw:.2f}" height="23" rx="3" class="bar-ghost" data-key="ghost-{_esc(seg["id"])}"/>')
+            ghosts.setdefault(seg['lane'],[]).append((gx,gx+gw))
+
+    def place_beside(seg,left_edge,right_edge,y,label):
+        """Put a label just beside a mark on its own row, clear of bars, ghosts and marker lines."""
+        text_width=sum(12 if ord(c)>255 else 6.8 for c in label)
+        bounds=[(_scale(float(o['start']),lo,hi,x0,width),_scale(float(o['start'])+float(o.get('duration',0)),lo,hi,x0,width)) for o in variant.get('segments',[]) if o['lane']==seg['lane'] and o is not seg and not o.get('unknown')]
+        bounds+=[(mx-3,mx+3) for mx in marker_xs]+ghosts.get(seg['lane'],[])
+        free=lambda l,r:l>=x0-4 and r<=940 and all(not(a<r+4 and b>l-4) for a,b in bounds)
+        spots=[(right_edge+6,'start'),(left_edge-6,'end')]+[(b+6,'start') for a,b in sorted(bounds) if b>right_edge]
+        for sx,anchor in spots:
+            l,r=(sx,sx+text_width) if anchor=='start' else (sx-text_width,sx)
+            if free(l,r):
+                out.append(_svg_text(sx,y+16,label,'external-label',anchor,f"segment-label-{seg['id']}"));return True
+        return False
+
     for seg in variant.get('segments',[]):
         li=next(i for i,lane in enumerate(lanes)if lane['id']==seg['lane']);y=top+li*row_height
         x=_scale(float(seg['start']),lo,hi,x0,width)
         if seg.get('unknown'):
-            out.append(_svg_wrapped_text(816,y+15,seg['label'],'external-label',f"segment-unknown-{seg['id']}",10))
-            out.append(_svg_text(x,y+17,'？','unknown-duration','middle',f"unknown-marker-{seg['id']}"))
+            qx=x+(11 if any(abs(x-mx)<8 for mx in marker_xs) else 0)  # keep the ? off a marker line
+            out.append(_svg_text(qx,y+17,'？','unknown-duration','middle',f"unknown-marker-{seg['id']}"))
+            if not place_beside(seg,qx-8,qx+8,y,seg['label']):
+                out.append(_svg_wrapped_text(816,y+15,seg['label'],'external-label',f"segment-unknown-{seg['id']}",10))
             continue
         w=float(seg['duration'])/(hi-lo)*width;tone=seg.get('tone') or lanes[li].get('tone') or 'blue'
         start,end=float(seg['start']),float(seg['start'])+float(seg['duration']);unit=spec['unit']
@@ -268,18 +286,8 @@ def _timeline_svg(spec, variant, index, prefix):
         label=seg.get('label','');text_width=sum(12 if ord(c)>255 else 6.8 for c in label)
         if label and w>=text_width+12:
             out.append(_svg_text(x+w/2,y+16,label,'bar-label','middle',f"segment-label-{seg['id']}"))
-        elif label:
-            # Put a short segment's label beside its bar when the lane leaves room; otherwise use the value column.
-            bounds=[(_scale(float(o['start']),lo,hi,x0,width),_scale(float(o['start'])+float(o.get('duration',0)),lo,hi,x0,width)) for o in variant.get('segments',[]) if o['lane']==seg['lane'] and o is not seg and not o.get('unknown')]
-            bounds+=[(mx-3,mx+3) for mx in marker_xs]
-            free=lambda l,r:l>=x0-4 and r<=940 and all(not(a<r+4 and b>l-4) for a,b in bounds)
-            # Beside the bar, then just past the next obstacle on the same row; the value column is the last resort.
-            spots=[(x+w+6,'start'),(x-6,'end')]+[(b+6,'start') for a,b in sorted(bounds) if b>x+w]
-            for sx,anchor in spots:
-                l,r=(sx,sx+text_width) if anchor=='start' else (sx-text_width,sx)
-                if free(l,r):
-                    out.append(_svg_text(sx,y+16,label,'external-label',anchor,f"segment-label-{seg['id']}"));break
-            else:external.setdefault(li,[]).append((seg['id'],label))
+        elif label and not place_beside(seg,x,x+w,y,label):
+            external.setdefault(li,[]).append((seg['id'],label))
     for li,labels in external.items():
         out.append(_svg_wrapped_text(816,top+li*row_height+15,' / '.join(x[1]for x in labels),'external-label',f"external-{lanes[li]['id']}",10))
     for mi,marker in enumerate(variant.get('markers',[])):
