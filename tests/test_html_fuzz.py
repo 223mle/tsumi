@@ -308,6 +308,23 @@ class FuzzTests(unittest.TestCase):
         render_diagram({"id": "bf", "title": "総当たり", "caption": "説明用。", "status": "illustrative", "panels": [{"spec": spec}]}, warnings=notes)
         self.assertTrue(any("row f" in n for n in notes), notes)
 
+    def test_a_number_only_tick_name_gets_the_axis_unit(self):
+        spec = {"type": "threshold", "min": 1, "max": 100000, "scale": "log", "unit": "ページ",
+                "ticks": [1, 100, {"value": 10000, "label": "1万"}, {"value": 100000, "label": "上限"}],
+                "rows": [{"id": "a", "label": "全件読み", "value": 10000}, {"id": "b", "label": "索引", "value": 4}]}
+        svg = render_chart(spec, "t")[0]
+        self.assertIn(">1万ページ<", svg)
+        self.assertIn(">上限<", svg)
+
+    def test_a_phone_label_beside_a_line_slides_clear_of_a_mark_instead_of_wrapping(self):
+        spec = {"type": "network", "columns": 3, "rows": 2, "nodes": [{"id": f"{r}{c}", "label": f"{r}{c}", "column": c, "row": 1 if r == "a" else 2}
+                                                  for r in "ab" for c in (1, 2, 3)],
+                "variants": [{"label": "v", "edges": [{"id": f"{r}{c}", "from": f"{r}{c}", "to": f"{r}{c + 1}", "label": f"{c} ハッシュ化", "kind": "file"}
+                                                     for r in "ab" for c in (1, 2)],
+                              "marks": [{"node": "a3", "label": "Bと違う値", "tone": "slate"}, {"node": "b3", "label": "Aと違う値", "tone": "slate"}]}]}
+        svg = render_network(spec, "n", narrow=True)[0]
+        self.assertIn(">2 ハッシュ化</tspan>", svg)
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):

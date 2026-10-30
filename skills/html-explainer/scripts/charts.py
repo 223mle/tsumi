@@ -226,6 +226,9 @@ def _scale(value: float, lo: float, hi: float, x0: float, width: float, log: boo
 def _tick(tick: Any, unit: str) -> tuple[float, str]:
     """A tick's value and its axis text."""
     if isinstance(tick, dict):
+        # A name that is only a number (「1万」) gets the axis unit too, so it reads like the unnamed ticks beside it.
+        if unit and re.fullmatch(r"[0-9.,]+[千万億兆]?", tick["label"]):
+            return float(tick["value"]), tick["label"] + unit
         return float(tick["value"]), tick["label"]
     return float(tick), f"{_number(float(tick))}{unit}"
 

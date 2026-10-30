@@ -360,7 +360,7 @@ def _layout_narrow(spec: dict[str, Any], extra_gap: float = 0.0, bottom_room: bo
     cols = sorted({n["column"] for n in spec["nodes"]})
     if len(rows) > 2:
         raise ValueError("network: no phone layout for three rows; put the main path on two rows to get one")
-    xs = [NARROW_WIDTH / 2] if len(rows) == 1 else [NARROW_WIDTH / 2 - 105, NARROW_WIDTH / 2 + 105]
+    xs = [NARROW_WIDTH / 2] if len(rows) == 1 else [NARROW_WIDTH / 2 - 124, NARROW_WIDTH / 2 + 124]
     top = 84.0 if spec.get("boundaries") else 64.0
     gap = 132.0 + extra_gap  # render_network retries with more room when a label or mark does not fit
     note_lines = max((len(_wrap(v["note"], 60)) for v in spec["variants"] if v.get("note")), default=0)
@@ -451,17 +451,19 @@ def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, h
     """A free spot for an edge label near the edge's middle, or None."""
     half = (max(_visual_len(word) for word in words) * 6.2 + 8) / 2 + 6
     # On the phone layout a label may also sit beside a vertical line instead of on it.
-    beside = [("middle", mx + half), ("middle", mx - half)] if not margins else []
+    # Beside the line it may also slide a little up or down, clear of a mark on the box below, before it wraps.
+    beside = [("middle", mx + sign * half, dy) for dy in (0, -8, 8) for sign in (1, -1)] if not margins else []
     # On the phone layout a short vertical edge would vanish under its label, so try beside the line first.
-    spots = beside + [(side, mx) for side in label_sides] if vertical else [(side, mx) for side in label_sides] + beside
-    for side, lx0 in spots:
-        if not _label_is_safe((lx0, my), words, side, obstacles, endpoint_ids, height, canvas): continue
+    spots = beside + [(side, mx, 0) for side in label_sides] if vertical else [(side, mx, 0) for side in label_sides] + beside
+    for side, lx0, dy in spots:
+        ly = my + dy
+        if not _label_is_safe((lx0, ly), words, side, obstacles, endpoint_ids, height, canvas): continue
         offset = -15 if side == "above" else 15 if side == "below" else 0
         bw = max(_visual_len(word) for word in words) * 8 + 16; bh = 20 * len(words) + 4
-        box = (lx0 - bw / 2, my + offset - bh / 2, lx0 + bw / 2, my + offset + bh / 2)
+        box = (lx0 - bw / 2, ly + offset - bh / 2, lx0 + bw / 2, ly + offset + bh / 2)
         if any(box[0] < r[2] + 6 and box[2] > r[0] - 6 and box[1] < r[3] + 6 and box[3] > r[1] - 6 for r in label_boxes): continue
         if any(box[0] + 4 <= x <= box[2] - 4 and box[1] + 2 <= y <= box[3] - 2 for pts in placed_paths for x, y in pts): continue
-        return (route, lx0, my, offset, box, words)
+        return (route, lx0, ly, offset, box, words)
     return None
 
 
