@@ -132,9 +132,11 @@ def _width(spec: dict[str, Any], narrow: bool = False) -> float:
 
 def _columns(spec: dict[str, Any], narrow: bool = False) -> tuple[dict[str, float], float, float]:
     count = len(spec["actors"])
-    left = 56.0 if narrow else 110.0
+    # On the phone canvas few actors get wider margins, so their boxes (up to 176 wide) stay inside it.
+    edge = {2: 100.0, 3: 76.0}.get(count, 56.0) if narrow else 110.0
+    left = edge
     span_right = any(_span_actor(spec, sp) == spec["actors"][-1]["id"] for sp in spec.get("spans", []))
-    right = (128.0 if span_right else 56.0) if narrow else (160.0 if span_right else 110.0)
+    right = max(edge, 128.0) if narrow and span_right else edge if narrow else (160.0 if span_right else 110.0)
     if any(m["from"] == m["to"] == spec["actors"][-1]["id"] for m in spec["messages"]):
         right += 70 if narrow else 120  # room for the label beside the rightmost actor's self-call loop
     gap = (_width(spec, narrow) - left - right) / (count - 1)
@@ -194,7 +196,7 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
             lines = actor_lines[actor["id"]]
             ty = HEAD_Y + HEAD_H / 2 - (len(lines) - 1) * 8
             tspans = "".join(f'<tspan x="{x:g}" dy="{0 if j == 0 else 16}">{_esc(line)}</tspan>' for j, line in enumerate(lines))
-            w = min(gap - (8 if narrow else 16), 176)
+            w = min(gap - (8 if narrow else 16), 176, 2 * left - 8)  # never wider than the margin allows at the edges
             parts.append(f'<g class="dg-actor dg-tone-{actor.get("tone", "slate")}{state}" data-key="{key}" data-ref="{_esc(plain(actor["label"]))}">'
                          f'<line class="dg-lifeline" data-key="{key}:life" x1="{x:g}" y1="{HEAD_Y + HEAD_H:g}" x2="{x:g}" y2="{height - 8:g}"/>'
                          f'<rect data-key="{key}:box" x="{x - w / 2:g}" y="{HEAD_Y}" width="{w:g}" height="{HEAD_H}" rx="8"/>'
