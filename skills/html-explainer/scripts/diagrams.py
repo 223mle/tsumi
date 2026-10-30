@@ -85,7 +85,11 @@ def render_diagram(bundle,prose=html.escape):
     if steps:
         controls='<ol class="dg-steps" aria-label="手順">'+''.join(f'<li><button type="button" data-step="{i}" aria-current="{"step" if i==0 else "false"}" title="{html.escape(st["label"])}"><b>{i+1}</b><span class="dg-sr">{html.escape(st["label"])}</span></button></li>' for i,st in enumerate(steps))+'</ol>'
     elif mode=='slider':
-        controls=f'<label class="dg-slider"><span class="dg-slider-name">{html.escape(slider)}</span><input type="range" min="0" max="{count-1}" step="1" value="{initial}" aria-valuetext="{html.escape(labels[initial])}" data-labels="{html.escape(json.dumps(labels,ensure_ascii=False))}"><output>{html.escape(labels[initial])}</output></label>'
+        # Each stop is labelled under the track, so the reader sees every value the figure can show.
+        ticks=''.join(f'<span style="left:calc(9px + (100% - 18px) * {i}/{count-1})">{html.escape(l)}</span>' for i,l in enumerate(labels))
+        controls=(f'<div class="dg-slider"><span class="dg-slider-name" id="{bundle["id"]}-slider">{html.escape(slider)}</span>'
+                  f'<div class="dg-slider-track"><input type="range" min="0" max="{count-1}" step="1" value="{initial}" aria-labelledby="{bundle["id"]}-slider" aria-valuetext="{html.escape(labels[initial])}" data-labels="{html.escape(json.dumps(labels,ensure_ascii=False))}">'
+                  f'<div class="dg-slider-ticks" aria-hidden="true">{ticks}</div></div><output>{html.escape(labels[initial])}</output></div>')
     elif count>1:
         controls='<fieldset class="dg-switch"><legend>比較する状態</legend>'+''.join(f'<label><input type="radio" name="{bundle["id"]}-state" value="{i}" {"checked" if i==0 else ""}><span>{html.escape(label)}</span></label>' for i,label in enumerate(labels))+'</fieldset>'
     if bundle.get('motion',False): controls+='<button class="dg-play" type="button" aria-pressed="false">流れを再生</button>'

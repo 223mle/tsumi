@@ -10,7 +10,12 @@
   try { saved = localStorage.getItem('tsumi-html-theme') || 'system'; } catch (_) {}
   apply(['light', 'dark', 'system'].includes(saved) ? saved : 'system');
   controls.forEach(button => button.addEventListener('click', () => {
-    const theme = button.dataset.themeSet;
+    let theme = button.dataset.themeSet;
+    // On a phone only the current choice is shown; tapping it moves to the next one.
+    if (matchMedia('(max-width: 600px)').matches && button.getAttribute('aria-pressed') === 'true') {
+      const order = ['system', 'light', 'dark'];
+      theme = order[(order.indexOf(theme) + 1) % order.length];
+    }
     apply(theme);
     try { localStorage.setItem('tsumi-html-theme', theme); } catch (_) {}
   }));
@@ -31,7 +36,12 @@
       const on = current && a.hash === '#' + current.id;
       if (on !== (a.getAttribute('aria-current') === 'true')) {
         a.setAttribute('aria-current', String(on));
-        if (on && matchMedia('(max-width: 960px)').matches) a.scrollIntoView({block: 'nearest', inline: 'nearest'});
+        // Scroll only the tab strip: scrollIntoView would also move the page and cut short a jump in progress.
+        const strip = a.closest('ol');
+        if (on && strip && strip.scrollWidth > strip.clientWidth) {
+          const left = a.offsetLeft - strip.offsetLeft - 12;
+          if (left < strip.scrollLeft || left + a.offsetWidth + 24 > strip.scrollLeft + strip.clientWidth) strip.scrollTo({left: Math.max(0, left), behavior: 'smooth'});
+        }
       }
     });
   }

@@ -62,10 +62,24 @@ async function main() {
         report.errors.push(...check.errors.map(e => `${check.mode}: ${e}`));
         const button = page.locator(`[data-theme-set="${theme}"]`);
         if (await button.count()) {
-          await button.focus(); await page.keyboard.press('Enter');
+          // On a phone only the current theme button shows and Enter moves to the next; cycle until the wanted one is on.
+          for (let i = 0; i < 3 && await button.getAttribute('aria-pressed') !== 'true'; i++) {
+            const target = await button.isVisible() ? button : page.locator('[data-theme-set][aria-pressed="true"]');
+            await target.focus(); await page.keyboard.press('Enter');
+          }
           if (await button.getAttribute('aria-pressed') !== 'true') report.errors.push(`${check.mode}: keyboard theme control failed`);
         }
         await page.screenshot({path:path.join(dest, `${check.mode}.png`),fullPage:true});
+        if (theme === 'light') {
+          // Every table-of-contents link must bring its section to the top, unless the page cannot scroll further.
+          await page.emulateMedia({reducedMotion:'no-preference'});  // the jump must survive smooth scrolling
+          for (const hash of await page.$$eval('.toc a[href^="#"]', as => as.map(a => a.getAttribute('href')))) {
+            await page.click(`.toc a[href="${hash}"]`); await page.waitForTimeout(1300);
+            const [top, atEnd] = await page.evaluate(h => [document.querySelector(h).getBoundingClientRect().top, innerHeight + scrollY >= document.documentElement.scrollHeight - 2], hash);
+            if (!(top >= -2 && top < 200) && !atEnd) report.errors.push(`${check.mode}: contents link ${hash} stops ${Math.round(top)}px away`);
+          }
+          await page.emulateMedia({reducedMotion:'reduce'});
+        }
         if (width === 1440 && theme === 'light') {
           await page.emulateMedia({media:'print'});
           await page.screenshot({path:path.join(dest,'print.png'),fullPage:true});

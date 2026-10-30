@@ -330,6 +330,7 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
                 out.append(_svg_text(sx,y+16,label,'external-label',anchor,f"segment-label-{seg['id']}"));return True
         return False
 
+    under_bars=len(out)  # marker lines go here, beneath the bars, so they never cut through a bar's label
     for seg in variant.get('segments',[]):
         li=next(i for i,lane in enumerate(lanes)if lane['id']==seg['lane']);y=top+li*row_height
         x=_scale(float(seg['start']),lo,hi,x0,width)
@@ -359,7 +360,7 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
     layout,_=_marker_layout(variant.get('markers',[]),lo,hi,x0,width,W)
     for marker in variant.get('markers',[]):
         x,anchor,row=layout[marker['id']];tone=marker.get('tone')or'red';key=_esc(marker['id'])
-        out.append(f'<line x1="{x:.2f}" y1="{44+lift}" x2="{x:.2f}" y2="{h-26}" class="marker marker-{tone}" data-key="marker-{key}"/>')
+        out.insert(under_bars,f'<line x1="{x:.2f}" y1="{44+lift}" x2="{x:.2f}" y2="{h-26}" class="marker marker-{tone}" data-key="marker-{key}"/>')
         out.append(_svg_text(x-5 if anchor=='end' else x+5,18+row*17,marker['label'],'marker-label marker-label-'+tone,anchor,f'marker-label-{key}'))
     return ''.join(out)+'</svg>'
 
