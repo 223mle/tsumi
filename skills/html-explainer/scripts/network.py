@@ -172,7 +172,7 @@ def validate_network(spec: object) -> dict[str, Any]:
                 _fail(ep, "from/to must name two different nodes")
             if "label" in edge:
                 _text(edge["label"], ep + ".label")
-            if edge.get("kind") not in KINDS:
+            if edge.get("kind", "request") not in KINDS:  # omitted means a request (dashed), the most common edge
                 _fail(ep + ".kind", "must be request, file or conflict")
             _tone(edge.get("tone"), ep + ".tone", "blue")
             if not isinstance(edge.get("optional", False), bool):
@@ -541,7 +541,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             # Edges that meet the same side of a node attach a little apart, so their directions stay readable.
             (dsx, dsy), (dtx, dty) = shifts.get(edge["id"], ((0, 0), (0, 0)))
             sx, sy, tx, ty = sx + dsx, sy + dsy, tx + dtx, ty + dty
-            key = f"edge:{edge['id']}"; kind = edge["kind"]
+            key = f"edge:{edge['id']}"; kind = edge.get("kind", "request")
             pair = tuple(sorted((edge["from"], edge["to"])))
             count = edge_pairs.get(pair, 0)
             edge_pairs[pair] = count + 1

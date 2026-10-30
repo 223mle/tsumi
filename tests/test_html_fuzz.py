@@ -197,19 +197,19 @@ class FuzzTests(unittest.TestCase):
         self.assertRegex(svg, r'class="line-callout dg-tone-amber" data-key="callout-on"')
         self.assertRegex(svg, r'class="line-callout dg-tone-red" data-key="callout-cross"')
 
-    def test_a_span_on_a_middle_self_call_does_not_cross_the_next_lifeline(self):
+    def test_a_span_on_a_lone_self_call_sits_under_its_label(self):
         spec = {"type": "sequence", "actors": [{"id": "u", "label": "利用者"}, {"id": "s", "label": "サーバー"}, {"id": "d", "label": "データベース"}],
-                "messages": [{"id": "m1", "from": "u", "to": "s", "label": "パスワードを送る"}, {"id": "m2", "from": "s", "to": "s", "label": "ハッシュ値を\n計算"},
+                "messages": [{"id": "m1", "from": "u", "to": "s", "label": "パスワードを送る"}, {"id": "m2", "from": "s", "to": "s", "label": "ハッシュ化"},
                              {"id": "m3", "from": "s", "to": "d", "label": "保存する"}],
                 "spans": [{"from": "m2", "to": "m2", "label": "約0.1秒"}]}
         for narrow in (False, True):
             svg = render_sequence(spec, "q", narrow=narrow)[0]
             db_x = float(re.search(r'data-key="actor:d:label"[^>]*x="([\d.]+)"', svg).group(1))
-            x, anchor = re.search(r'data-key="span:0:label"[^>]*x="([\d.]+)"[^>]*text-anchor="(\w+)"', svg).groups()
-            right = float(x) + _text_width("約0.1秒") if anchor == "start" else float(x)
-            self.assertLess(right, db_x, narrow)
-            y1, y2 = map(float, re.search(r'data-key="span:0:line"[^>]*d="M[\d.]+ ([\d.]+)H[\d.]+M[\d.]+ [\d.]+V([\d.]+)', svg).groups())
-            self.assertGreater(y2 - y1, 10)
+            mx, my = map(float, re.search(r'data-key="msg:m2:label" x="([\d.]+)" y="([\d.]+)"', svg).groups())
+            sx, sy = map(float, re.search(r'data-key="span:0:label"[^>]*x="([\d.]+)" y="([\d.]+)"', svg).groups())
+            self.assertEqual(sx, mx, narrow)
+            self.assertGreater(sy, my, narrow)
+            self.assertLess(sx + _text_width("約0.1秒"), db_x, narrow)
 
     def test_a_line_can_hide_its_vertices(self):
         spec = {"type": "line", "x": {"min": 0, "max": 10, "unit": "", "ticks": [0, 10]}, "y": {"min": 0, "max": 2, "unit": "", "ticks": [0, 2]},

@@ -217,7 +217,19 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
             a, b = order.index(span["from"]), order.index(span["to"])
             y1, y2 = rows[a], rows[b]
             if a == b and layouts[a][1]:
-                y2 = y1 + 22  # a span over one self-call measures the height of its loop, so it reads as a bracket
+                # A span over one self-call is written right under that self-call's label, so the duration sits on the
+                # step it measures instead of beside another lifeline.
+                sx = xs[msgs[a]["from"]] + SELF_W + 8
+                room_end = min([x for x in xs.values() if x > xs[msgs[a]["from"]]] or [canvas + 2]) - 6
+                if room_end - sx < 8 * 6.6:
+                    room_end = canvas - 4
+                if sx + _units(span["label"]) * 6.6 <= room_end:
+                    future = " is-future" if step < b else ""
+                    sy = y1 + 4 + 18 * len(layouts[a][0])
+                    parts.append(f'<g class="dg-span dg-tone-{span.get("tone", "amber")}{future}" data-key="span:{si}">'
+                                 f'<text data-key="span:{si}:label" class="dg-span-label" data-label="true" x="{sx:g}" y="{sy:g}" text-anchor="start">{_esc(span["label"])}</text></g>')
+                    continue
+                y2 = y1 + 22  # otherwise a bracket the height of the loop
             # Measure beside the rightmost actor taking part in the measured messages, where no arrow of the span passes.
             edge_id = _span_actor(data, span)
             edge_x = xs[edge_id]
