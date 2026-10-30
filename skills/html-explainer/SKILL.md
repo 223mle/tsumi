@@ -63,7 +63,8 @@ python3 scripts/compose.py source.html figures.json --output rebuilt.html
 
 納品前に次を行う。検査が通っても、意味の正しさと読みやすさは保証されない。
 
-- 原資料と主体・条件・例外・数値・時点・確度・出典を照合する。
+- 原資料と主体・条件・例外・数値・時点・確度・出典を照合する。資料にない規則（承認の順番など）を図のために仮定したら、captionに「想定」と書き、本文の未確定事項にも挙げる。
+- `render.py` に `--text-out prose.txt` を付けて本文を取り出し、unslopの `find-ambiguous.py` を `prose.txt` にかける。
 - 2つの検査を実行し、スクリーンショットを実際に開く。
 
   ```sh

@@ -85,6 +85,11 @@ def _domain(spec: dict[str, Any], path: str) -> tuple[float, float]:
         _fail(f"{path}.ticks", "non-empty array required")
     prev = None
     for i, tick in enumerate(ticks):
+        if isinstance(tick, dict):
+            # {"value": 30, "label": "5/1"} names a tick, for dates or other non-numeric axes.
+            if set(tick) != {"value", "label"} or not isinstance(tick["label"], str) or not tick["label"].strip() or len(tick["label"]) > 10:
+                _fail(f"{path}.ticks[{i}]", "a number, or value and a label of at most 10 characters")
+            tick = tick["value"]
         val = _num(tick, f"{path}.ticks[{i}]")
         if not lo <= val <= hi or (prev is not None and val <= prev):
             _fail(f"{path}.ticks[{i}]", "ticks must be increasing and inside the domain")
@@ -212,6 +217,13 @@ def _scale(value: float, lo: float, hi: float, x0: float, width: float, log: boo
     return x0 + (value - lo) / (hi - lo) * width
 
 
+def _tick(tick: Any, unit: str) -> tuple[float, str]:
+    """A tick's value and its axis text."""
+    if isinstance(tick, dict):
+        return float(tick["value"]), tick["label"]
+    return float(tick), f"{tick:g}{unit}"
+
+
 def _svg_text(x: float, y: float, value: str, cls: str = "label", anchor: str = "start", key: str = "") -> str:
     return f'<text x="{x:.2f}" y="{y:.2f}" class="{cls}" text-anchor="{anchor}" data-label="true" data-key="{_esc(key)}">{_esc(value)}</text>'
 
@@ -239,9 +251,9 @@ def _timeline_svg(spec, variant, index, prefix):
         summary=variant.get('group_summaries',[g.get('summary','')for g in spec.get('groups',[])])[gi]
         if summary:out.append(_svg_wrapped_text(24,cy+(12 if gh<60 else 22),summary,'group-summary',f'group-summary-{gi}',9))
     for tick in spec['ticks']:
-        x=_scale(float(tick),lo,hi,x0,width)
-        out.append(f'<line x1="{x:.2f}" y1="48" x2="{x:.2f}" y2="{h-28}" class="axis-grid" data-key="tick-{tick}"/>')
-        out.append(_svg_text(x,h-9,f"{tick:g}{spec['unit']}",'axis-label','middle',f'tick-label-{tick}'))
+        value,text=_tick(tick,spec['unit']);x=_scale(value,lo,hi,x0,width)
+        out.append(f'<line x1="{x:.2f}" y1="48" x2="{x:.2f}" y2="{h-28}" class="axis-grid" data-key="tick-{value:g}"/>')
+        out.append(_svg_text(x,h-9,text,'axis-label','middle',f'tick-label-{value:g}'))
     for i,lane in enumerate(lanes):
         y=top+i*row_height
         out.append(_svg_wrapped_text(x0-12,y+15,lane['label'],'lane-label',f"lane-label-{lane['id']}",12 if grouped else 14,'end'))
@@ -309,9 +321,9 @@ def _threshold_svg(spec,prefix):
     lo,hi=float(spec['min']),float(spec['max']);x0,width=210.0,580.0;log=spec.get('scale')=='log';h=90+44*len(spec['rows'])
     out=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 {h}" role="img" aria-labelledby="{prefix}-title {prefix}-desc"><title id="{prefix}-title">値と閾値</title><desc id="{prefix}-desc">{_esc(spec["unit"])}の値を同じ軸で比較します。</desc>']
     for tick in spec['ticks']:
-        x=_scale(float(tick),lo,hi,x0,width,log)
-        out.append(f'<line x1="{x:.2f}" y1="42" x2="{x:.2f}" y2="{h-26}" class="axis-grid" data-key="tick-{tick}"/>')
-        out.append(_svg_text(x,h-9,f"{tick:g}{spec['unit']}",'axis-label','middle',f'tick-label-{tick}'))
+        value,text=_tick(tick,spec['unit']);x=_scale(value,lo,hi,x0,width,log)
+        out.append(f'<line x1="{x:.2f}" y1="42" x2="{x:.2f}" y2="{h-26}" class="axis-grid" data-key="tick-{value:g}"/>')
+        out.append(_svg_text(x,h-9,text,'axis-label','middle',f'tick-label-{value:g}'))
     thresholds=spec.get('thresholds',[]);limit=max(float(t['value'])for t in thresholds)if thresholds else None
     for i,row in enumerate(spec['rows']):
         y=53+i*44;x=_scale(float(row['value']),lo,hi,x0,width,log);tone=row.get('tone','blue')

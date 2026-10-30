@@ -163,7 +163,7 @@ def validate_network(spec: object) -> dict[str, Any]:
             ep = f"{path}.edges[{ei}]"
             if not isinstance(edge, dict):
                 _fail(ep, "must be an object")
-            if set(edge) - {"id", "from", "to", "label", "kind", "tone", "route", "label_side", "step", "text"}:
+            if set(edge) - {"id", "from", "to", "label", "kind", "tone", "route", "label_side", "step", "text", "optional"}:
                 _fail(ep, "unknown fields")
             _id(edge.get("id"), ep + ".id", edge_ids)
             source, target = edge.get("from"), edge.get("to")
@@ -175,6 +175,8 @@ def validate_network(spec: object) -> dict[str, Any]:
             if edge.get("kind") not in KINDS:
                 _fail(ep + ".kind", "must be request, file or conflict")
             _tone(edge.get("tone"), ep + ".tone", "blue")
+            if not isinstance(edge.get("optional", False), bool):
+                _fail(ep + ".optional", "must be true or false")
             if edge.get("route", "direct") not in ROUTES:
                 _fail(ep + ".route", f"must be one of {sorted(ROUTES)}")
             if edge.get("label_side", "middle") not in {"middle", "above", "below"}:
@@ -400,6 +402,9 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
             mark_parts.append(f'<g class="dg-mark dg-tone-{mark.get("tone", "red")}" data-key="{mkey}" transform="translate({mx:g},{top + 11:g})">'
                               f'<rect data-key="{mkey}:rect" x="{-mw / 2:g}" y="-11" width="{mw:g}" height="22" rx="11"/>'
                               f'<text data-key="{mkey}:label" data-label="true" text-anchor="middle" y="4">{_esc(mark["label"])}</text></g>')
+        # Marks are the first label boxes; edges must route around them as around nodes.
+        edge_obstacles = dict(obstacles)
+        edge_obstacles.update((f"mark:{mark['node']}", box) for mark, box in zip(variant.get("marks", []), label_boxes))
         for edge in variant["edges"]:
             sx, sy = positions[edge["from"]]; tx, ty = positions[edge["to"]]
             key = f"edge:{edge['id']}"; kind = edge["kind"]
@@ -409,16 +414,20 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
             route = edge.get("route", "direct")
             if route == "direct" and count:
                 route = "above" if count % 2 else "below"
-            endpoint_ids = {edge["from"], edge["to"]}
-            candidates = (["direct", "above", "below"] if route == "direct"
-                          else [route, "below" if route == "above" else "above"])
+            endpoint_ids = {edge["from"], edge["to"], f"mark:{edge['from']}", f"mark:{edge['to']}"}
+            if edge.get("route", "direct") != "direct":
+                # An explicitly requested side is kept; the layout widens instead, and fails loudly if it cannot.
+                candidates = [route]
+            else:
+                candidates = (["direct", "above", "below"] if route == "direct"
+                              else [route, "below" if route == "above" else "above"])
             words = _wrap(edge["label"]) if edge.get("label") else []
             requested_side = edge.get("label_side", "middle")
             label_sides = [requested_side] if requested_side != "middle" else ["middle", "above", "below"]
-            candidates += ["far-above", "far-below"]
+            candidates += [f"far-{route}"] if edge.get("route", "direct") != "direct" else ["far-above", "far-below"]
             choice = None
             for candidate in candidates:
-                if not _route_is_safe((sx, sy),(tx, ty),candidate,obstacles,endpoint_ids,height): continue
+                if not _route_is_safe((sx, sy),(tx, ty),candidate,edge_obstacles,endpoint_ids,height): continue
                 mx,my = _path_midpoint((sx, sy),(tx, ty),candidate)
                 if not words:
                     choice=(candidate,mx,my,0,None);break
@@ -431,7 +440,9 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
                     choice=(candidate,mx,my,offset,box);break
                 if choice:break
             if choice is None:
-                raise _NoRoute(f"network.variants[{vi}].edges[{edge['id']}]: no route and label slot fit; rearrange nodes or shorten the label")
+                raise _NoRoute(f"network.variants[{vi}].edges[{edge['id']}]: no route and label slot fit"
+                               + (f" on the requested side ({edge['route']})" if edge.get("route", "direct") != "direct" else "")
+                               + "; rearrange nodes, shorten the label or drop route")
             route,lx,ly,offset,box=choice
             if box: label_boxes.append(box)
             d=_path((sx, sy),(tx, ty),route);tone=edge.get("tone","blue")
@@ -446,7 +457,8 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> 
                 if words:
                     offset = offset or -22
             else:
-                parts.append(f'<path data-key="{_esc(key)}:path" data-flow="{kind}" class="dg-edge dg-tone-{_esc(tone)}{state}"{opacity} d="{d}" marker-end="url(#{vid}-arrow-{kind}-{tone})"/>')
+                optional = " dg-edge-optional" if edge.get("optional") else ""
+                parts.append(f'<path data-key="{_esc(key)}:path" data-flow="{kind}" class="dg-edge dg-tone-{_esc(tone)}{state}{optional}"{opacity} d="{d}" marker-end="url(#{vid}-arrow-{kind}-{tone})"/>')
             if not words:
                 continue
             tspans = "".join(

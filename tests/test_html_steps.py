@@ -319,5 +319,47 @@ class SliderTests(unittest.TestCase):
             render_diagram({**base, "initial": 1})
 
 
+class EvalThreeTests(unittest.TestCase):
+    def test_labelled_ticks(self):
+        from charts import render_chart
+        spec = {"type": "timeline", "min": 0, "max": 60, "unit": "日", "ticks": [0, {"value": 30, "label": "5/1"}, 60],
+                "lanes": [{"id": "a", "label": "支払い", "tone": "blue"}],
+                "variants": [{"label": "v", "segments": [{"id": "s", "lane": "a", "start": 0, "duration": 25, "label": "25日"}]}]}
+        svg = render_chart(spec, "t")[0]
+        self.assertIn(">5/1</text>", svg)
+        self.assertIn(">0日</text>", svg)
+        spec["ticks"][1] = {"value": 30}
+        with self.assertRaisesRegex(ValueError, "label"):
+            render_chart(spec, "t")
+
+    def base(self):
+        return {"type": "network", "columns": 3, "rows": 2,
+                "nodes": [{"id": "a", "label": "A", "column": 1, "row": 1}, {"id": "b", "label": "B", "column": 2, "row": 1},
+                          {"id": "c", "label": "C", "column": 3, "row": 1}]}
+
+    def test_requested_route_is_kept_or_refused(self):
+        spec = self.base()
+        spec["variants"] = [{"label": "v", "edges": [{"id": "e", "from": "a", "to": "b", "label": "戻す", "kind": "file", "route": "above"},
+                                                    {"id": "o", "from": "b", "to": "c", "label": "5万円以上なら", "kind": "request", "optional": True}]}]
+        svg = render_network(spec)[0]
+        d = re.search(r'data-key="edge:e:path"[^>]* d="([^"]+)"', svg).group(1)
+        ys = [float(v) for v in re.findall(r"-?\d+(?:\.\d+)?", d)[1::2]]
+        self.assertLess(min(ys), ys[0])  # bends above its start
+        self.assertIn("dg-edge-optional", svg)
+
+    def test_text_out_strips_markup(self):
+        doc = {"title": "題", "lead": "**強調**と[[TTL]]", "glossary": [{"term": "TTL", "definition": "有効期間"}],
+               "sections": [{"id": "s", "title": "節", "blocks": [{"type": "p", "text": "`code`と[リンク](https://example.com)"}]}]}
+        with TemporaryDirectory() as d:
+            src, out, txt = Path(d) / "in.json", Path(d) / "out.html", Path(d) / "p.txt"
+            src.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+            p = subprocess.run([sys.executable, str(SCRIPTS / "render.py"), str(src), "--output", str(out), "--text-out", str(txt)], capture_output=True, text=True)
+            self.assertEqual(p.returncode, 0, p.stderr)
+            text = txt.read_text(encoding="utf-8")
+        self.assertIn("強調とTTL", text)
+        self.assertIn("codeとリンク", text)
+        self.assertNotIn("https://", text)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -102,6 +102,18 @@ def check_diagram(bundle: object, where: str, seen: set[str], glossary: dict[str
     prose += [m.get("text", "") for p in bundle["panels"] for m in p["spec"].get("messages", []) + p["spec"].get("edges", [])]
     for text in filter(None, prose): check_inline(text, where, glossary)
 
+PROSE_KEYS = {"title", "lead", "takeaways", "text", "items", "paragraphs", "caption", "summary", "verdict", "notes", "definition", "callout"}
+
+def prose_strings(value: object, key: str = "") -> list[str]:
+    """Sentences a reader sees, in document order, without diagram labels."""
+    if isinstance(value, str):
+        return [value] if key in PROSE_KEYS and value.strip() else []
+    if isinstance(value, list):
+        return [t for item in value for t in prose_strings(item, key)]
+    if isinstance(value, dict):
+        return [t for k, v in value.items() for t in prose_strings(v, k if k in PROSE_KEYS or not isinstance(v, str) else k)]
+    return []
+
 def reading_minutes(body_html: str) -> int:
     """Estimate reading time from visible prose at about 500 Japanese characters a minute."""
     text = re.sub(r"<svg.*?</svg>|<template.*?</template>|<[^>]+>|\s", "", body_html, flags=re.S)
@@ -259,10 +271,14 @@ def render(doc: dict) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Render explainer JSON to portable HTML")
     ap.add_argument("input", type=Path); ap.add_argument("--output", type=Path, required=True)
+    ap.add_argument("--text-out", type=Path, help="also write the prose as plain text, for unslop's find-ambiguous.py")
     args = ap.parse_args()
     try:
         doc = validate(json.loads(args.input.read_text(encoding="utf-8")))
         output = render(doc)
+        if args.text_out:
+            plain = [re.sub(r"\*\*(.+?)\*\*|`([^`]+)`|\[\[([^\]|]+?)(?:\|[^\]]+)?\]\]|\[([^\]]+)\]\([^)]+\)", lambda m: next(g for g in m.groups() if g), t) for t in prose_strings(doc)]
+            args.text_out.write_text("\n\n".join(plain) + "\n", encoding="utf-8")
         args.output.parent.mkdir(parents=True, exist_ok=True)
         fd, temp_name = tempfile.mkstemp(prefix=f".{args.output.name}.", dir=args.output.parent)
         try:
