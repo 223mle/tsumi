@@ -235,5 +235,16 @@ class DocumentBlockTests(unittest.TestCase):
         self.assertEqual(html.count("data-diagram data-state"), 3)
 
 
+
+class ComposeLinkTests(unittest.TestCase):
+    def test_href_allowlist_rejects_obfuscated_schemes(self):
+        from compose import safe_href
+        for bad in ["java\tscript:alert(1)", " JavaScript:alert(1)", "data:text/html,x", "vbscript:x", "//evil.example"]:
+            with self.assertRaises(ValueError):
+                safe_href(bad)
+        for good in ["https://example.com/a", "#section", "notes.html", "mailto:a@example.com"]:
+            self.assertEqual(safe_href(good), good)
+
+
 if __name__ == "__main__":
     unittest.main()

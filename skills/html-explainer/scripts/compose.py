@@ -3,7 +3,15 @@ from __future__ import annotations
 from html.parser import HTMLParser
 from pathlib import Path
 import argparse, html, json, re
+from urllib.parse import urlparse
 from diagrams import render_diagram
+
+def safe_href(value):
+    """Allow only http(s), mailto and in-page or relative links; browsers ignore whitespace and control characters inside a scheme."""
+    norm=re.sub(r'[\x00-\x20\x7f]','',value or '')
+    p=urlparse(norm)
+    if p.scheme.lower() in {'http','https','mailto'} or (not p.scheme and not norm.startswith('//')):return norm
+    raise ValueError('source: unsafe link')
 
 ROOT=Path(__file__).resolve().parents[1]
 VOID={'br','hr','img','meta','link','input','source','wbr'}
@@ -50,7 +58,7 @@ def compose(source,manifest):
         attrs=[]
         for key,value in node.attrs.items():
             if key not in {'id','class','href','scope','colspan','rowspan','open','title','data-tip'}:continue
-            if key=='href' and re.match(r'(?i)\s*(?:javascript|data|vbscript):',value or ''):raise ValueError('source: unsafe link')
+            if key=='href':value=safe_href(value)
             attrs.append(f'{key}="{html.escape(value or "",quote=True)}"')
         if node.tag=='th' and 'scope' not in node.attrs:attrs.append('scope="col"')
         body=''.join(emit(c)for c in node.children)
