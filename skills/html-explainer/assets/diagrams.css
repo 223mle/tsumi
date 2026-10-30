@@ -46,7 +46,7 @@
 .dg-slider-track{flex:1;position:relative;min-width:140px;padding-bottom:18px}.dg-slider-track input{width:100%;margin:0}.dg-slider-ticks{position:absolute;left:0;right:0;bottom:0;height:16px;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}.dg-slider-ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}.dg-slider-ticks span:first-child{transform:none;margin-left:-9px}.dg-slider-ticks span:last-child{transform:translateX(-100%);margin-left:9px}
 @media(max-width:600px){.dg-slider{flex-wrap:wrap;gap:6px 10px}.dg-slider-track{order:3;flex-basis:100%}}
 .dg-narrow .dg-scroll>svg.dg-sequence{min-width:0}
-.dg-narrow .dg-sequence .dg-actor-label{font-size:12px}
+.dg-narrow .dg-sequence .dg-actor-label{font-size:13px}
 /* Pressed toggles keep their label; the state shows as a filled button with a check. */
 .dg-play[aria-pressed=true],.dg-fit-toggle[aria-pressed=true],.dg-grid-toggle[aria-pressed=true],.dg-step-nav [data-autoplay][aria-pressed=true]{background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent);border-color:var(--accent)}
 .dg-play[aria-pressed=true]::before,.dg-fit-toggle[aria-pressed=true]::before,.dg-grid-toggle[aria-pressed=true]::before,.dg-step-nav [data-autoplay][aria-pressed=true]::before{content:'✓ '}
@@ -60,7 +60,7 @@
 .dg-scroll .marker-blue{stroke:var(--diagram-blue)}.dg-scroll .marker-label-blue{fill:var(--diagram-blue)}.dg-scroll .marker-teal{stroke:var(--diagram-teal)}.dg-scroll .marker-label-teal{fill:var(--diagram-teal)}.dg-scroll .marker-violet{stroke:var(--diagram-violet)}.dg-scroll .marker-label-violet{fill:var(--diagram-violet)}.dg-scroll .marker-amber{stroke:var(--diagram-amber)}.dg-scroll .marker-label-amber{fill:var(--diagram-amber)}.dg-scroll .marker-rose{stroke:var(--diagram-rose)}.dg-scroll .marker-label-rose{fill:var(--diagram-rose)}.dg-scroll .marker-red{stroke:var(--diagram-red)}.dg-scroll .marker-label-red{fill:var(--diagram-red)}
 .dg-narrow .dg-scroll text{font-size:13.5px}.dg-narrow .dg-scroll .axis-label,.dg-narrow .dg-scroll .marker-label,.dg-narrow .dg-scroll .band-label,.dg-narrow .dg-scroll .external-label{font-size:12.5px}
 :root[data-theme=dark] .dg-line .line-band{fill:color-mix(in srgb,var(--accent) 16%,transparent)}@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .dg-line .line-band{fill:color-mix(in srgb,var(--accent) 16%,transparent)}}
-.dg-narrow .dg-network .dg-edge-label text{font-size:12px}
+.dg-narrow .dg-network .dg-edge-label text{font-size:13px}
 .dg-line .line-series-dots{stroke:none}.dg-line .line-dot{fill:var(--tone);stroke:var(--surface);stroke-width:1.5}
 .dg-line .series-key-dots{stroke-dasharray:0 8!important;stroke-width:7;stroke-linecap:round}
 /* Small multiples use the phone layout where a figure has one, so their text is not shrunk to a few pixels. */

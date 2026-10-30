@@ -331,10 +331,15 @@ def _route_is_safe(source: tuple[float, float], target: tuple[float, float], rou
     return True
 
 
+def _unit_px(canvas_width: float) -> float:
+    """Width of one text unit in an edge label: 12px text wide, 13px on the phone layout (shown at 0.9 scale)."""
+    return 6.7 if canvas_width == NARROW_WIDTH else 6.2
+
+
 def _label_is_safe(midpoint: tuple[float, float], words: list[str], side: str,
                    obstacles: dict[str, tuple[float, float, float, float]], endpoint_ids: set[str],
                    canvas_height: float = 380, canvas_width: float = 960) -> bool:
-    width = max(_visual_len(word) for word in words) * 6.2 + 8
+    width = max(_visual_len(word) for word in words) * _unit_px(canvas_width) + 8
     height = 20 * len(words) + 4
     offset = -15 if side == "above" else 15 if side == "below" else 0
     left, right = midpoint[0] - width / 2, midpoint[0] + width / 2
@@ -449,7 +454,7 @@ def _port_shifts(edges, positions):
 
 def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, height, canvas, label_boxes, placed_paths, route, vertical=False):
     """A free spot for an edge label near the edge's middle, or None."""
-    half = (max(_visual_len(word) for word in words) * 6.2 + 8) / 2 + 6
+    half = (max(_visual_len(word) for word in words) * _unit_px(canvas) + 8) / 2 + 6
     # On the phone layout a label may also sit beside a vertical line instead of on it.
     # Beside the line it may also slide a little up or down, clear of a mark on the box below, before it wraps.
     beside = [("middle", mx + sign * half, dy) for dy in (0, -8, 8) for sign in (1, -1)] if not margins else []
@@ -645,7 +650,7 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
                 f'<tspan x="0" dy="{20 if j else 0}">{_esc(word)}</tspan>'
                 for j, word in enumerate(words)
             )
-            label_width = _visual_len(max(words, key=_visual_len)) * 6.2 + 8
+            label_width = _visual_len(max(words, key=_visual_len)) * _unit_px(canvas) + 8
             parts.append(
                 f'<g data-key="{_esc(key)}:label" class="dg-edge-label{state}" data-label="true"{opacity} '
                 f'transform="translate({lx:g},{ly+offset:g})"><rect x="{-label_width/2:g}" '

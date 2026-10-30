@@ -186,7 +186,7 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
         y += ROW_GAP + (22 if self_call else 0)
     height = y + 4
     # Actor names are 14px wide-screen and 12px on the phone layout (see diagrams.css).
-    actor_lines = {a["id"]: _wrap(a["label"], int((min(gap, 200) - 20) / 7.2) if not narrow else int((gap - 10) / 6.2), f"sequence.actors[{a['id']}].label") for a in data["actors"]}
+    actor_lines = {a["id"]: _wrap(a["label"], int((min(gap, 200) - 20) / 7.2) if not narrow else int((gap - 10) / 6.7), f"sequence.actors[{a['id']}].label") for a in data["actors"]}
     out = []
     for step in range(len(msgs)):
         vid = f"{safe}-s{step}"
