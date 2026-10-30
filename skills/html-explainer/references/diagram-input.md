@@ -87,7 +87,7 @@ bundleの `id` は、文書内の節の `id`、他の図の `id` と重ならな
 
 未測定の工程は `{"id":"classify","lane":"work","start":4,"unknown":true,"label":"分類時間は未計測"}` とする。`duration`との同時指定は拒否され、量を表す棒は描かれない。既知工程だけで完了時刻を決めない。
 
-timelineのspec（bundleではない）に `baseline: true` を書くと、2番目以降のvariantに最初のvariantの区間を点線で重ね、何が減ったかを示す。
+timelineのspec（bundleではない）に `baseline: true` を書くと、2番目以降のvariantに最初のvariantの区間を点線で重ね、何が減ったかを示す。そのvariantで消えた区間の点線には、入る幅があれば「最初のvariantのlabel＋長さ」（例: 導入前 110ms）を書く。
 
 variantの `segments` は空でもよい。比較対象に存在しない工程は省く。
 

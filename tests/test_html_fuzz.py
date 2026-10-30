@@ -137,6 +137,15 @@ class FuzzTests(unittest.TestCase):
         bundle["legend"].append({"label": "読み出し", "tone": "violet"})
         render_diagram(bundle)
 
+    def test_a_removed_step_keeps_a_labelled_outline(self):
+        spec = {"type": "timeline", "min": 0, "max": 130, "unit": "ms", "ticks": [0, 120], "baseline": True,
+                "lanes": [{"id": "app", "label": "API"}, {"id": "sql", "label": "DB"}],
+                "variants": [{"label": "導入前", "segments": [{"id": "q", "lane": "sql", "start": 5, "duration": 110, "label": "110ms"}]},
+                             {"label": "ヒット", "segments": [{"id": "p", "lane": "app", "start": 0, "duration": 2, "label": "2ms"}]}]}
+        before, after = render_chart(spec, "t")
+        self.assertNotIn("ghost-label", before)
+        self.assertIn(">導入前 110ms<", after)
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):

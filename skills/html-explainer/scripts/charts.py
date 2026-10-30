@@ -351,6 +351,11 @@ def _timeline_svg(spec, variant, index, prefix, narrow=False):
             li=next(i for i,lane in enumerate(lanes)if lane['id']==seg['lane']);y=top+li*row_height
             gx=_scale(float(seg['start']),lo,hi,x0,width);gw=float(seg['duration'])/(hi-lo)*width
             out.append(f'<rect x="{gx:.2f}" y="{y}" width="{gw:.2f}" height="23" rx="3" class="bar-ghost" data-key="ghost-{_esc(seg["id"])}"/>')
+            if seg['id'] not in {o['id'] for o in variant.get('segments',[])}:
+                # The step is gone in this state; say what the outline was, so the saving reads without toggling back.
+                text=f"{spec['variants'][0]['label']} {float(seg['duration']):g}{spec['unit']}"
+                if gw>=_text_width(text)+16:
+                    out.append(_svg_text(gx+gw/2,y+16,text,'ghost-label','middle',f"ghost-label-{seg['id']}"))
             ghosts.setdefault(seg['lane'],[]).append((gx,gx+gw))
 
     def place_beside(seg,left_edge,right_edge,y,label):

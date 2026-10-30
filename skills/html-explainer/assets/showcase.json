@@ -62,16 +62,16 @@
           "bundle": {
             "id": "hit-rate",
             "title": "ヒット率を変えると、平均応答時間はどう変わるか",
-            "caption": "平均応答 ≒ 120ms ×（1 − ヒット率）＋ 8ms × ヒット率 で計算した説明用の値です。",
+            "caption": "平均応答 ≒ 123ms ×（1 − ヒット率）＋ 8ms × ヒット率 で計算した説明用の値です。ミスのときはキャッシュを探す3ms分だけ導入前より遅くなる、と仮定しています。",
             "status": "illustrative",
             "mode": "slider",
             "slider": "ヒット率",
             "initial": 4,
             "notes": [
-              "ヒットしないと、毎回データベースを読むため導入前と同じ120msになります（実際はキャッシュを探す分だけ少し遅くなります）。",
-              "ヒット率25%では、平均応答は約92msです。",
-              "ヒット率50%では、平均応答は約64msです。",
-              "ヒット率75%では、平均応答は約36msです。",
+              "ヒットしないと、毎回データベースを読むうえにキャッシュを探す分が加わり、導入前より遅い約123msになります。",
+              "ヒット率25%では、平均応答は約94msです。",
+              "ヒット率50%では、平均応答は約66msです。",
+              "ヒット率75%では、平均応答は約37msです。",
               "ヒット率94%では、平均応答は約15msです。",
               "すべてヒットすると、毎回キャッシュから返るため8msになります。"
             ],
@@ -106,8 +106,8 @@
                           "id": "avg",
                           "lane": "avg",
                           "start": 0,
-                          "duration": 120,
-                          "label": "120ms"
+                          "duration": 123,
+                          "label": "123ms"
                         }
                       ],
                       "markers": [
@@ -126,8 +126,8 @@
                           "id": "avg",
                           "lane": "avg",
                           "start": 0,
-                          "duration": 92,
-                          "label": "92ms"
+                          "duration": 94,
+                          "label": "94ms"
                         }
                       ],
                       "markers": [
@@ -146,8 +146,8 @@
                           "id": "avg",
                           "lane": "avg",
                           "start": 0,
-                          "duration": 64,
-                          "label": "64ms"
+                          "duration": 66,
+                          "label": "66ms"
                         }
                       ],
                       "markers": [
@@ -166,8 +166,8 @@
                           "id": "avg",
                           "lane": "avg",
                           "start": 0,
-                          "duration": 36,
-                          "label": "36ms"
+                          "duration": 37,
+                          "label": "37ms"
                         }
                       ],
                       "markers": [
@@ -321,7 +321,7 @@
                       "to": "browser",
                       "label": "商品ページ",
                       "kind": "reply",
-                      "text": "最後にブラウザーへ応答します。2回目以降は手順2で答えが返ります。"
+                      "text": "最後にブラウザーへ応答します。2回目以降は手順2で答えが返ります（次の節の図）。"
                     }
                   ],
                   "spans": [
@@ -444,6 +444,14 @@
                           "label": "③ 読む",
                           "kind": "file",
                           "tone": "amber"
+                        },
+                        {
+                          "id": "reply",
+                          "from": "api",
+                          "to": "browser",
+                          "label": "④ 返す",
+                          "kind": "file",
+                          "tone": "teal"
                         }
                       ],
                       "marks": [
@@ -472,9 +480,17 @@
                         },
                         {
                           "id": "lookup",
-                          "from": "api",
-                          "to": "cache",
+                          "from": "cache",
+                          "to": "api",
                           "label": "② 取り出す",
+                          "kind": "file",
+                          "tone": "teal"
+                        },
+                        {
+                          "id": "reply",
+                          "from": "api",
+                          "to": "browser",
+                          "label": "③ 返す",
                           "kind": "file",
                           "tone": "teal"
                         }
@@ -630,7 +646,8 @@
                         }
                       ]
                     }
-                  ]
+                  ],
+                  "baseline": true
                 }
               }
             ]
