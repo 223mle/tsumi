@@ -45,3 +45,5 @@
 .dg-figure.dg-grid .dg-switch,.dg-figure.dg-grid .dg-fit-toggle{display:none!important}.dg-figure.dg-grid .dg-panel::before{display:none}
 .dg-slider-track{flex:1;position:relative;min-width:140px;padding-bottom:18px}.dg-slider-track input{width:100%;margin:0}.dg-slider-ticks{position:absolute;left:0;right:0;bottom:0;height:16px;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}.dg-slider-ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}.dg-slider-ticks span:first-child{transform:none;margin-left:-9px}.dg-slider-ticks span:last-child{transform:translateX(-100%);margin-left:9px}
 @media(max-width:600px){.dg-slider{flex-wrap:wrap;gap:6px 10px}.dg-slider-track{order:3;flex-basis:100%}}
+.dg-narrow .dg-scroll>svg.dg-sequence{min-width:0}
+.dg-narrow .dg-sequence .dg-actor-label{font-size:12px}

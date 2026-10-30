@@ -102,9 +102,9 @@ def render_diagram(bundle,prose=html.escape):
         spec=panels[i]['spec']
         narrow=None
         if has_narrow_layout(spec): narrow=render_chart(spec,f"{bundle['id']}-p{i}n",narrow=True)
-        elif spec.get('type')=='network':
-            try: narrow=render_network(spec,f"{bundle['id']}-p{i}n",narrow=True)
-            except ValueError: narrow=None  # some edge does not fit the phone layout; keep scrolling the wide one
+        elif spec.get('type') in ('network','sequence'):
+            try: narrow=RENDERERS[spec['type']](spec,f"{bundle['id']}-p{i}n",narrow=True)
+            except ValueError: narrow=None  # something does not fit the phone layout; keep scrolling the wide one
         layouts=[(' dg-wide',scenes),(' dg-narrow',narrow)] if narrow else [('',scenes)]
         for cls,svgs in layouts:
             static=''.join(f'<div class="dg-static-scene" data-state="{j}"><p class="dg-scene-name">{_scene_name(labels,steps,j,len(svgs),notes,prose)}</p><div class="dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}">{svg}</div></div>' for j,svg in enumerate(svgs))

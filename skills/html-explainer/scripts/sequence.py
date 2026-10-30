@@ -120,25 +120,38 @@ def _span_actor(spec: dict[str, Any], span: dict[str, Any]) -> str:
     return max(involved, key=order.index)
 
 
-def _width(spec: dict[str, Any]) -> float:
+NARROW_WIDTH = 420
+
+
+def _width(spec: dict[str, Any], narrow: bool = False) -> float:
     """Few actors get a narrower canvas, so columns stay close and the text stays large on a phone."""
+    if narrow:
+        return float(NARROW_WIDTH)
     return float(min(WIDTH, 260 * (len(spec["actors"]) - 1) + 220 + (50 if spec.get("spans") else 0)))
 
 
-def _columns(spec: dict[str, Any]) -> tuple[dict[str, float], float, float]:
+def _columns(spec: dict[str, Any], narrow: bool = False) -> tuple[dict[str, float], float, float]:
     count = len(spec["actors"])
-    left = 110.0
-    right = 160.0 if any(_span_actor(spec, sp) == spec["actors"][-1]["id"] for sp in spec.get("spans", [])) else 110.0
-    gap = (_width(spec) - left - right) / (count - 1)
+    left = 56.0 if narrow else 110.0
+    span_right = any(_span_actor(spec, sp) == spec["actors"][-1]["id"] for sp in spec.get("spans", []))
+    right = (128.0 if span_right else 56.0) if narrow else (160.0 if span_right else 110.0)
+    gap = (_width(spec, narrow) - left - right) / (count - 1)
     return ({a["id"]: left + i * gap for i, a in enumerate(spec["actors"])}, gap, left)
 
 
-def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
-    """Return one SVG per message: earlier messages solid, the current one marked, later ones faint."""
+def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False) -> list[str]:
+    """Return one SVG per message: earlier messages solid, the current one marked, later ones faint.
+
+    With `narrow`, lay out for a phone (up to four actors); labels that do not fit raise ValueError.
+    """
     data = validate_sequence(spec)
+    if narrow and len(data["actors"]) > 4:
+        raise ValueError("sequence: no phone layout for more than four actors")
     safe = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
-    xs, gap, left = _columns(data)
-    canvas = _width(data)
+    xs, gap, left = _columns(data, narrow)
+    canvas = _width(data, narrow)
+    max_lines = 3 if narrow else 2
+    min_width = "" if narrow else f' style="--min-width:{canvas * 0.72:.0f}px"'
     msgs = data["messages"]
     label_units = max(10, int((gap - 28) / 6.6))
     rows: list[float] = []
@@ -148,20 +161,21 @@ def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
         self_call = msg["from"] == msg["to"]
         span_cols = 1 if self_call else round(abs(xs[msg["to"]] - xs[msg["from"]]) / gap)
         units = label_units if self_call else max(label_units, int((abs(xs[msg["to"]] - xs[msg["from"]]) - 28) / 6.6))
-        lines = _wrap(msg["label"], units, f"sequence.messages[{i}].label")
+        lines = _wrap(msg["label"], units, f"sequence.messages[{i}].label", max_lines)
         extra = 18 * (len(lines) - 1)
         y += extra
         rows.append(y)
         layouts.append((lines, self_call, span_cols))
         y += ROW_GAP + (22 if self_call else 0)
     height = y + 4
-    actor_lines = {a["id"]: _wrap(a["label"], int((min(gap, 200) - 20) / 7.2), f"sequence.actors[{a['id']}].label") for a in data["actors"]}
+    # Actor names are 14px wide-screen and 12px on the phone layout (see diagrams.css).
+    actor_lines = {a["id"]: _wrap(a["label"], int((min(gap, 200) - 20) / 7.2) if not narrow else int((gap - 10) / 6.2), f"sequence.actors[{a['id']}].label") for a in data["actors"]}
     out = []
     for step in range(len(msgs)):
         vid = f"{safe}-s{step}"
         cur = msgs[step]
         title = f"手順{step + 1}: {plain(cur['label'])}"
-        parts = [f'<svg class="dg-sequence" viewBox="0 0 {canvas:g} {height:g}" role="img" style="--min-width:{canvas * 0.72:.0f}px" aria-labelledby="{vid}-title {vid}-desc">',
+        parts = [f'<svg class="dg-sequence" viewBox="0 0 {canvas:g} {height:g}" role="img"{min_width} aria-labelledby="{vid}-title {vid}-desc">',
                  f'<title id="{vid}-title">{_esc(title)}</title><desc id="{vid}-desc">{_esc(cur.get("text", cur["label"]))}</desc><defs>']
         for tone in sorted(TONES):
             parts.append(f'<marker id="{vid}-solid-{tone}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path class="dg-arrow-head dg-tone-{tone}" d="M0 0L10 5L0 10Z"/></marker>')
@@ -175,7 +189,7 @@ def render_sequence(spec: object, prefix: str = "sequence") -> list[str]:
             lines = actor_lines[actor["id"]]
             ty = HEAD_Y + HEAD_H / 2 - (len(lines) - 1) * 8
             tspans = "".join(f'<tspan x="{x:g}" dy="{0 if j == 0 else 16}">{_esc(line)}</tspan>' for j, line in enumerate(lines))
-            w = min(gap - 16, 176)
+            w = min(gap - (8 if narrow else 16), 176)
             parts.append(f'<g class="dg-actor dg-tone-{actor.get("tone", "slate")}{state}" data-key="{key}" data-ref="{_esc(plain(actor["label"]))}">'
                          f'<line class="dg-lifeline" data-key="{key}:life" x1="{x:g}" y1="{HEAD_Y + HEAD_H:g}" x2="{x:g}" y2="{height - 8:g}"/>'
                          f'<rect data-key="{key}:box" x="{x - w / 2:g}" y="{HEAD_Y}" width="{w:g}" height="{HEAD_H}" rx="8"/>'
