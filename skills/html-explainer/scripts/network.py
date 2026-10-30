@@ -358,7 +358,7 @@ def _layout_narrow(spec: dict[str, Any], extra_gap: float = 0.0) -> tuple[dict[s
         raise ValueError("network: no phone layout for three rows; put the main path on two rows to get one")
     xs = [NARROW_WIDTH / 2] if len(rows) == 1 else [NARROW_WIDTH / 2 - 105, NARROW_WIDTH / 2 + 105]
     top = 84.0 if spec.get("boundaries") else 64.0
-    gap = (164.0 if any(v.get("marks") for v in spec["variants"]) else 132.0) + extra_gap  # marks sit where vertical edges arrive
+    gap = 132.0 + extra_gap  # render_network retries with more room when a label or mark does not fit
     note_lines = max((len(_wrap(v["note"], 60)) for v in spec["variants"] if v.get("note")), default=0)
     height = top + 64 + (len(cols) - 1) * gap + (20 + 16 * (note_lines - 1) if note_lines else 0)
     return ({n["id"]: (xs[rows.index(n["row"])], top + cols.index(n["column"]) * gap) for n in spec["nodes"]},
@@ -374,7 +374,7 @@ def render_network(spec: object, prefix: str = "diagram", narrow: bool = False) 
     data = validate_network(spec)
     if narrow:
         # Taller row gaps give long labels and detours more room before the phone layout gives up.
-        attempts = [(extra, beside, strict) for strict in (True, False) for beside in (True, False) for extra in (0.0, 48.0, 96.0)]
+        attempts = [(extra, beside, strict) for strict in (True, False) for extra in (0.0, 48.0, 96.0) for beside in (True, False)]  # the shortest figure that fits
         for n, (extra, beside, strict) in enumerate(attempts):
             try:
                 return _render(data, prefix, None, extra, beside, strict)
