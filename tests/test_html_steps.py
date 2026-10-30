@@ -561,6 +561,14 @@ class TableCellTests(unittest.TestCase):
         fig["rows"] = [["A", "安い"]]
         render.validate_figure(fig, "f", set(), set())
 
+    def test_a_given_plan_has_its_own_status(self):
+        sys.path.insert(0, str(Path(__file__).parents[1] / "skills/html-explainer/scripts"))
+        import render
+        fig = {"id": "t", "kind": "table", "title": "手順", "summary": "手順。", "caption": "依頼の手順。", "status": "planned",
+               "columns": ["日時", "作業"], "rows": [["金曜18時", "読み取り専用にする"]]}
+        render.validate_figure(fig, "f", set(), set())
+        self.assertIn("予定", render.status_badge("planned", "t"))
+
 
 if __name__ == "__main__":
     unittest.main()

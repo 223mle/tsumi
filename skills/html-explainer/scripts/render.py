@@ -11,11 +11,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from blocks import validate_glossary, validate_block, block_html, check_inline, inline  # noqa: E402
 from diagrams import render_diagram  # noqa: E402
 from jawrap import strip_markup  # noqa: E402
-STATUSES = {"measured", "inferred", "proposed", "unknown", "illustrative"}
+STATUSES = {"measured", "inferred", "planned", "proposed", "unknown", "illustrative"}
 KINDS = {"flow", "bars", "timeline", "table"}
-STATUS_LABELS = {"measured": "計測値", "inferred": "推定", "proposed": "提案", "unknown": "未確定", "illustrative": "説明用"}
+STATUS_LABELS = {"measured": "計測値", "inferred": "推定", "planned": "予定", "proposed": "提案", "unknown": "未確定", "illustrative": "説明用"}
 STATUS_HELP = {"measured": "実際に測った値です。", "inferred": "根拠となる資料や条件から計算・推定した値です。", "proposed": "これから行う案で、まだ実施していません。",
-               "unknown": "まだ決まっていない、または確かめていない部分です。", "illustrative": "仕組みを説明するための例で、実際の値ではありません。", "code": "コードから読み取った内容です。"}
+               "unknown": "まだ決まっていない、または確かめていない部分です。", "planned": "決まっている予定や手順で、まだ実施していません。", "illustrative": "仕組みを説明するための例で、実際の値ではありません。", "code": "コードから読み取った内容です。"}
 
 _STATUS_TIPS = itertools.count(1)
 

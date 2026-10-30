@@ -21,7 +21,7 @@ bundleの `id` は、文書内の節の `id`、他の図の `id` と重ならな
 }
 ```
 
-`spec`には下記の種類を指定する。全panelのvariant数は同じにする。1つだけの静的panelは比較図に併用できる。`status`は `measured` / `inferred` / `proposed` / `unknown` / `illustrative` / `code`。根拠と測定条件はcaptionに書く。
+`spec`には下記の種類を指定する。全panelのvariant数は同じにする。1つだけの静的panelは比較図に併用できる。`status`は `measured` / `inferred` / `planned` / `proposed` / `unknown` / `illustrative` / `code`。根拠と測定条件はcaptionに書く。
 
 `source_ids` には、文書の `sources` の `id` を並べる。`status` が `measured` か `inferred` の図では必須で、captionの後ろに出典へのリンクが付く。`legend` は図全体で1つなので、同じ色を全variantで同じ意味に使う。
 

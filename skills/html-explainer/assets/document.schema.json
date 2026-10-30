@@ -170,6 +170,7 @@
           "enum": [
             "measured",
             "inferred",
+            "planned",
             "proposed",
             "unknown",
             "illustrative"
