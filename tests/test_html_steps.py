@@ -416,5 +416,19 @@ class PhoneNetworkTests(unittest.TestCase):
         self.assertNotIn("dg-narrow", html)
 
 
+class PhoneSequenceTests(unittest.TestCase):
+    def test_up_to_four_actors_get_a_phone_layout(self):
+        svg = render_sequence(sequence_spec(), "s", narrow=True)[0]
+        self.assertIn('viewBox="0 0 420 ', svg)
+        self.assertNotIn("--min-width", svg)
+        html = render_diagram({"id": "s", "title": "t", "caption": "c", "mode": "steps", "panels": [{"spec": sequence_spec()}]})
+        self.assertIn("dg-panel dg-narrow", html)
+
+    def test_five_actors_keep_scrolling(self):
+        spec = sequence_spec(actors=[{"id": x, "label": x.upper()} for x in "abcde"])
+        with self.assertRaises(ValueError):
+            render_sequence(spec, "s", narrow=True)
+
+
 if __name__ == "__main__":
     unittest.main()
