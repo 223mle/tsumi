@@ -361,5 +361,34 @@ class EvalThreeTests(unittest.TestCase):
         self.assertNotIn("https://", text)
 
 
+class NarrowLayoutTests(unittest.TestCase):
+    def spec(self):
+        return {"type": "timeline", "min": 0, "max": 91, "unit": "日", "ticks": [0, 30, 61, 91],
+                "lanes": [{"id": "a", "label": "申請から振込まで", "tone": "blue"}],
+                "variants": [{"label": "v", "segments": [{"id": "s", "lane": "a", "start": 30, "duration": 55, "label": "55日"}],
+                              "markers": [{"id": "c1", "value": 30, "label": "4月末 締め"}, {"id": "p1", "value": 55, "label": "5/25 振込"},
+                                          {"id": "c2", "value": 61, "label": "5月末 締め"}, {"id": "p2", "value": 85, "label": "6/25 振込"}]}]}
+
+    def test_charts_get_a_phone_layout(self):
+        html = render_diagram({"id": "t", "title": "t", "caption": "c", "panels": [{"spec": self.spec()}]})
+        self.assertIn('class="dg-panel dg-wide"', html)
+        self.assertIn('class="dg-panel dg-narrow"', html)
+        self.assertIn('viewBox="0 0 420 ', html)
+
+    def test_marker_labels_never_share_a_row_when_they_would_touch(self):
+        from charts import _marker_layout, NARROW_WIDTH
+        layout, rows = _marker_layout(self.spec()["variants"][0]["markers"], 0, 91, 90, NARROW_WIDTH - 106, NARROW_WIDTH)
+        self.assertGreaterEqual(rows, 3)
+        spans = {}
+        for mid, (x, anchor, row) in layout.items():
+            label = next(m["label"] for m in self.spec()["variants"][0]["markers"] if m["id"] == mid)
+            w = sum(12 if ord(c) > 255 else 7 for c in label)
+            spans.setdefault(row, []).append((x + 5, x + 5 + w) if anchor == "start" else (x - 5 - w, x - 5))
+        for row, items in spans.items():
+            items.sort()
+            for (a, b), (c, d) in zip(items, items[1:]):
+                self.assertLessEqual(b + 8, c)
+
+
 if __name__ == "__main__":
     unittest.main()

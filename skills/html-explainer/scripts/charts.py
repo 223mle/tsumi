@@ -224,6 +224,39 @@ def _tick(tick: Any, unit: str) -> tuple[float, str]:
     return float(tick), f"{tick:g}{unit}"
 
 
+def _tick_stride(spec: dict[str, Any], lo: float, hi: float, width: float, log: bool = False) -> int:
+    """Label every n-th tick so that tick texts never touch; gridlines stay on every tick."""
+    texts=[_tick(t,spec['unit']) for t in spec['ticks']]
+    xs=[_scale(v,lo,hi,0,width,log) for v,_ in texts]
+    need=max(sum(12 if ord(c)>255 else 7 for c in t) for _,t in texts)+8
+    gap=min((b-a for a,b in zip(xs,xs[1:])),default=need)
+    return max(1,math.ceil(need/max(gap,1)))
+
+
+def _text_width(text: str) -> float:
+    return sum(12 if ord(c) > 255 else 7 for c in text)
+
+
+def _marker_layout(markers, lo, hi, x0, width, W, log=False):
+    """Place marker labels on as few rows as needed so that no two labels touch."""
+    rows, placed = [], []
+    for m in sorted(markers, key=lambda m: float(m['value'])):
+        x = _scale(float(m['value']), lo, hi, x0, width, log); tw = _text_width(m['label'])
+        anchor, l, r = ('start', x + 5, x + 5 + tw) if x + 5 + tw <= W - 4 else ('end', x - 5 - tw, x - 5)
+        row = next((i for i, used in enumerate(rows) if all(r + 8 <= a or l - 8 >= b for a, b in used)), len(rows))
+        if row == len(rows): rows.append([])
+        rows[row].append((l, r)); placed.append((m['id'], x, anchor, row))
+    return {mid: (x, anchor, row) for mid, x, anchor, row in placed}, len(rows)
+
+
+def _axis_label(x: float, y: float, text: str, W: float, key: str) -> str:
+    """A tick label centred on its tick, pulled inside the canvas at either end."""
+    tw = _text_width(text)
+    if x + tw / 2 > W - 2: return _svg_text(W - 2, y, text, 'axis-label', 'end', key)
+    if x - tw / 2 < 2: return _svg_text(2, y, text, 'axis-label', 'start', key)
+    return _svg_text(x, y, text, 'axis-label', 'middle', key)
+
+
 def _svg_text(x: float, y: float, value: str, cls: str = "label", anchor: str = "start", key: str = "") -> str:
     return f'<text x="{x:.2f}" y="{y:.2f}" class="{cls}" text-anchor="{anchor}" data-label="true" data-key="{_esc(key)}">{_esc(value)}</text>'
 
@@ -236,12 +269,23 @@ def _svg_wrapped_text(x, y, value, cls, key, max_chars=18, anchor="start"):
     return f'<text transform="translate({x:.2f},{y:.2f})" class="{cls}" text-anchor="{anchor}" data-label="true" data-key="{_esc(key)}">{spans}</text>'
 
 
-def _timeline_svg(spec, variant, index, prefix):
+NARROW_WIDTH=420  # viewBox width of the phone layout: about 0.8x scale at 340px, so 13px text stays near 11px
+
+
+def _timeline_svg(spec, variant, index, prefix, narrow=False):
     lo,hi=float(spec["min"]),float(spec["max"])
-    grouped=bool(spec.get("groups"));x0=330.0 if grouped else 200.0;width=800-x0
-    lanes=spec["lanes"];row_height=38;top=58;h=top+len(lanes)*row_height+34
+    grouped=bool(spec.get("groups"))
+    if narrow:
+        W=NARROW_WIDTH;x0=90.0;width=W-x0-16;limit=W-6;lane_chars=5
+    else:
+        W=960;x0=330.0 if grouped else 200.0;width=800-x0;limit=940;lane_chars=12 if grouped else 14
+    ext_x=W-144
+    # Every variant shares the label rows so the canvas height stays fixed while switching.
+    label_rows=max([_marker_layout(v.get('markers',[]),lo,hi,x0,width,W)[1] for v in spec['variants']]+[2])
+    lift=(label_rows-2)*17
+    lanes=spec["lanes"];row_height=38;top=58+lift;h=top+len(lanes)*row_height+34
     title=variant["label"];desc=variant.get("summary","同じ時間軸で処理の重なりを比較する図")
-    out=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 {h}" role="img" aria-labelledby="{prefix}-{index}-title {prefix}-{index}-desc"><title id="{prefix}-{index}-title">{_esc(title)}</title><desc id="{prefix}-{index}-desc">{_esc(desc)}</desc>']
+    out=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {h}" role="img" aria-labelledby="{prefix}-{index}-title {prefix}-{index}-desc"><title id="{prefix}-{index}-title">{_esc(title)}</title><desc id="{prefix}-{index}-desc">{_esc(desc)}</desc>']
     for gi,group in enumerate(spec.get("groups", [])):
         members=[i for i,lane in enumerate(lanes)if lane['id'] in group['lane_ids']]
         gy=top+min(members)*row_height-7;gh=(max(members)-min(members)+1)*row_height-1;tone=group.get('tone','slate');cy=gy+gh/2
@@ -250,13 +294,16 @@ def _timeline_svg(spec, variant, index, prefix):
         out.append(_svg_wrapped_text(24,cy-13,group['label'],'group-label',f'group-label-{gi}',9))
         summary=variant.get('group_summaries',[g.get('summary','')for g in spec.get('groups',[])])[gi]
         if summary:out.append(_svg_wrapped_text(24,cy+(12 if gh<60 else 22),summary,'group-summary',f'group-summary-{gi}',9))
-    for tick in spec['ticks']:
+    every=_tick_stride(spec,lo,hi,width)
+    values=[_tick(t,spec['unit'])[0] for t in spec['ticks']]
+    anchor_i=values.index(0) if 0 in values else 0  # keep the zero tick labelled and count from it
+    for ti,tick in enumerate(spec['ticks']):
         value,text=_tick(tick,spec['unit']);x=_scale(value,lo,hi,x0,width)
-        out.append(f'<line x1="{x:.2f}" y1="48" x2="{x:.2f}" y2="{h-28}" class="axis-grid" data-key="tick-{value:g}"/>')
-        out.append(_svg_text(x,h-9,text,'axis-label','middle',f'tick-label-{value:g}'))
+        out.append(f'<line x1="{x:.2f}" y1="{48+lift}" x2="{x:.2f}" y2="{h-28}" class="axis-grid" data-key="tick-{value:g}"/>')
+        if (ti-anchor_i)%every==0:out.append(_axis_label(x,h-9,text,W,f'tick-label-{value:g}'))
     for i,lane in enumerate(lanes):
         y=top+i*row_height
-        out.append(_svg_wrapped_text(x0-12,y+15,lane['label'],'lane-label',f"lane-label-{lane['id']}",12 if grouped else 14,'end'))
+        out.append(_svg_wrapped_text(x0-12,y+15,lane['label'],'lane-label',f"lane-label-{lane['id']}",lane_chars,'end'))
     external={}
     marker_xs=[_scale(float(m['value']),lo,hi,x0,width) for m in variant.get('markers',[])]
     ghosts={};placed={}
@@ -274,7 +321,7 @@ def _timeline_svg(spec, variant, index, prefix):
         text_width=sum(12 if ord(c)>255 else 6.8 for c in label)
         bounds=[(_scale(float(o['start']),lo,hi,x0,width),_scale(float(o['start'])+float(o.get('duration',0)),lo,hi,x0,width)) for o in variant.get('segments',[]) if o['lane']==seg['lane'] and o is not seg and not o.get('unknown')]
         bounds+=[(mx-3,mx+3) for mx in marker_xs]+ghosts.get(seg['lane'],[])
-        free=lambda l,r:l>=x0-4 and r<=940 and all(not(a<r+4 and b>l-4) for a,b in bounds)
+        free=lambda l,r:l>=x0-4 and r<=limit and all(not(a<r+4 and b>l-4) for a,b in bounds)
         bounds+=placed.get(seg['lane'],[])
         for sx,anchor in [(right_edge+6,'start'),(left_edge-6,'end')]:
             l,r=(sx,sx+text_width) if anchor=='start' else (sx-text_width,sx)
@@ -290,7 +337,7 @@ def _timeline_svg(spec, variant, index, prefix):
             qx=x+(11 if any(abs(x-mx)<8 for mx in marker_xs) else 0)  # keep the ? off a marker line
             out.append(_svg_text(qx,y+17,'？','unknown-duration','middle',f"unknown-marker-{seg['id']}"))
             if not place_beside(seg,qx-8,qx+8,y,seg['label']):
-                out.append(_svg_wrapped_text(816,y+15,seg['label'],'external-label',f"segment-unknown-{seg['id']}",10))
+                out.append(_svg_wrapped_text(ext_x,y+15,seg['label'],'external-label',f"segment-unknown-{seg['id']}",10))
             continue
         w=float(seg['duration'])/(hi-lo)*width;tone=seg.get('tone') or lanes[li].get('tone') or 'blue'
         start,end=float(seg['start']),float(seg['start'])+float(seg['duration']);unit=spec['unit']
@@ -307,45 +354,53 @@ def _timeline_svg(spec, variant, index, prefix):
         ends=[_scale(float(o['start'])+float(o.get('duration',0)),lo,hi,x0,width) for o in variant.get('segments',[]) if o['lane']==lane and not o.get('unknown')]
         ends+=[mx+3 for mx in marker_xs]+[b for a,b in ghosts.get(lane,[])+placed.get(lane,[])]
         sx=max(ends)+8
-        if sx+text_width<=940:out.append(_svg_text(sx,top+li*row_height+16,text,'external-label','start',f"external-{lane}"))
-        else:out.append(_svg_wrapped_text(816,top+li*row_height+15,text,'external-label',f"external-{lane}",10))
-    for mi,marker in enumerate(variant.get('markers',[])):
-        x=_scale(float(marker['value']),lo,hi,x0,width);tone=marker.get('tone')or'red';key=_esc(marker['id'])
-        out.append(f'<line x1="{x:.2f}" y1="44" x2="{x:.2f}" y2="{h-26}" class="marker marker-{tone}" data-key="marker-{key}"/>')
-        anchor='end' if x>620 else 'start';lx=x-5 if anchor=='end' else x+5
-        out.append(_svg_wrapped_text(lx,18+(mi%2)*17,marker['label'],'marker-label marker-label-'+tone,f'marker-label-{key}',20,anchor))
+        if sx+text_width<=limit:out.append(_svg_text(sx,top+li*row_height+16,text,'external-label','start',f"external-{lane}"))
+        else:out.append(_svg_wrapped_text(ext_x,top+li*row_height+15,text,'external-label',f"external-{lane}",10))
+    layout,_=_marker_layout(variant.get('markers',[]),lo,hi,x0,width,W)
+    for marker in variant.get('markers',[]):
+        x,anchor,row=layout[marker['id']];tone=marker.get('tone')or'red';key=_esc(marker['id'])
+        out.append(f'<line x1="{x:.2f}" y1="{44+lift}" x2="{x:.2f}" y2="{h-26}" class="marker marker-{tone}" data-key="marker-{key}"/>')
+        out.append(_svg_text(x-5 if anchor=='end' else x+5,18+row*17,marker['label'],'marker-label marker-label-'+tone,anchor,f'marker-label-{key}'))
     return ''.join(out)+'</svg>'
 
 
-def _threshold_svg(spec,prefix):
-    lo,hi=float(spec['min']),float(spec['max']);x0,width=210.0,580.0;log=spec.get('scale')=='log';h=90+44*len(spec['rows'])
-    out=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 {h}" role="img" aria-labelledby="{prefix}-title {prefix}-desc"><title id="{prefix}-title">値と閾値</title><desc id="{prefix}-desc">{_esc(spec["unit"])}の値を同じ軸で比較します。</desc>']
-    for tick in spec['ticks']:
+def _threshold_svg(spec,prefix,narrow=False):
+    lo,hi=float(spec['min']),float(spec['max']);log=spec.get('scale')=='log';h=90+44*len(spec['rows'])
+    W,x0,width,row_chars=(NARROW_WIDTH,96.0,NARROW_WIDTH-96-74,6) if narrow else (960,210.0,580.0,14)
+    out=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {h}" role="img" aria-labelledby="{prefix}-title {prefix}-desc"><title id="{prefix}-title">値と閾値</title><desc id="{prefix}-desc">{_esc(spec["unit"])}の値を同じ軸で比較します。</desc>']
+    every=_tick_stride(spec,lo,hi,width,log)
+    for ti,tick in enumerate(spec['ticks']):
         value,text=_tick(tick,spec['unit']);x=_scale(value,lo,hi,x0,width,log)
         out.append(f'<line x1="{x:.2f}" y1="42" x2="{x:.2f}" y2="{h-26}" class="axis-grid" data-key="tick-{value:g}"/>')
-        out.append(_svg_text(x,h-9,text,'axis-label','middle',f'tick-label-{value:g}'))
+        if ti%every==0:out.append(_axis_label(x,h-9,text,W,f'tick-label-{value:g}'))
     thresholds=spec.get('thresholds',[]);limit=max(float(t['value'])for t in thresholds)if thresholds else None
     for i,row in enumerate(spec['rows']):
         y=53+i*44;x=_scale(float(row['value']),lo,hi,x0,width,log);tone=row.get('tone','blue')
-        out.append(_svg_wrapped_text(194,y+16,row['label'],'lane-label',f"row-label-{row['id']}",14,'end'))
+        out.append(_svg_wrapped_text(x0-16,y+16,row['label'],'lane-label',f"row-label-{row['id']}",row_chars,'end'))
         value_label=row.get('value_label',f"{row['value']:g}{spec['unit']}");tip=f"{row['label']}: {value_label}"
         out.append(f'<rect x="{x0}" y="{y}" width="{max(0,x-x0):.2f}" height="23" rx="3" class="bar bar-{tone}" data-key="row-{_esc(row["id"])}" data-tip="{_esc(tip)}"/>')
         if limit is not None and row['value']>limit:
             tx=_scale(limit,lo,hi,x0,width,log)
             out.append(f'<rect x="{tx:.2f}" y="{y}" width="{x-tx:.2f}" height="23" rx="3" class="bar-excess" data-key="excess-{_esc(row["id"])}"/>')
         out.append(_svg_wrapped_text(x+8,y+15,value_label,'external-label',f"row-value-{row['id']}",10))  # the value sits at the end of its own bar
-    for i,threshold in enumerate(thresholds):
-        x=_scale(float(threshold['value']),lo,hi,x0,width,log);key=_esc(threshold['id']);tone=threshold.get('tone','red')
+    layout,_=_marker_layout(thresholds,lo,hi,x0,width,W,log)
+    for threshold in thresholds:
+        x,anchor,row=layout[threshold['id']];key=_esc(threshold['id']);tone=threshold.get('tone','red')
         out.append(f'<line x1="{x:.2f}" y1="42" x2="{x:.2f}" y2="{h-25}" class="marker marker-{tone}" data-key="threshold-{key}"/>')
-        anchor='end'if x>620 else'start'
-        out.append(_svg_wrapped_text(x-5 if anchor=='end'else x+5,18+17*(i%2),threshold['label'],'marker-label marker-label-'+tone,f'threshold-label-{key}',20,anchor))
+        out.append(_svg_text(x-5 if anchor=='end' else x+5,18+17*row,threshold['label'],'marker-label marker-label-'+tone,anchor,f'threshold-label-{key}'))
     return ''.join(out)+'</svg>'
 
 
-def render_chart(spec: dict[str, Any], prefix: str = "chart") -> list[str]:
+def render_chart(spec: dict[str, Any], prefix: str = "chart", narrow: bool = False) -> list[str]:
+    """One SVG per variant. `narrow` lays the same data out for a phone-width viewBox."""
     validate_chart(spec)
     if not isinstance(prefix, str) or not ID_RE.fullmatch(prefix):
         _fail("prefix", "valid identifier required")
     if spec["type"] == "timeline":
-        return [_timeline_svg(spec, variant, i, prefix) for i, variant in enumerate(spec["variants"])]
-    return [_threshold_svg(spec, prefix)]
+        return [_timeline_svg(spec, variant, i, prefix, narrow) for i, variant in enumerate(spec["variants"])]
+    return [_threshold_svg(spec, prefix, narrow)]
+
+
+def has_narrow_layout(spec: dict[str, Any]) -> bool:
+    """Grouped timelines need their summary column, so they keep the wide layout and scroll."""
+    return spec.get("type") in {"timeline", "threshold"} and not spec.get("groups")

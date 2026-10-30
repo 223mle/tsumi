@@ -5,7 +5,7 @@ import html
 import json
 import re
 from pathlib import Path
-from charts import render_chart
+from charts import render_chart, has_narrow_layout
 from network import render_network, network_steps
 from decisions import render_decision
 from sequence import render_sequence, sequence_steps
@@ -94,8 +94,13 @@ def render_diagram(bundle,prose=html.escape):
     output=[]
     for i,scenes in enumerate(variants):
         title=panels[i].get('title',''); heading=f'<h4 class="dg-panel-title">{html.escape(title)}</h4>' if title else ''
-        static=''.join(f'<div class="dg-static-scene" data-state="{j}"><p class="dg-scene-name">{_scene_name(labels,steps,j,len(scenes),notes,prose)}</p><div class="dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}">{svg}</div></div>' for j,svg in enumerate(scenes))
-        output.append(f'<div class="dg-panel">{heading}<div class="dg-live dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}"></div><div class="dg-static">{static}</div></div>')
+        # Charts also get a phone layout; CSS shows one of the two and the script keeps both in step.
+        spec=panels[i]['spec']
+        layouts=[('',scenes)]
+        if has_narrow_layout(spec): layouts=[(' dg-wide',scenes),(' dg-narrow',render_chart(spec,f"{bundle['id']}-p{i}n",narrow=True))]
+        for cls,svgs in layouts:
+            static=''.join(f'<div class="dg-static-scene" data-state="{j}"><p class="dg-scene-name">{_scene_name(labels,steps,j,len(svgs),notes,prose)}</p><div class="dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}">{svg}</div></div>' for j,svg in enumerate(svgs))
+            output.append(f'<div class="dg-panel{cls}">{heading}<div class="dg-live dg-scroll" tabindex="0" role="region" aria-label="{html.escape(title or bundle["title"])}"></div><div class="dg-static">{static}</div></div>')
     nav=''
     if steps:
         texts=''.join(f'<template data-step-text="{i}"><b>{i+1}. {html.escape(st["label"])}</b>{(" "+prose(st["text"])) if st["text"] else ""}</template>' for i,st in enumerate(steps))

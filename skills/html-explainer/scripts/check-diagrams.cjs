@@ -70,16 +70,16 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
           check(`${theme}/${id}: slider keyboard`,(await f.getAttribute('data-rendered-state'))==='0');
         }
         const grid=f.locator('.dg-grid-toggle');if(await grid.count()){
-          await grid.click();const all=await f.locator('.dg-static-scene').evaluateAll(es=>es.every(e=>e.getBoundingClientRect().height>0));
+          await grid.click();const all=await f.locator('.dg-static-scene').evaluateAll(es=>es.filter(e=>getComputedStyle(e.closest('.dg-panel')).display!=='none').every(e=>e.getBoundingClientRect().height>0));
           const errors=await inspect(p);check(`${theme}/${id}: small multiples show every variant`,all&&!errors.length,errors.join('; '));
           await f.screenshot({path:path.join(out,`${theme}-${id}-all.png`)});await grid.click();
-          check(`${theme}/${id}: back to one variant`,await f.locator('.dg-live').evaluate(e=>e.getBoundingClientRect().height>0));
+          check(`${theme}/${id}: back to one variant`,await f.locator('.dg-live').evaluateAll(es=>es.some(e=>e.getBoundingClientRect().height>0)));
         }
         const play=f.locator('.dg-play');if(await play.count()){
           await play.click();await p.waitForTimeout(120);const x=await f.locator('.dg-flow-particle').evaluateAll(es=>es.map(e=>e.getAttribute('transform')));await p.waitForTimeout(240);const y=await f.locator('.dg-flow-particle').evaluateAll(es=>es.map(e=>e.getAttribute('transform')));check(`${theme}/${id}: moving flow`,x.length>0&&JSON.stringify(x)!==JSON.stringify(y));await play.click();check(`${theme}/${id}: stop flow`,await f.locator('.dg-flow-particle').count()===0);
         }
       }
-      await p.emulateMedia({media:'print'});check(`${theme}: print scenes`,await p.locator('[data-diagram]').evaluateAll(fs=>fs.every(f=>{const scenes=[...f.querySelectorAll('.dg-static-scene')];const shown=s=>s.getBoundingClientRect().height>0;
+      await p.emulateMedia({media:'print'});check(`${theme}: print scenes`,await p.locator('[data-diagram]').evaluateAll(fs=>fs.every(f=>{const scenes=[...f.querySelectorAll('.dg-panel:not(.dg-narrow) .dg-static-scene')];const shown=s=>s.getBoundingClientRect().height>0;
         // A step-through figure prints its final, complete scene plus every step as text.
         if(f.dataset.mode==='steps')return shown(scenes.at(-1))&&f.querySelector('.dg-step-notes').getBoundingClientRect().height>0;return scenes.every(shown);})));await c.close();
     }
@@ -89,7 +89,7 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
       const next=f.locator('[data-go="1"]');if(await next.count()){await next.click();check('reduced motion: immediate step',await f.getAttribute('data-animating')==='false');}
     }
     check('mobile: geometry',!(await inspect(p)).length,(await inspect(p)).join('; '));await p.screenshot({path:path.join(out,'mobile.png'),fullPage:true});await c.close();
-    const nc=await b.newContext({javaScriptEnabled:false,viewport:{width:390,height:1000}});const np=await nc.newPage();await np.goto(pathToFileURL(path.resolve(input)).href);check('no JS: every scene or step visible',await np.locator('[data-diagram]').evaluateAll(fs=>fs.length>0&&fs.every(f=>{const scenes=[...f.querySelectorAll('.dg-static-scene')];const shown=s=>s.getBoundingClientRect().height>0;
+    const nc=await b.newContext({javaScriptEnabled:false,viewport:{width:390,height:1000}});const np=await nc.newPage();await np.goto(pathToFileURL(path.resolve(input)).href);check('no JS: every scene or step visible',await np.locator('[data-diagram]').evaluateAll(fs=>fs.length>0&&fs.every(f=>{const scenes=[...f.querySelectorAll('.dg-static-scene')].filter(s=>getComputedStyle(s.closest('.dg-panel')).display!=='none');const shown=s=>s.getBoundingClientRect().height>0;
       if(f.dataset.mode==='steps')return shown(scenes.at(-1))&&f.querySelectorAll('.dg-step-notes li').length===scenes.length;return scenes.every(shown);})));await nc.close();
   }finally{await b.close();report.passed=report.errors.length===0;fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');}
   console.log(JSON.stringify({passed:report.passed,checks:report.checks.length,errors:report.errors,evidence:out}));process.exitCode=report.passed?0:1;

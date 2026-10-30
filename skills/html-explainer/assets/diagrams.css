@@ -36,3 +36,6 @@
 @media print{.dg-pinned-labels{display:none!important}}
 .dg-slider{display:flex;align-items:center;gap:12px;flex:1;min-width:240px;font-size:13px}.dg-slider-name{font-weight:650;white-space:nowrap}.dg-slider input{flex:1;accent-color:var(--accent);min-width:120px}.dg-slider output{font-variant-numeric:tabular-nums;font-weight:700;min-width:4.5em;padding:2px 10px;border-radius:6px;background:var(--subtle);text-align:center}
 .dg-network .dg-edge.dg-edge-optional{stroke-dasharray:2 4;stroke-width:1.6;stroke-linecap:round}
+.dg-narrow{display:none}
+@media(max-width:600px){.dg-figure .dg-wide{display:none}.dg-figure .dg-narrow{display:block}.dg-narrow .dg-scroll>svg{min-width:0}.dg-figure.dg-grid .dg-narrow .dg-static{grid-template-columns:minmax(0,1fr)}}
+@media print{.dg-figure .dg-narrow{display:none!important}.dg-figure .dg-wide{display:block!important}}
