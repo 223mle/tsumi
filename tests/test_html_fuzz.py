@@ -202,6 +202,17 @@ class FuzzTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no segment"):
             render_chart(spec, "t")
 
+    def test_labels_keep_a_word_and_its_kana_ending_together(self):
+        sys.path.insert(0, str(Path(__file__).parents[1] / "skills/html-explainer/scripts"))
+        from jawrap import wrap
+        self.assertEqual(wrap("支払い済みに更新", 11, 3), ["支払い", "済みに更新"])
+        self.assertEqual(wrap("もう一度更新", 11, 3), ["もう", "一度更新"])
+        for text in ("もう一度更新", "結果を返す", "問い合わせる", "支払い済みに更新"):
+            for width in (6, 8, 10):
+                lines = wrap(text, width, 3)
+                if lines and len(lines) > 1:
+                    self.assertTrue(all(len(x) > 1 for x in lines), (text, width, lines))
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):

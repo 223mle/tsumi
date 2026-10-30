@@ -218,11 +218,13 @@ def render_sequence(spec: object, prefix: str = "sequence", narrow: bool = False
             label_w = _units(span["label"]) * 6.6
             if lx + label_w > canvas:
                 # No room on the right: measure left of the leftmost actor in the span, past its step numbers.
+                right_room = canvas - lx
                 touched = {x for m in msgs[a:b + 1] for x in (m["from"], m["to"])}
                 left_x = xs[min(touched, key=actor_order.index)]
                 bx, lx, anchor = left_x - 42, left_x - 54, "end"
                 if lx - label_w < 4:
-                    _fail(f"sequence.spans[{si}]", "no room on either side of the measured messages; shorten the label")
+                    fits = int(max(right_room, lx - 4) / 13.2)
+                    _fail(f"sequence.spans[{si}]", f"no room on either side of the measured messages; about {fits} full-width characters fit here")
             op = "1" if step >= b else "0.35"
             key = f"span:{si}"
             mid = (y1 + y2) / 2

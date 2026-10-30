@@ -46,6 +46,8 @@ def _break_cost(text: str, i: int) -> int:
         # 「ー」 belongs to the katakana run before it; never start a line with a small kana.
         if cur in "ーゃゅょぁぃぅぇぉっャュョァィゥェォッ":
             return 9
+        if a == "kanji" and b == "hiragana":
+            return 5  # usually a word and its kana ending (済|み, 払|い); keep them together
         return 2
     return 6
 
@@ -75,7 +77,8 @@ def _wrap_one(text: str, max_units: float, max_lines: int) -> list[str] | None:
         if rest is None:
             continue
         widths = [units(head)] + [units(x) for x in rest]
-        score = _break_cost(text, i) * 10 + (max(widths) - min(widths)) / 4 + len(rest) * 3
+        lone = any(len(x.strip()) <= 1 for x in [head] + rest)  # a one-character line reads as a stray glyph
+        score = _break_cost(text, i) * 10 + (max(widths) - min(widths)) / 4 + len(rest) * 3 + (30 if lone else 0)
         if best is None or score < best[0]:
             best = (score, [head] + rest)
     return best[1] if best else None
