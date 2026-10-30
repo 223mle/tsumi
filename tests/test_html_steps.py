@@ -534,5 +534,21 @@ class EvalFiveTests(unittest.TestCase):
         self.assertIn('<td data-label="b">2</td>', html)
 
 
+class LineDotsAndKeyTests(unittest.TestCase):
+    def test_dot_series_and_phone_key(self):
+        from linechart import render_line
+        spec = {"type": "line", "x": {"min": 0, "max": 10, "unit": "", "ticks": [0, 10]}, "y": {"min": 0, "max": 10, "unit": "", "ticks": [0, 10]},
+                "series": [{"id": "d", "label": "訓練データ", "dots": True, "points": [[1, 2], [5, 6]]},
+                           {"id": "f", "label": "モデルの予測", "points": [[0, 1], [10, 9]]}]}
+        wide, narrow = render_line(spec)[0], render_line(spec, narrow=True)[0]
+        self.assertIn("line-series-dots", wide)
+        self.assertLess(wide.index('data-key="series-f"'), wide.index('data-key="series-d"'))  # dots on top
+        key_y = [float(v) for v in re.findall(r'class="series-key[^"]*"[^>]* d="M[\d.]+ ([\d.]+)h16', narrow)]
+        plot_bottom = max(float(v) for v in re.findall(r'class="axis-grid" x1="[\d.]+" y1="[\d.]+" x2="[\d.]+" y2="([\d.]+)"', narrow))
+        self.assertTrue(key_y and all(y > plot_bottom for y in key_y))
+        with self.assertRaisesRegex(ValueError, "dashed"):
+            render_line({**spec, "series": [{"id": "d", "label": "x", "dots": True, "dashed": True, "points": [[1, 2], [5, 6]]}]})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -61,3 +61,5 @@
 .dg-narrow .dg-scroll text{font-size:13.5px}.dg-narrow .dg-scroll .axis-label,.dg-narrow .dg-scroll .marker-label,.dg-narrow .dg-scroll .band-label,.dg-narrow .dg-scroll .external-label{font-size:12.5px}
 :root[data-theme=dark] .dg-line .line-band{fill:color-mix(in srgb,var(--accent) 16%,transparent)}@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .dg-line .line-band{fill:color-mix(in srgb,var(--accent) 16%,transparent)}}
 .dg-narrow .dg-network .dg-edge-label text{font-size:12px}
+.dg-line .line-series-dots{stroke:none}.dg-line .line-dot{fill:var(--tone);stroke:var(--surface);stroke-width:1.5}
+.dg-line .series-key-dots{stroke-dasharray:0 8!important;stroke-width:7;stroke-linecap:round}
