@@ -86,6 +86,16 @@ def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
     for item in bundle.get('legend',[]):
         if not isinstance(item,dict) or set(item)!={'label','tone'} or not isinstance(item['label'],str) or (not isinstance(item['tone'],str) or item['tone'] not in TONES): raise ValueError('legend: label and valid tone required')
         legends.append(f'<span><i class="dg-swatch dg-tone-{item["tone"]}"></i>{html.escape(item["label"])}</span>')
+    named={item['tone'] for item in bundle.get('legend',[])}
+    if named:
+        # A path colour the legend does not name leaves the reader guessing what it means.
+        for panel in panels:
+            spec=panel['spec']
+            if spec.get('type')!='network': continue
+            for edge in spec.get('edges',[])+[e for v in spec.get('variants',[]) for e in v.get('edges',[])]:
+                tone=edge.get('tone','blue')
+                if edge.get('kind')!='conflict' and tone!='slate' and tone not in named:  # grey reads as neutral
+                    raise ValueError(f"legend: edge {edge.get('id')} is drawn in {tone}, which the legend does not name; add it to the legend or reuse a named colour")
     controls=''
     if steps:
         controls='<ol class="dg-steps" aria-label="手順">'+''.join(f'<li><button type="button" data-step="{i}" aria-current="{"step" if i==0 else "false"}"><b>{i+1}</b><span class="dg-sr">{html.escape(st["label"])}</span></button></li>' for i,st in enumerate(steps))+'</ol>'

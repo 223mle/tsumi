@@ -126,6 +126,17 @@ class FuzzTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "same label"):
             render_line(spec, "l")
 
+    def test_a_path_colour_missing_from_the_legend_is_refused(self):
+        sys.path.insert(0, str(Path(__file__).parents[1] / "skills/html-explainer/scripts"))
+        from diagrams import render_diagram
+        net = {"type": "network", "columns": 3, "rows": 2, "nodes": [{"id": "a", "label": "API", "column": 1, "row": 1}, {"id": "b", "label": "DB", "column": 3, "row": 1}],
+               "variants": [{"label": "v", "edges": [{"id": "e", "from": "a", "to": "b", "kind": "file", "tone": "violet", "label": "読む"}]}]}
+        bundle = {"id": "f", "title": "経路", "caption": "説明用。", "status": "illustrative", "legend": [{"label": "要求", "tone": "blue"}], "panels": [{"spec": net}]}
+        with self.assertRaisesRegex(ValueError, "legend does not name"):
+            render_diagram(bundle)
+        bundle["legend"].append({"label": "読み出し", "tone": "violet"})
+        render_diagram(bundle)
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):

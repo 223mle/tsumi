@@ -364,6 +364,10 @@
                 "tone": "blue"
               },
               {
+                "label": "データベースからの読み出し",
+                "tone": "amber"
+              },
+              {
                 "label": "データの返却",
                 "tone": "teal"
               }
@@ -439,7 +443,7 @@
                           "to": "db",
                           "label": "③ 読む",
                           "kind": "file",
-                          "tone": "violet"
+                          "tone": "amber"
                         }
                       ],
                       "marks": [
