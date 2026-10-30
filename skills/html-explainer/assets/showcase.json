@@ -1,0 +1,143 @@
+{
+  "title": "キャッシュを挟むと、なぜ応答が速くなるのか",
+  "lead": "商品ページのAPIに[[キャッシュ]]を挟んだときに、1回のリクエストで何が起き、どこで時間が減るのかを説明します。数値はすべて説明用の架空の値です。",
+  "takeaways": [
+    "2回目以降のリクエストは、データベースへ行かずにキャッシュから返る。",
+    "速くなるのは[[ヒット]]したときだけで、[[ミス]]したときは逆に少し遅くなる。",
+    "効果はヒット率で決まる。まずヒット率を測ってから導入を判断する。"
+  ],
+  "glossary": [
+    {"term": "キャッシュ", "definition": "一度取得した結果を、速く読める場所に一時的に保存しておく仕組み。"},
+    {"term": "ヒット", "definition": "要求されたデータがキャッシュにあり、そのまま返せた状態。"},
+    {"term": "ミス", "definition": "キャッシュにデータがなく、元のデータベースまで取りに行く状態。"},
+    {"term": "TTL", "definition": "Time To Live。キャッシュに保存したデータを有効とみなす時間。"}
+  ],
+  "sections": [
+    {
+      "id": "numbers",
+      "title": "導入前後で変わる数字",
+      "blocks": [
+        {"type": "p", "text": "説明用の架空の構成で、商品ページを1万回表示したときの値です。"},
+        {"type": "stats", "items": [
+          {"value": "120ms", "label": "導入前の応答時間", "note": "毎回データベースを読む"},
+          {"value": "8ms", "label": "ヒット時の応答時間", "note": "キャッシュから返す"},
+          {"value": "94%", "label": "ヒット率", "note": "[[TTL]]を5分にした場合"}
+        ]}
+      ]
+    },
+    {
+      "id": "flow",
+      "title": "1回のリクエストで起きること",
+      "blocks": [
+        {"type": "p", "text": "ミスしたときの往復を、順番に追います。右の矢印ボタンか、キーボードの←→で1手ずつ進められます。"},
+        {"type": "diagram", "bundle": {
+          "id": "miss-sequence",
+          "title": "キャッシュにミスしたときの往復",
+          "caption": "一般的なキャッシュの読み込み方式（cache-aside）を簡略化した説明用の図です。",
+          "status": "illustrative",
+          "mode": "steps",
+          "panels": [{"spec": {"type": "sequence",
+            "actors": [
+              {"id": "browser", "label": "ブラウザー", "tone": "slate"},
+              {"id": "api", "label": "API", "tone": "blue"},
+              {"id": "cache", "label": "キャッシュ", "tone": "teal"},
+              {"id": "db", "label": "データベース", "tone": "violet"}
+            ],
+            "messages": [
+              {"id": "req", "from": "browser", "to": "api", "label": "商品ページを要求", "text": "ブラウザーがAPIに商品情報を要求します。"},
+              {"id": "get", "from": "api", "to": "cache", "label": "キーで探す", "text": "APIはまずキャッシュに、商品IDをキーにして問い合わせます。"},
+              {"id": "miss", "from": "cache", "to": "api", "label": "なし（ミス）", "kind": "reply", "tone": "red", "text": "初回はまだ保存されていないため、ミスになります。"},
+              {"id": "query", "from": "api", "to": "db", "label": "SQLで読む", "text": "APIはデータベースから商品情報を読みます。ここが一番時間のかかる部分です。"},
+              {"id": "rows", "from": "db", "to": "api", "label": "商品の行", "kind": "reply"},
+              {"id": "set", "from": "api", "to": "cache", "label": "5分間保存", "kind": "async", "text": "次の要求に備えて、結果をキャッシュへ保存します。TTLは5分です。"},
+              {"id": "res", "from": "api", "to": "browser", "label": "商品ページ", "kind": "reply", "text": "最後にブラウザーへ応答します。2回目以降は手順2で答えが返ります。"}
+            ],
+            "spans": [{"from": "query", "to": "rows", "label": "約110ms"}]
+          }}]
+        }},
+        {"type": "callout", "tone": "warn", "text": "ミスしたときは、キャッシュへの問い合わせと保存の分だけ、導入前より**数ms遅く**なります。"}
+      ]
+    },
+    {
+      "id": "path",
+      "title": "ヒットすると、データベースへの経路が消える",
+      "blocks": [
+        {"type": "p", "text": "同じ配置のまま、ミスとヒットを切り替えて比べます。ヒットでは、APIからデータベースへの矢印がなくなります。"},
+        {"type": "diagram", "bundle": {
+          "id": "hit-vs-miss",
+          "title": "ミスとヒットの経路",
+          "caption": "説明用の構成です。矢印の番号は処理の順番を表します。",
+          "status": "illustrative",
+          "legend": [{"label": "要求", "tone": "blue"}, {"label": "データの返却", "tone": "teal"}],
+          "motion": true,
+          "panels": [{"spec": {"type": "network", "columns": 4, "rows": 2,
+            "nodes": [
+              {"id": "browser", "label": "ブラウザー", "column": 1, "row": 1, "tone": "slate"},
+              {"id": "api", "label": "API", "column": 2, "row": 1, "tone": "blue"},
+              {"id": "cache", "label": "キャッシュ", "detail": "メモリー上", "column": 3, "row": 1, "tone": "teal"},
+              {"id": "db", "label": "データベース", "detail": "ディスク上", "column": 3, "row": 2, "tone": "violet"}
+            ],
+            "variants": [
+              {"label": "ミス（初回）", "active_nodes": ["browser", "api", "cache", "db"], "edges": [
+                {"id": "ask", "from": "browser", "to": "api", "label": "① 要求", "kind": "request", "tone": "blue"},
+                {"id": "lookup", "from": "api", "to": "cache", "label": "② 探す", "kind": "request", "tone": "blue"},
+                {"id": "read", "from": "api", "to": "db", "label": "③ 読む", "kind": "file", "tone": "violet"}
+              ]},
+              {"label": "ヒット（2回目以降）", "active_nodes": ["browser", "api", "cache"], "edges": [
+                {"id": "ask", "from": "browser", "to": "api", "label": "① 要求", "kind": "request", "tone": "blue"},
+                {"id": "lookup", "from": "api", "to": "cache", "label": "② 取り出す", "kind": "file", "tone": "teal"}
+              ]}
+            ]
+          }}]
+        }}
+      ]
+    },
+    {
+      "id": "time",
+      "title": "時間はどこで減るのか",
+      "blocks": [
+        {"type": "p", "text": "応答時間の内訳を同じ時間軸に並べます。ヒットでは、データベースを読む110msがまるごと消えます。"},
+        {"type": "diagram", "bundle": {
+          "id": "breakdown",
+          "title": "応答時間の内訳",
+          "caption": "説明用の架空の値です。ネットワークの往復時間は含めていません。",
+          "status": "illustrative",
+          "legend": [{"label": "API内の処理", "tone": "blue"}, {"label": "キャッシュ", "tone": "teal"}, {"label": "データベース", "tone": "violet"}],
+          "panels": [{"spec": {"type": "timeline", "min": 0, "max": 130, "unit": "ms", "ticks": [0, 20, 40, 60, 80, 100, 120],
+            "lanes": [
+              {"id": "app", "label": "API", "tone": "blue"},
+              {"id": "kv", "label": "キャッシュ", "tone": "teal"},
+              {"id": "sql", "label": "データベース", "tone": "violet"}
+            ],
+            "variants": [
+              {"label": "導入前", "segments": [
+                {"id": "parse", "lane": "app", "start": 0, "duration": 5, "label": "5ms"},
+                {"id": "query", "lane": "sql", "start": 5, "duration": 110, "label": "110ms"},
+                {"id": "render", "lane": "app", "start": 115, "duration": 5, "label": "5ms"}
+              ], "markers": [{"id": "done", "value": 120, "label": "応答 120ms", "tone": "slate"}]},
+              {"label": "ヒット", "segments": [
+                {"id": "parse", "lane": "app", "start": 0, "duration": 2, "label": "2ms"},
+                {"id": "get", "lane": "kv", "start": 2, "duration": 1, "label": "1ms"},
+                {"id": "render", "lane": "app", "start": 3, "duration": 5, "label": "5ms"}
+              ], "markers": [{"id": "done", "value": 8, "label": "応答 8ms", "tone": "slate"}]}
+            ]
+          }}]
+        }}
+      ]
+    },
+    {
+      "id": "decide",
+      "title": "導入するかどうかの判断",
+      "blocks": [
+        {"type": "p", "text": "キャッシュは、同じデータが何度も読まれるときに効きます。読み取りの偏りが小さいと、ミスの遅れだけが残ります。"},
+        {"type": "compare", "columns": [
+          {"label": "向いている", "tone": "good", "title": "読み取りが偏っている", "items": ["人気商品のページが繰り返し表示される", "数分の古さを許容できる", "データベースの負荷が高い"], "verdict": "ヒット率が高く、効果が大きい"},
+          {"label": "向いていない", "tone": "bad", "title": "毎回違うデータを読む", "items": ["検索結果のように組み合わせが多い", "常に最新の値が必要", "書き込みが読み取りより多い"], "verdict": "ミスが多く、遅くなることもある"}
+        ]},
+        {"type": "list", "ordered": true, "items": ["今のアクセスログから、同じキーへの読み取りの割合を測る。", "許容できるデータの古さから、TTLを決める。", "一部のページだけに導入し、ヒット率と応答時間を比べる。"]},
+        {"type": "code", "language": "python", "caption": "cache-asideの最小の形（説明用）", "code": "def get_product(product_id):\n    cached = cache.get(product_id)\n    if cached is not None:\n        return cached          # ヒット\n    product = db.load(product_id)  # ミス\n    cache.set(product_id, product, ttl=300)\n    return product"},
+        {"type": "details", "summary": "データが更新されたときはどうなるか", "paragraphs": ["TTLが切れるまでは、古いデータが返ります。すぐに反映したい場合は、更新時にキャッシュのキーを削除します。", "削除を忘れると、利用者は最大でTTLの間、古い価格を見ることになります。"]}
+      ]
+    }
+  ]
+}

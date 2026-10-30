@@ -255,7 +255,15 @@ def _timeline_svg(spec, variant, index, prefix):
         label=seg.get('label','');text_width=sum(12 if ord(c)>255 else 6.8 for c in label)
         if label and w>=text_width+12:
             out.append(_svg_text(x+w/2,y+16,label,'bar-label','middle',f"segment-label-{seg['id']}"))
-        elif label:external.setdefault(li,[]).append((seg['id'],label))
+        elif label:
+            # Put a short segment's label beside its bar when the lane leaves room; otherwise use the value column.
+            bounds=[(_scale(float(o['start']),lo,hi,x0,width),_scale(float(o['start'])+float(o.get('duration',0)),lo,hi,x0,width)) for o in variant.get('segments',[]) if o['lane']==seg['lane'] and o is not seg and not o.get('unknown')]
+            right=x+w+6;left=x-6
+            if right+text_width<=940 and all(not(a<right+text_width+6 and b>right-2) for a,b in bounds):
+                out.append(_svg_text(right,y+16,label,'external-label','start',f"segment-label-{seg['id']}"))
+            elif left-text_width>=x0 and all(not(a<left+2 and b>left-text_width-6) for a,b in bounds):
+                out.append(_svg_text(left,y+16,label,'external-label','end',f"segment-label-{seg['id']}"))
+            else:external.setdefault(li,[]).append((seg['id'],label))
     for li,labels in external.items():
         out.append(_svg_wrapped_text(816,top+li*row_height+15,' / '.join(x[1]for x in labels),'external-label',f"external-{lanes[li]['id']}",10))
     for mi,marker in enumerate(variant.get('markers',[])):

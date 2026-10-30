@@ -7,6 +7,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from blocks import validate_glossary, validate_block, block_html, check_inline, inline  # noqa: E402
+from diagrams import render_diagram  # noqa: E402
 STATUSES = {"measured", "inferred", "proposed", "unknown", "illustrative"}
 KINDS = {"flow", "bars", "timeline", "table"}
 STATUS_LABELS = {"measured": "計測値", "inferred": "推定", "proposed": "提案", "unknown": "未確定", "illustrative": "説明用"}
@@ -44,11 +47,17 @@ def validate(doc: object) -> dict:
     if not isinstance(doc, dict): fail("document: object required")
     schema = json.loads((ROOT / "assets" / "document.schema.json").read_text(encoding="utf-8"))
     schema_validate(doc, schema, "document", schema)
-    allowed = {"title", "lead", "sources", "sections"}
+    allowed = {"title", "lead", "sources", "sections", "takeaways", "glossary"}
     unknown = set(doc) - allowed
     if unknown: fail(f"document: unknown fields {sorted(unknown)}")
     for key in ("title", "lead"):
         if not isinstance(doc.get(key), str) or not doc[key].strip(): fail(f"document.{key}: non-empty string required")
+    glossary = validate_glossary(doc.get("glossary"))
+    check_inline(doc["lead"], "document.lead", glossary)
+    takeaways = doc.get("takeaways", [])
+    if not isinstance(takeaways, list) or len(takeaways) > 4 or not all(isinstance(t, str) and t.strip() and len(t) <= 90 for t in takeaways):
+        fail("document.takeaways: up to 4 sentences of at most 90 characters")
+    for i, t in enumerate(takeaways): check_inline(t, f"document.takeaways[{i}]", glossary)
     if not isinstance(doc.get("sections"), list) or not doc["sections"]: fail("document.sections: non-empty array required")
     sources = doc.get("sources", [])
     if not isinstance(sources, list): fail("document.sources: array required")
@@ -65,16 +74,35 @@ def validate(doc: object) -> dict:
     section_ids = all_ids; figure_ids = all_ids
     for si, sec in enumerate(doc["sections"]):
         if not isinstance(sec, dict): fail(f"sections[{si}]: object required")
-        unknown = set(sec) - {"id", "title", "paragraphs", "callout", "figures"}
+        unknown = set(sec) - {"id", "title", "paragraphs", "callout", "figures", "blocks"}
         if unknown: fail(f"sections[{si}]: unknown fields {sorted(unknown)}")
         check_id(sec.get("id"), f"sections[{si}].id", section_ids)
         if not isinstance(sec.get("title"), str) or not sec["title"].strip(): fail(f"sections[{si}].title: string required")
         if "paragraphs" in sec and (not isinstance(sec["paragraphs"], list) or not all(isinstance(x, str) for x in sec["paragraphs"])): fail(f"sections[{si}].paragraphs: strings required")
         if "callout" in sec and not isinstance(sec["callout"], str): fail(f"sections[{si}].callout: string required")
+        for pi, para in enumerate(sec.get("paragraphs", [])): check_inline(para, f"sections[{si}].paragraphs[{pi}]", glossary)
+        blocks = sec.get("blocks", [])
+        if not isinstance(blocks, list): fail(f"sections[{si}].blocks: array required")
+        for bi, block in enumerate(blocks):
+            validate_block(block, f"sections[{si}].blocks[{bi}]", glossary,
+                           lambda f, w: validate_figure(f, w, source_ids, figure_ids),
+                           lambda b, w: check_diagram(b, w, figure_ids))
         figs = sec.get("figures", [])
         if not isinstance(figs, list): fail(f"sections[{si}].figures: array required")
         for fi, fig in enumerate(figs): validate_figure(fig, f"sections[{si}].figures[{fi}]", source_ids, figure_ids)
     return doc
+
+def check_diagram(bundle: object, where: str, seen: set[str]) -> None:
+    try:
+        render_diagram(bundle)
+    except (ValueError, TypeError, KeyError) as exc:
+        fail(f"{where}: {exc}")
+    check_id(bundle["id"], where + ".id", seen)
+
+def reading_minutes(body_html: str) -> int:
+    """Estimate reading time from visible prose at about 500 Japanese characters a minute."""
+    text = re.sub(r"<svg.*?</svg>|<template.*?</template>|<[^>]+>|\s", "", body_html, flags=re.S)
+    return max(1, round(len(html.unescape(text)) / 500))
 
 def schema_validate(value: object, schema: dict, where: str, root: dict) -> None:
     """Small schema subset used so the checked-in JSON schema remains the contract."""
@@ -197,13 +225,24 @@ def render(doc: dict) -> str:
     css_path, js_path = ROOT / "assets" / "style.css", ROOT / "assets" / "behavior.js"
     css = css_path.read_text(encoding="utf-8") if css_path.exists() else ""
     js = js_path.read_text(encoding="utf-8") if js_path.exists() else ""
-    toc = ''.join(f'<li><a href="#{esc(s["id"])}">{esc(s["title"])}</a></li>' for s in doc["sections"])
+    glossary = {g["term"].strip(): g["definition"] for g in doc.get("glossary", [])}
+    has_diagram = any(b.get("type") == "diagram" for sec in doc["sections"] for b in sec.get("blocks", []))
+    if has_diagram:
+        css += (ROOT / "assets" / "diagrams.css").read_text(encoding="utf-8")
+        js += (ROOT / "assets" / "diagrams.js").read_text(encoding="utf-8")
+    toc = ''.join(f'<li><a href="#{esc(s["id"])}"><span class="toc-num">{i}</span>{esc(s["title"])}</a></li>' for i, s in enumerate(doc["sections"], 1))
     source_titles = {s["id"]: s["title"] for s in doc.get("sources", [])}
     sections = []
-    for sec in doc["sections"]:
-        paras = ''.join(f'<p>{esc(p)}</p>' for p in sec.get("paragraphs", [])); callout = f'<aside class="callout">{esc(sec["callout"])}</aside>' if sec.get("callout") else ''
+    for num, sec in enumerate(doc["sections"], 1):
+        paras = ''.join(f'<p>{inline(p, glossary)}</p>' for p in sec.get("paragraphs", [])); callout = f'<aside class="callout callout-key"><p>{esc(sec["callout"])}</p></aside>' if sec.get("callout") else ''
+        body = ''.join(block_html(b, glossary, lambda f: figure_html(f, source_titles), render_diagram) for b in sec.get("blocks", []))
         figs = ''.join(figure_html(f, source_titles) for f in sec.get("figures", []))
-        sections.append(f'<section id="{esc(sec["id"])}"><h2>{esc(sec["title"])}</h2>{paras}{callout}{figs}</section>')
+        sections.append(f'<section id="{esc(sec["id"])}"><h2><span class="section-number">{num}</span>{esc(sec["title"])}</h2>{paras}{callout}{body}{figs}</section>')
+    takeaways = ''.join(f'<li>{inline(t, glossary)}</li>' for t in doc.get("takeaways", []))
+    takeaway_box = f'<div class="takeaways"><p class="takeaways-title">この資料の要点</p><ol>{takeaways}</ol></div>' if takeaways else ''
+    gloss = ''.join(f'<div><dt>{esc(t)}</dt><dd>{esc(d)}</dd></div>' for t, d in glossary.items())
+    glossary_section = f'<section id="glossary" class="glossary"><h2>用語</h2><dl>{gloss}</dl></section>' if gloss else ''
+    if gloss: toc += '<li><a href="#glossary"><span class="toc-num">・</span>用語</a></li>'
     source_items = []
     for s in doc.get("sources", []):
         label = esc(s["title"])
@@ -212,7 +251,7 @@ def render(doc: dict) -> str:
         source_items.append(f'<li id="{esc(s["id"])}">{label}</li>')
     sources = ''.join(source_items)
     source_section = f'<section id="sources" class="sources"><h2>参考資料</h2><ul>{sources}</ul></section>' if sources else ''
-    return '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(doc["title"]) + f'</title><style>{css}</style></head><body><a class="skip-link" href="#main">本文へ移動</a><div class="layout"><nav class="toc" aria-label="目次"><div class="toc-title">目次</div><ol>{toc}</ol><div class="theme-controls" aria-label="表示テーマ"><button type="button" data-theme-set="system">自動</button><button type="button" data-theme-set="light">明るい</button><button type="button" data-theme-set="dark">暗い</button></div></nav><main id="main"><header><h1>{esc(doc["title"])}</h1><p class="lead">{esc(doc["lead"])}</p></header>{"".join(sections)}{source_section}</main></div><script>{js}</script></body></html>'
+    return '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(doc["title"]) + f'</title><style>{css}</style></head><body><div class="progress" aria-hidden="true"><span></span></div><a class="skip-link" href="#main">本文へ移動</a><div class="layout"><nav class="toc" aria-label="目次"><div class="toc-title">目次</div><ol>{toc}</ol><div class="theme-controls" aria-label="表示テーマ"><button type="button" data-theme-set="system">自動</button><button type="button" data-theme-set="light">明るい</button><button type="button" data-theme-set="dark">暗い</button></div></nav><main id="main"><header><p class="meta">読了の目安 約{reading_minutes("".join(sections))}分</p><h1>{esc(doc["title"])}</h1><p class="lead">{inline(doc["lead"], glossary)}</p>{takeaway_box}</header>{"".join(sections)}{glossary_section}{source_section}</main></div><script>{js}</script></body></html>'
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Render explainer JSON to portable HTML")

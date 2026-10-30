@@ -116,11 +116,13 @@ class NetworkTests(unittest.TestCase):
         edge=next(e for e in tree.iter('path')if e.get('data-key')=='edge:jump:path')
         vals=list(map(float,re.findall(r'-?\d+(?:\.\d+)?',edge.get('d'))))
         sx,sy,c1x,c1y,c2x,c2y,tx,ty=vals
+        node=next(e for e in tree.iter('g')if e.get('data-key')=='node:b')
+        left,top,w,h=map(float,node.get('data-obstacle').split(','))
         for i in range(41):
             t=i/40;u=1-t
             x=u**3*sx+3*u*u*t*c1x+3*u*t*t*c2x+t**3*tx
             y=u**3*sy+3*u*u*t*c1y+3*u*t*t*c2y+t**3*ty
-            self.assertFalse(276<=x<=444 and 61<=y<=159, 'edge must avoid the middle node')
+            self.assertFalse(left<=x<=left+w and top<=y<=top+h, 'edge must avoid the middle node')
 
 
 if __name__ == "__main__":

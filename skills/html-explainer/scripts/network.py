@@ -183,14 +183,22 @@ def _wrap(text: str, max_units: int = 18) -> list[str]:
     return words
 
 
-def _layout(spec: dict[str, Any]) -> tuple[dict[str, tuple[float, float]], float, float]:
-    width, height, margin_x, margin_y = 960.0, 380.0, 120.0, 95.0
-    cols, rows = spec["columns"], spec["rows"]
-    col_gap = (width - margin_x * 2) / max(1, cols - 1)
-    row_gap = (height - margin_y * 2) / max(1, rows - 1)
+# Top and bottom margins tried in order: compact first, wider only when a detour needs the room.
+MARGINS = ((64.0, 64.0), (150.0, 64.0), (64.0, 150.0), (150.0, 150.0))
+
+
+def _layout(spec: dict[str, Any], margins: tuple[float, float] = MARGINS[0]) -> tuple[dict[str, tuple[float, float]], float, float]:
+    """Place nodes on the grid, dropping rows no node uses so the figure has no empty band."""
+    width, margin_x, row_gap = 960.0, 120.0, 150.0
+    top, bottom = margins
+    if spec.get("boundaries"):
+        top = max(top, 84.0)  # room for the boundary frame and its label above the first row
+    used = sorted({n["row"] for n in spec["nodes"]})
+    col_gap = (width - margin_x * 2) / max(1, spec["columns"] - 1)
+    height = top + bottom + (len(used) - 1) * row_gap + (20 if any(v.get("note") for v in spec["variants"]) else 0)
     return ({n["id"]: (margin_x + (n["column"] - 1) * col_gap,
-                        margin_y + (n["row"] - 1) * row_gap)
-             for n in spec["nodes"]}, col_gap, row_gap)
+                        top + used.index(n["row"]) * row_gap)
+             for n in spec["nodes"]}, col_gap, height)
 
 
 def _ports(source: tuple[float, float], target: tuple[float, float]) -> tuple[tuple[float, float], tuple[float, float]]:
@@ -234,9 +242,10 @@ def _path_points(source: tuple[float, float], target: tuple[float, float], route
 
 
 def _route_is_safe(source: tuple[float, float], target: tuple[float, float], route: str,
-                   obstacles: dict[str, tuple[float, float, float, float]], endpoint_ids: set[str]) -> bool:
+                   obstacles: dict[str, tuple[float, float, float, float]], endpoint_ids: set[str],
+                   height: float = 380) -> bool:
     points = _path_points(source, target, route)
-    if any(not (0 <= x <= 960 and 0 <= y <= 380) for x, y in points):
+    if any(not (0 <= x <= 960 and 0 <= y <= height) for x, y in points):
         return False
     for oid, (left, top, right, bottom) in obstacles.items():
         if oid in endpoint_ids:
@@ -247,13 +256,14 @@ def _route_is_safe(source: tuple[float, float], target: tuple[float, float], rou
 
 
 def _label_is_safe(midpoint: tuple[float, float], words: list[str], side: str,
-                   obstacles: dict[str, tuple[float, float, float, float]], endpoint_ids: set[str]) -> bool:
+                   obstacles: dict[str, tuple[float, float, float, float]], endpoint_ids: set[str],
+                   canvas_height: float = 380) -> bool:
     width = max(_visual_len(word) for word in words) * 6.2 + 8
     height = 20 * len(words) + 4
     offset = -15 if side == "above" else 15 if side == "below" else 0
     left, right = midpoint[0] - width / 2, midpoint[0] + width / 2
     top, bottom = midpoint[1] + offset - height / 2, midpoint[1] + offset + height / 2
-    if left < 0 or right > 960 or top < 0 or bottom > 380:
+    if left < 0 or right > 960 or top < 0 or bottom > canvas_height:
         return False
     for oid, (node_left, node_top, node_right, node_bottom) in obstacles.items():
         if left <= node_right + 4 and right >= node_left - 4 and top <= node_bottom + 4 and bottom >= node_top - 4:
@@ -273,10 +283,23 @@ def _path_midpoint(source: tuple[float, float], target: tuple[float, float], rou
 
 
 def render_network(spec: object, prefix: str = "diagram") -> list[str]:
-    """Render one self-contained accessible SVG per variant."""
+    """Render one self-contained accessible SVG per variant, in the most compact layout whose routes fit."""
     data = validate_network(spec)
+    for i, margins in enumerate(MARGINS):
+        try:
+            return _render(data, prefix, margins)
+        except _NoRoute:
+            if i == len(MARGINS) - 1:
+                raise
+
+
+class _NoRoute(ValueError):
+    pass
+
+
+def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float]) -> list[str]:
     safe_prefix = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
-    positions, _, _ = _layout(data)
+    positions, _, height = _layout(data, margins)
     node_map = {n["id"]: n for n in data["nodes"]}
     obstacles = {n["id"]: (positions[n["id"]][0] - 72, positions[n["id"]][1] - 36,
                            positions[n["id"]][0] + 72, positions[n["id"]][1] + 36)
@@ -286,7 +309,7 @@ def render_network(spec: object, prefix: str = "diagram") -> list[str]:
         vid = f"{safe_prefix}-v{vi}"
         title = f"{variant['label']}の経路図"
         desc = variant.get("note", "").strip() or "ノード間の処理経路を示します。"
-        parts = [f'<svg class="dg-network" viewBox="0 0 960 380" role="img" aria-labelledby="{vid}-title {vid}-desc">',
+        parts = [f'<svg class="dg-network" viewBox="0 0 960 {height:g}" role="img" aria-labelledby="{vid}-title {vid}-desc">',
                  f'<title id="{vid}-title">{_esc(title)}</title>',
                  f'<desc id="{vid}-desc">{_esc(desc)}</desc>',
                  '<defs>']
@@ -327,10 +350,10 @@ def render_network(spec: object, prefix: str = "diagram") -> list[str]:
             candidates += ["far-above", "far-below"]
             choice = None
             for candidate in candidates:
-                if not _route_is_safe((sx, sy),(tx, ty),candidate,obstacles,endpoint_ids): continue
+                if not _route_is_safe((sx, sy),(tx, ty),candidate,obstacles,endpoint_ids,height): continue
                 mx,my = _path_midpoint((sx, sy),(tx, ty),candidate)
                 for side in label_sides:
-                    if not _label_is_safe((mx,my),words,side,obstacles,endpoint_ids): continue
+                    if not _label_is_safe((mx,my),words,side,obstacles,endpoint_ids,height): continue
                     offset=-15 if side=="above" else 15 if side=="below" else 0
                     bw=max(_visual_len(word)for word in words)*8+16;bh=20*len(words)+4
                     box=(mx-bw/2,my+offset-bh/2,mx+bw/2,my+offset+bh/2)
@@ -338,7 +361,7 @@ def render_network(spec: object, prefix: str = "diagram") -> list[str]:
                     choice=(candidate,mx,my,offset,box);break
                 if choice:break
             if choice is None:
-                _fail(f"network.variants[{vi}].edges[{edge['id']}]","no route and label slot fit; rearrange nodes or shorten the label")
+                raise _NoRoute(f"network.variants[{vi}].edges[{edge['id']}]: no route and label slot fit; rearrange nodes or shorten the label")
             route,lx,ly,offset,box=choice;label_boxes.append(box)
             d=_path((sx, sy),(tx, ty),route);tone=edge.get("tone","blue")
             parts.append(f'<path data-key="{_esc(key)}:path" data-flow="{kind}" class="dg-edge dg-tone-{_esc(tone)}" d="{d}" marker-end="url(#{vid}-arrow-{kind}-{tone})"/>')
@@ -354,20 +377,22 @@ def render_network(spec: object, prefix: str = "diagram") -> list[str]:
                 f'rx="4"/><text text-anchor="middle">{tspans}</text></g>'
             )
         for node in data["nodes"]:
-            x, y = positions[node["id"]]; key = f"node:{node['id']}"; width, height = 144, 72
+            x, y = positions[node["id"]]; key = f"node:{node['id']}"; node_w, node_h = 144, 72
             border = " active" if node["id"] in active else " inactive" if active else ""
             label_lines = _wrap(node["label"]); detail_lines = _wrap(node.get("detail", "")) if node.get("detail", "") else []
             if len(label_lines) + len(detail_lines) > 3:
                 _fail(f"network.nodes[{node['id']}]", "label and detail exceed three lines; move detail to caption")
-            label_y = y - 8 if len(label_lines) == 1 else y - 18
-            detail_y = y + (8 if len(detail_lines) == 2 else 15) if len(label_lines) == 1 else y + 22
+            # Centre the label and detail block vertically inside the node.
+            line_count = len(label_lines) + len(detail_lines)
+            label_y = y + 5 - (line_count - 1) * 9
+            detail_y = label_y + 18 * len(label_lines) + (-1 if detail_lines else 0)
             label = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 18}">{_esc(line)}</tspan>' for i, line in enumerate(label_lines))
             detail = "".join(f'<tspan x="{x:g}" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>' for i, line in enumerate(detail_lines))
-            parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}" data-obstacle="{x-72:g},{y-36:g},{width},{height}"><rect data-key="{_esc(key)}:rect" x="{x-72:g}" y="{y-36:g}" width="{width}" height="{height}" rx="8"/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
+            parts.append(f'<g data-key="{_esc(key)}" class="dg-node dg-tone-{_esc(node.get("tone", "slate"))}{border}" data-obstacle="{x-72:g},{y-36:g},{node_w},{node_h}"><rect data-key="{_esc(key)}:rect" x="{x-72:g}" y="{y-36:g}" width="{node_w}" height="{node_h}" rx="8"/><text data-key="{_esc(key)}:label" x="{x:g}" y="{label_y:g}" class="dg-node-label" data-label="true" text-anchor="middle">{label}</text><text data-key="{_esc(key)}:detail" x="{x:g}" y="{detail_y:g}" class="dg-node-detail" data-label="true" text-anchor="middle">{detail}</text></g>')
         note_lines = _wrap(variant.get("note", ""), 80) if variant.get("note", "") else []
         note = "".join(f'<tspan x="120" dy="{0 if i == 0 else 16}">{_esc(line)}</tspan>'
                         for i, line in enumerate(note_lines))
-        parts.append(f'<text data-key="variant-note" class="dg-variant-note" x="120" y="350" data-label="true">{note}</text></svg>')
+        parts.append(f'<text data-key="variant-note" class="dg-variant-note" x="120" y="{height - 14:g}" data-label="true">{note}</text></svg>')
         svg = "".join(parts)
         keys = re.findall(r'data-key="([^"]+)"', svg)
         if len(keys) != len(set(keys)):

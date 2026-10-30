@@ -1,15 +1,205 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["title", "lead", "sections"],
+  "required": [
+    "title",
+    "lead",
+    "sections"
+  ],
   "additionalProperties": false,
   "properties": {
-    "title": {"type": "string", "minLength": 1},
-    "lead": {"type": "string", "minLength": 1},
-    "sources": {"type": "array", "items": {"type": "object", "required": ["id", "title"], "additionalProperties": false, "properties": {"id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"}, "title": {"type": "string"}, "note": {"type": "string", "minLength": 1}, "url": {"type": "string"}}}},
-    "sections": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["id", "title"], "additionalProperties": false, "properties": {"id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"}, "title": {"type": "string"}, "paragraphs": {"type": "array", "items": {"type": "string"}}, "callout": {"type": "string"}, "figures": {"type": "array", "items": {"$ref": "#/$defs/figure"}}}}}
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lead": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "paragraphs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "callout": {
+            "type": "string"
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/figure"
+            }
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "enum": [
+                    "p",
+                    "list",
+                    "callout",
+                    "code",
+                    "stats",
+                    "compare",
+                    "details",
+                    "figure",
+                    "diagram"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "takeaways": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "glossary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "term",
+          "definition"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "term": {
+            "type": "string",
+            "minLength": 1
+          },
+          "definition": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
   },
   "$defs": {
-    "figure": {"type": "object", "required": ["id", "kind", "title", "summary", "caption", "status"], "additionalProperties": false, "properties": {"id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"}, "kind": {"enum": ["flow", "bars", "timeline", "table"]}, "title": {"type": "string"}, "summary": {"type": "string"}, "caption": {"type": "string"}, "status": {"enum": ["measured", "inferred", "proposed", "unknown", "illustrative"]}, "source_ids": {"type": "array", "items": {"type": "string"}}, "steps": {"type": "array"}, "rows": {"type": "array"}, "columns": {"type": "array", "items": {"type": "string"}}, "unit": {"type": "string"}, "axis_max": {"type": "number"}}}
+    "figure": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "summary",
+        "caption",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "kind": {
+          "enum": [
+            "flow",
+            "bars",
+            "timeline",
+            "table"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "measured",
+            "inferred",
+            "proposed",
+            "unknown",
+            "illustrative"
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "steps": {
+          "type": "array"
+        },
+        "rows": {
+          "type": "array"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unit": {
+          "type": "string"
+        },
+        "axis_max": {
+          "type": "number"
+        }
+      }
+    }
   }
 }

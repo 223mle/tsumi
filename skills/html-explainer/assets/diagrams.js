@@ -33,6 +33,8 @@
     figure.classList.add('dg-enhanced');
     let transition=0,flowFrame=0,visible=false,playing=false,flowOrigin=0,particles=[];
     const play=figure.querySelector('.dg-play');
+    const stepButtons=[...figure.querySelectorAll('[data-step]')];
+    const stepText=figure.querySelector('.dg-step-text'),stepCount=figure.querySelector('.dg-step-count'),autoButton=figure.querySelector('[data-autoplay]');
     function removeParticles(){particles.forEach(p=>p.node.remove());particles=[];}
     function particleFrame(now){
       if(!playing||!visible||reduced.matches||document.hidden){flowFrame=0;return;}
@@ -83,7 +85,7 @@
         });
         live.forEach((el,key)=>{if(!wanted.has(key))updates.push({el,attrs:[['opacity',interpolator(el.getAttribute('opacity')||'1','0')]],dest:null,text:false});});
       });
-      figure.dataset.state=String(index);figure.dataset.animating='true';
+      figure.dataset.state=String(index);figure.dataset.animating='true';syncSteps(index);
       const duration=instant||reduced.matches?0:760;const start=performance.now();
       function frame(now){
         const linear=duration?Math.min(1,(now-start)/duration):1;const t=linear<.5?4*linear**3:1-(-2*linear+2)**3/2;
@@ -95,6 +97,38 @@
         if(linear<1)transition=requestAnimationFrame(frame);else{figure.dataset.animating='false';figure.dataset.renderedState=String(index);startFlow();}
       }frame(start);
     }
+    function syncSteps(index){
+      if(!stepButtons.length)return;
+      stepButtons.forEach((b,i)=>{b.setAttribute('aria-current',i===index?'step':'false');b.classList.toggle('is-done',i<index);});
+      const tpl=figure.querySelector(`template[data-step-text="${index}"]`);
+      if(stepText&&tpl)stepText.replaceChildren(tpl.content.cloneNode(true));
+      if(stepCount)stepCount.textContent=`${index+1} / ${stepButtons.length}`;
+      // On narrow screens the drawing scrolls sideways; bring the current step into view.
+      panels.forEach(({svg})=>{
+        const box=svg.parentElement,cur=svg.querySelector('.is-current .dg-msg-line, .dg-msg.is-current');
+        if(!cur||box.scrollWidth<=box.clientWidth+2)return;
+        const r=cur.getBoundingClientRect(),b=box.getBoundingClientRect();
+        const target=r.width>b.width-40?box.scrollLeft+r.left-b.left-40:box.scrollLeft+(r.left+r.right)/2-(b.left+b.right)/2;
+        box.scrollTo({left:Math.max(0,target),behavior:reduced.matches?'auto':'smooth'});
+      });
+      figure.querySelectorAll('[data-go]').forEach(b=>{const next=index+Number(b.dataset.go);b.disabled=next<0||next>=stepButtons.length;});
+    }
+    function go(delta){const n=stepButtons.length;const next=Math.max(0,Math.min(n-1,Number(figure.dataset.state||0)+delta));if(next!==Number(figure.dataset.state||0))select(next);return next;}
+    let autoTimer=0;
+    function stopAuto(){clearTimeout(autoTimer);autoTimer=0;if(autoButton){autoButton.setAttribute('aria-pressed','false');autoButton.textContent='自動で進める';}}
+    function tick(){if(!autoTimer)return;const n=stepButtons.length;const cur=Number(figure.dataset.state||0);if(cur>=n-1){stopAuto();return;}go(1);autoTimer=setTimeout(tick,reduced.matches?2600:3200);}
+    figure.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{stopAuto();select(Number(b.dataset.step));}));
+    figure.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{stopAuto();go(Number(b.dataset.go));}));
+    if(autoButton)autoButton.addEventListener('click',()=>{
+      if(autoTimer){stopAuto();return;}
+      if(Number(figure.dataset.state||0)>=stepButtons.length-1)select(0);
+      autoButton.setAttribute('aria-pressed','true');autoButton.textContent='停止';autoTimer=setTimeout(tick,reduced.matches?1600:2200);
+    });
+    if(stepButtons.length)figure.addEventListener('keydown',e=>{
+      if(e.target.closest('input,textarea'))return;
+      if(e.key==='ArrowRight'){stopAuto();go(1);e.preventDefault();}
+      else if(e.key==='ArrowLeft'){stopAuto();go(-1);e.preventDefault();}
+    });
     figure.querySelectorAll('.dg-switch input').forEach(input=>input.addEventListener('change',()=>{if(input.checked)select(Number(input.value));}));
     if(play)play.addEventListener('click',()=>{playing=!playing;play.setAttribute('aria-pressed',String(playing));play.textContent=playing?'流れを停止':'流れを再生';startFlow();});
     new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;startFlow();},{threshold:.05}).observe(figure);
