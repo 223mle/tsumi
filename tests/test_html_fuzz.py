@@ -297,7 +297,7 @@ class FuzzTests(unittest.TestCase):
         notes = []
         render_diagram({"id": "f", "title": "流れ", "caption": "説明用。", "status": "illustrative", "legend": [{"label": "パスワード", "tone": "blue"}],
                         "panels": [{"spec": net}]}, warnings=notes)
-        self.assertTrue(any("drawn blue" in n for n in notes), notes)
+        self.assertTrue(any("explicit tone" in n for n in notes), notes)
 
     def test_a_three_line_threshold_name_is_noted(self):
         sys.path.insert(0, str(Path(__file__).parents[1] / "skills/html-explainer/scripts"))

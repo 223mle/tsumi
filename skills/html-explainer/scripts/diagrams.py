@@ -121,7 +121,7 @@ def render_diagram(bundle,prose=html.escape,source_titles=None,warnings=None):
         blue=next((item['label'] for item in bundle.get('legend',[]) if item['tone']=='blue'),None)
         defaulted=[e.get('id') for p in panels if p['spec'].get('type')=='network' for e in p['spec'].get('edges',[])+[x for v in p['spec'].get('variants',[]) for x in v.get('edges',[])] if 'tone' not in e and e.get('kind')!='conflict' and not (p['spec'].get('edges') and 'step' not in e)]
         if blue and defaulted and warnings is not None:
-            warnings.append(f"{bundle['id']}: edges without a tone ({', '.join(dict.fromkeys(defaulted))}) are drawn blue, which the legend calls 「{blue}」; give them a tone")
+            warnings.append(f"{bundle['id']}: the legend names blue 「{blue}」, so give every edge an explicit tone, blue ones included ({', '.join(dict.fromkeys(defaulted))} have none)")
         # A legend entry nothing is drawn in sends the reader looking for a colour that is not there.
         unused=named-set().union(*(_used_tones(p['spec']) for p in panels))
         if unused: raise ValueError(f"legend: nothing in the figure is drawn in {sorted(unused)}; drop the entry or use the colour")

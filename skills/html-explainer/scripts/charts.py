@@ -14,7 +14,7 @@ import sys as _sys
 from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parent))  # loadable by file path as well as by name
-from jawrap import plain, wrap
+from jawrap import plain, units, wrap
 
 TONES = {"blue", "teal", "violet", "amber", "rose", "slate", "red"}
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]*$")
@@ -494,7 +494,15 @@ def _threshold_svg(spec,prefix,narrow=False):
         if limit is not None and row['value']>limit:
             tx=_scale(limit,lo,hi,x0,width,log)
             out.append(f'<rect x="{tx:.2f}" y="{y}" width="{x-tx:.2f}" height="23" rx="3" class="bar-excess" data-key="excess-{_esc(row["id"])}"/>')
-        out.append(_svg_wrapped_text(x+8,y+15,value_label,'external-label',f"row-value-{row['id']}",10))  # the value sits at the end of its own bar
+        # The value sits at the end of its own bar: outside when it fits the room left, folded to two lines if that fits,
+        # otherwise inside the bar's end, so a bar that reaches the axis max never pushes its value off the canvas.
+        room=int((W-4-(x+8))/12); need=units(value_label)/2
+        if need<=room or (room>=3 and wrap(value_label,room*2,2)):
+            out.append(_svg_wrapped_text(x+8,y+15,value_label,'external-label',f"row-value-{row['id']}",max(3,min(10,room))))
+        elif x-x0>=_text_width(value_label)+16:
+            out.append(_svg_text(x-8,y+16,value_label,'bar-label','end',f"row-value-{row['id']}"))
+        else:
+            out.append(_svg_wrapped_text(x+8,y+15,value_label,'external-label',f"row-value-{row['id']}",10))
     layout,_=_marker_layout(thresholds,lo,hi,x0,width,W,log)
     for threshold in thresholds:
         x,anchor,row=layout[threshold['id']];key=_esc(threshold['id']);tone=threshold.get('tone','red')
