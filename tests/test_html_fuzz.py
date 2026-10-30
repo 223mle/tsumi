@@ -120,6 +120,12 @@ class FuzzTests(unittest.TestCase):
                         # 2px: a full-width ？ has wide side bearings, so its box may graze a neighbour without the ink touching.
                         self.assertLessEqual(b1, a2 + 2, (t1, t2, narrow, spec))
 
+    def test_series_with_the_same_label_are_refused(self):
+        spec = {"type": "line", "x": {"min": 0, "max": 10, "unit": "人", "ticks": [0, 10]}, "y": {"min": 0, "max": 10, "unit": "円", "ticks": [0, 10]},
+                "series": [{"id": "a", "label": "案A", "points": [[0, 1], [10, 9]]}, {"id": "b", "label": "案A", "points": [[0, 9], [10, 1]]}]}
+        with self.assertRaisesRegex(ValueError, "same label"):
+            render_line(spec, "l")
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):
@@ -167,7 +173,7 @@ class FuzzTests(unittest.TestCase):
             series = []
             for k in range(rnd.randint(1, 4)):
                 xs = sorted(rnd.sample(range(0, 101, 10), rnd.randint(2, 6)))
-                series.append({"id": f"s{k}", "label": rnd.choice(["スタンダード", "案A", "エンタープライズ年額"]), "points": [[x, rnd.uniform(0, ymax)] for x in xs]})
+                series.append({"id": f"s{k}", "label": ["スタンダード", "案A", "エンタープライズ年額", "案B"][k], "points": [[x, rnd.uniform(0, ymax)] for x in xs]})
             spec = {"type": "line", "x": {"min": 0, "max": 100, "unit": "人", "ticks": [0, 50, 100]},
                     "y": {"min": 0, "max": ymax, "unit": "円", "ticks": [0, ymax]}, "series": series,
                     "points": [{"id": "p", "x": rnd.uniform(0, 100), "y": rnd.uniform(0, ymax), "label": "ここで逆転"}],

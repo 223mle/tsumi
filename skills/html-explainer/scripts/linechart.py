@@ -50,6 +50,8 @@ def _scene(spec: dict[str, Any], scene: dict[str, Any], path: str, x: dict[str, 
         _text(s.get("label"), p + ".label")
         if len(s["label"]) > 16:
             _fail(p + ".label", "at most 16 characters; it is written at the end of the line")
+        if any(o is not s and o.get("label") == s["label"] for o in series[:i]):
+            _fail(p + ".label", "another series has the same label, so the reader cannot tell them apart")
         _tone(s.get("tone"), p + ".tone")
         pts = s.get("points")
         if not isinstance(pts, list) or len(pts) < 2:
