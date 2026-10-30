@@ -148,6 +148,21 @@
       else if(e.key==='ArrowLeft'){stopAuto();go(-1);e.preventDefault();}
     });
     figure.querySelectorAll('.dg-switch input').forEach(input=>input.addEventListener('change',()=>{if(input.checked)select(Number(input.value));}));
+    // When a chart is scrolled sideways on a phone, keep its row names pinned at the left edge.
+    panels.forEach(({svg})=>{
+      const box=svg.parentElement,panel=box.parentElement;
+      const pin=document.createElement('div');pin.className='dg-pinned-labels';pin.setAttribute('aria-hidden','true');panel.append(pin);
+      function update(){
+        const names=[...svg.querySelectorAll('.lane-label')];
+        if(!names.length||box.scrollWidth<=box.clientWidth+2||figure.classList.contains('dg-fit')){pin.hidden=true;return;}
+        const p=panel.getBoundingClientRect(),b=box.getBoundingClientRect();
+        const hiddenRight=Math.max(...names.map(n=>n.getBoundingClientRect().right));
+        if(hiddenRight>b.left+4){pin.hidden=true;return;}
+        pin.hidden=false;pin.style.top=(b.top-p.top)+'px';pin.style.height=b.height+'px';
+        pin.replaceChildren(...names.map(n=>{const r=n.getBoundingClientRect(),el=document.createElement('span');el.textContent=n.textContent;el.style.top=(r.top-b.top+r.height/2)+'px';return el;}));
+      }
+      box.addEventListener('scroll',()=>requestAnimationFrame(update),{passive:true});addEventListener('resize',update);update();
+    });
     const fitButton=figure.querySelector('.dg-fit-toggle');
     if(fitButton)fitButton.addEventListener('click',()=>{
       // On a phone the reader can trade legible labels for the whole picture, and back.
