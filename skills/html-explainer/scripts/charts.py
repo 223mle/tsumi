@@ -228,7 +228,9 @@ def _tick(tick: Any, unit: str) -> tuple[float, str]:
     if isinstance(tick, dict):
         # A name that is only a number (「1万」) gets the axis unit too, so it reads like the unnamed ticks beside it.
         if unit and re.fullmatch(r"[0-9.,]+[千万億兆]?", tick["label"]):
-            return float(tick["value"]), tick["label"] + unit
+            # 「100万」 on a 万行 axis reads 100万行, not 100万万行: a magnitude the name already ends with is not repeated.
+            tail = unit[1:] if tick["label"][-1] in "千万億兆" and unit[0] == tick["label"][-1] else unit
+            return float(tick["value"]), tick["label"] + tail
         return float(tick["value"]), tick["label"]
     return float(tick), f"{_number(float(tick))}{unit}"
 

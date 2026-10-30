@@ -315,6 +315,11 @@ class FuzzTests(unittest.TestCase):
         svg = render_chart(spec, "t")[0]
         self.assertIn(">1万ページ<", svg)
         self.assertIn(">上限<", svg)
+        line = {"type": "line", "x": {"min": 100, "max": 1000, "unit": "万行", "ticks": [{"value": 100, "label": "100万"}, 1000]},
+                "y": {"min": 0, "max": 10, "ticks": [0, 10]}, "series": [{"id": "s", "label": "全件", "points": [[100, 1], [1000, 10]]}]}
+        svg = render_line(line, "l")[0]
+        self.assertIn(">100万行<", svg)
+        self.assertNotIn("万万", svg)
 
     def test_a_phone_label_beside_a_line_slides_clear_of_a_mark_instead_of_wrapping(self):
         spec = {"type": "network", "columns": 3, "rows": 2, "nodes": [{"id": f"{r}{c}", "label": f"{r}{c}", "column": c, "row": 1 if r == "a" else 2}
