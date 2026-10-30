@@ -144,7 +144,7 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
     unit_in_name = narrow and units(y_unit) > 2
     tick_unit = "" if unit_in_name else y_unit
     y_name = (f"{y['label']}（{y_unit}）" if y.get("label") else y_unit) if unit_in_name else y.get("label")
-    x0 = max(x0, 16 + max(_text_width(_tick(t, tick_unit)[1]) for t in y["ticks"]))  # room for the longest y label
+    x0 = max(x0, 22 + max(_text_width(_tick(t, tick_unit)[1]) for t in y["ticks"]))  # room for the longest y label
     marker_layout, rows = _marker_layout([{"id": m["id"], "value": m["x"], "label": m["label"]} for m in scene.get("markers", [])], xlo, xhi, x0, x1 - x0, W)
     lift = max(0, rows - 1) * 17
     name_row = 16.0 if y_name else 0.0  # a row of its own for the y-axis name, above the plot
@@ -213,7 +213,8 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
             out.append(f'<line class="axis-grid" x1="{x0:g}" y1="{gy:.2f}" x2="{x1:g}" y2="{gy:.2f}" data-key="ytick-{v:g}"/>')
             continue
         out.append(f'<line class="axis-grid" x1="{x0:g}" y1="{gy:.2f}" x2="{x1:g}" y2="{gy:.2f}" data-key="ytick-{v:g}"/>')
-        out.append(_svg_text(x0 - 8, gy + 4, text, "axis-label", "end", f"ytick-label-{v:g}"))
+        # 14px off the axis: a ring of two lines starting at the same point (radius 8) stays clear of its label.
+        out.append(_svg_text(x0 - 14, gy + 4, text, "axis-label", "end", f"ytick-label-{v:g}"))
     if x.get("label"):
         out.append(_svg_text((x0 + x1) / 2, x_name_y, x["label"], "axis-label", "middle", "x-axis-label"))
     if y_name:

@@ -325,7 +325,7 @@ class FuzzTests(unittest.TestCase):
         svg = render_network(spec, "n", narrow=True)[0]
         self.assertIn(">2 ハッシュ化</tspan>", svg)
 
-    def test_a_long_phone_tag_on_the_right_column_moves_left_of_the_arriving_line(self):
+    def test_a_long_phone_tag_on_the_right_column_keeps_clear_of_the_arriving_arrow(self):
         spec = {"type": "network", "columns": 3, "rows": 2, "nodes": [{"id": f"{r}{c}", "label": f"{r}{c}", "column": c, "row": 1 if r == "a" else 2}
                                                                       for r in "ab" for c in (1, 3)],
                 "variants": [{"label": "v", "edges": [{"id": f"{r}", "from": f"{r}1", "to": f"{r}3", "label": "保存", "kind": "file"} for r in "ab"],
@@ -333,8 +333,11 @@ class FuzzTests(unittest.TestCase):
         svg = render_network(spec, "n", narrow=True)[0]
         mx = float(re.search(r'data-key="mark:b3" transform="translate\(([\d.]+),', svg).group(1))
         width = float(re.search(r'data-key="mark:b3:rect" x="[-\d.]+" y="-11" width="([\d.]+)"', svg).group(1))
-        line_x = float(re.search(r'data-key="edge:b:path"[^>]*d="M ([\d.]+)', svg).group(1))
-        self.assertTrue(mx + width / 2 <= line_x - 8 or mx - width / 2 >= line_x + 8, (mx, width, line_x))
+        top = float(re.search(r'data-key="mark:b3" transform="translate\([\d.]+,([\d.]+)\)', svg).group(1)) - 11
+        ex, ey = map(float, re.search(r'data-key="edge:b:path"[^>]*d="[^"]* ([\d.]+) ([\d.]+)"', svg).groups())
+        self.assertFalse(mx - width / 2 - 6 < ex < mx + width / 2 + 6 and top - 6 < ey < top + 28, (mx, width, top, ex, ey))
+        # Nothing leaves this box from below, so the tag sits on its own bottom edge, not between the columns.
+        self.assertGreater(mx - width / 2, 262)
 
     def test_a_vertex_shared_by_two_series_shows_both_colours(self):
         spec = {"type": "line", "x": {"min": 100, "max": 1000, "ticks": [100, 1000]}, "y": {"min": 0, "max": 10, "ticks": [1, 10]},

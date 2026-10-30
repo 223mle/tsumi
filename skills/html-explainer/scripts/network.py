@@ -523,16 +523,22 @@ def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | No
             ends = [positions[e["to"] if e["from"] == mark["node"] else e["from"]] for e in variant["edges"] if mark["node"] in (e["from"], e["to"])]
             if mx - mw / 2 < nx + 10 and any(ox == nx and oy < ny for ox, oy in ends):
                 # A line from the box above meets the top centre, and a long tag would cover its arrowhead (in either
-                # layout): move the tag right of the line, or left of it when the canvas ends first.
+                # layout): move the tag right of the line. When the canvas ends first, drop it to the box's bottom-right
+                # corner if nothing leaves from below, so it still reads as this box's tag; else put it left of the line.
                 right = nx + 16 + mw / 2
-                mx = right if right + mw / 2 <= canvas - 4 else max(nx - 16 - mw / 2, 4 + mw / 2)
+                if right + mw / 2 <= canvas - 4:
+                    mx = right
+                elif not any(ox == nx and oy > ny for ox, oy in ends):
+                    top = ny + 36 - 2  # centred 9px below the bottom edge: the text rises about 8px above its centre line
+                else:
+                    mx = max(nx - 16 - mw / 2, 4 + mw / 2)
             for bl in boundary_labels:
                 if mx - mw / 2 < bl[2] + 4 and mx + mw / 2 > bl[0] - 4 and top < bl[3] and top + 22 > bl[1]:
                     # The tag would cover a boundary title: move it past the title, or else to the node's bottom edge.
                     if bl[2] + 8 + mw <= canvas - 4:
                         mx = bl[2] + 8 + mw / 2
                     else:
-                        top = ny + 36 - 11
+                        top = ny + 36 - 2  # centred 9px below the bottom edge: the text rises about 8px above its centre line
             label_boxes.append((mx - mw / 2, top, mx + mw / 2, top + 22))
             mkey = f"mark:{mark['node']}"
             mark_parts.append(f'<g class="dg-mark dg-tone-{mark.get("tone", "red")}" data-key="{mkey}" transform="translate({mx:g},{top + 11:g})">'
