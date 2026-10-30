@@ -123,7 +123,7 @@ python3 scripts/install-codex-sync
 | [`tsumi-mode`](skills/tsumi-mode/SKILL.md) | `/tsumi-mode`（Claude Code では `/tsumi:tsumi-mode`）と打ったときだけ。「tsumi で」と書くだけでは読み込まれません |
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき |
 | [`unslop`](skills/unslop/SKILL.md) | 日本語の文書を書くとき、「日本語を直して」「分かりやすくして」と頼んだとき |
-| [`html-explainer`](skills/html-explainer/SKILL.md) | 日本語の解説・設計説明を、図と本文のある単独HTML資料にするとき。unslopと組み合わせ、生成後に実描画を確認します |
+| [`html-explainer`](skills/html-explainer/SKILL.md) | 日本語の解説・設計説明を、図やアニメーションで仕組みが分かる単独HTML資料にするとき。冒頭に要点を置き、シーケンス図や経路図を1手ずつ進め、用語と図を連動させます。unslopと組み合わせ、生成後に実描画を確認します |
 | [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | 会話の最後に「reflect して」と言ったとき。週報や振り返りの文書を書く依頼では読み込まれません |
 
 <details>
