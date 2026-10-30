@@ -267,8 +267,13 @@ def _line_svg(spec: dict[str, Any], scene: dict[str, Any], index: int, prefix: s
         r, l = cx + 12 + tw / 2, cx - 12 - tw / 2
         spots = [(mid, cy - 28, True), (mid, cy + 36, False), (r, cy + 4, None), (l, cy + 4, None), (l, cy - 22, None), (r, cy - 22, None),
                  (l, cy + 30, None), (r, cy + 30, None), (mid, cy - 50, True), (mid, cy + 58, False), (mid, cy - 72, True), (mid, cy + 80, False)]
-        # First keep clear of lines and labels; then accept touching a line; never sit on another label.
-        lx, ty, above = next((sp for sp in spots if fits(sp[0], sp[1], True)), None) or next((sp for sp in spots if fits(sp[0], sp[1], False)), spots[0])
+        # First keep clear of lines and labels; then take the spot that touches the lines least; never sit on another label.
+        def line_hits(sp):
+            l, r, t, b = sp[0] - tw / 2 - 2, sp[0] + tw / 2 + 2, sp[1] - 14, sp[1] + 5
+            return sum(1 for sx, sy in line_samples if l <= sx <= r and t <= sy <= b)
+        clear_spot = next((sp for sp in spots if fits(sp[0], sp[1], True)), None)
+        loose = [sp for sp in spots if fits(sp[0], sp[1], False)]
+        lx, ty, above = clear_spot or (min(loose, key=line_hits) if loose else spots[0])
         leader = "" if above is None else f'<path d="M{cx:.2f} {cy - 8 if above else cy + 8:.2f}V{ty + 4 if above else ty - 16:.2f}" data-key="callout-{_esc(p["id"])}-leader"/>'
         out.append(f'<g class="line-callout dg-tone-{tone}" data-key="callout-{_esc(p["id"])}"><circle cx="{cx:.2f}" cy="{cy:.2f}" r="6" data-key="callout-{_esc(p["id"])}-dot"/>{leader}</g>')
         out.append(_svg_text(lx, ty, p["label"], f"callout-label marker-label-{tone}", "middle", f"callout-label-{p['id']}"))
