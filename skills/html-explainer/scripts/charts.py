@@ -266,6 +266,24 @@ def _label_span(x: float, text: str, W: float) -> tuple[float, float]:
 def choose_ticks(ticks: list[tuple[float, str]], to_x, W: float, marked: set, named: set = frozenset()) -> set:
     """Tick values to label so no two labels touch: zero, ticks the author named, the two ends, marked values, then the rest."""
     first, last = ticks[0][0], ticks[-1][0]
+    # First try every k-th tick, so the labelled steps stay even (1, 100, 1万 rather than 1, 10, 1000, 100万).
+    values = [v for v, _ in ticks]
+    anchor = values.index(0) if 0 in values else 0
+    for k in range(2, len(ticks)):
+        keep = {v for i, v in enumerate(values) if (i - anchor) % k == 0}
+        must = marked & set(values)  # markers and notes must keep their tick; named ticks get priority only in the fallback below
+        if not must <= keep:
+            continue
+        spans = sorted(_label_span(to_x(v), t, W) for v, t in ticks if v in keep)
+        if all(b + 10 <= c for (a, b), (c, d) in zip(spans, spans[1:])):
+            break
+    else:
+        keep = None
+    spans_all = sorted(_label_span(to_x(v), t, W) for v, t in ticks)
+    if all(b + 10 <= c for (a, b), (c, d) in zip(spans_all, spans_all[1:])):
+        return set(values)  # everything fits
+    if keep:
+        return keep
     order = sorted(ticks, key=lambda t: (t[0] != 0, t[0] not in named, t[0] not in (first, last), t[0] not in marked, t[0]))
     spans: list[tuple[float, float]] = []
     keep = set()
