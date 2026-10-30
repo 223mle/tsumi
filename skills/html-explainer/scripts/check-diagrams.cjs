@@ -12,6 +12,8 @@ async function inspect(page){return page.evaluate(()=>{
     for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){const a=labels[i],b=labels[j];const w=Math.min(a.r.right,b.r.right)-Math.max(a.r.left,b.r.left),h=Math.min(a.r.bottom,b.r.bottom)-Math.max(a.r.top,b.r.top);if(w>3&&h>3)errors.push(`overlapping labels: ${a.text} / ${b.text}`);}
   });
   if(document.documentElement.scrollWidth>innerWidth+1)errors.push('page overflow');
+  // A figure's text alternative should carry its content, not a stock sentence.
+  document.querySelectorAll('.dg-live svg desc').forEach(d=>{if(/^(同じ時間軸で処理の重なりを比較する図|ノード間の処理経路を示します。)$/.test(d.textContent.trim()))errors.push('stock text alternative');});
   return errors;
 });}
 async function snapshot(figure){return figure.evaluate(f=>[...f.querySelectorAll('.dg-live [data-key]')].map(e=>[e.dataset.key,['x','y','width','d','transform','opacity'].map(k=>e.getAttribute(k)).join('|'),e.textContent]).sort((a,b)=>a[0].localeCompare(b[0])));}
@@ -54,8 +56,12 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
           check(`${theme}/${id}: step text follows`,(await f.getAttribute('data-rendered-state'))==='1'&&(await f.locator('.dg-step-text').textContent())!==text0&&(await stepButtons.nth(1).getAttribute('aria-current'))==='step');
           await f.locator('[data-go="1"]').focus();await p.keyboard.press('ArrowLeft');await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
           check(`${theme}/${id}: arrow keys step`,(await f.getAttribute('data-rendered-state'))==='0');
-          await stepButtons.nth(n-1).click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
-          check(`${theme}/${id}: last step disables next`,await f.locator('[data-go="1"]').isDisabled());
+          await stepButtons.first().click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+          // Keyboard users step to the end with Enter and must keep their focus on the button.
+          await f.locator('[data-go="1"]').focus();for(let k=0;k<n;k++){await p.keyboard.press('Enter');}
+          await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+          check(`${theme}/${id}: keyboard focus survives the last step`,await p.evaluate(()=>document.activeElement?.dataset?.go==='1'));
+          check(`${theme}/${id}: last step disables next`,(await f.locator('[data-go="1"]').getAttribute('aria-disabled'))==='true');
           const errors=await inspect(p);check(`${theme}/${id}: step geometry`,!errors.length,errors.join('; '));
           for(let v=0;v<n;v++){await stepButtons.nth(v).click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);await f.screenshot({path:path.join(out,`${theme}-${id}-step-${v+1}.png`)});}
           await stepButtons.first().click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
