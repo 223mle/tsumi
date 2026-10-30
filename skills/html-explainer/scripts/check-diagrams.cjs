@@ -16,6 +16,11 @@ async function inspect(page){return page.evaluate(()=>{
         const q=sh.getBoundingClientRect();const w=Math.min(r.right,q.right)-Math.max(r.left,q.left),h=Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top);
         if(w>3&&h>3){errors.push(`label on a shape: ${t.textContent.trim()}`);break;}
       }});
+    // A tag drawn over an arrow's end hides the head, so the arrow seems to stop short of its node.
+    const tags=[...svg.querySelectorAll('.dg-mark>rect')].filter(shown);
+    svg.querySelectorAll('path[marker-end]').forEach(pa=>{if(!tags.length||!shown(pa))return;const m=pa.getScreenCTM();if(!m)return;const e=pa.getPointAtLength(pa.getTotalLength()).matrixTransform(m);
+      const tag=tags.find(t=>{const q=t.getBoundingClientRect();return e.x>q.left+1&&e.x<q.right-1&&e.y>q.top-6&&e.y<q.bottom+1;});
+      if(tag)errors.push(`tag over an arrowhead: ${tag.parentElement.textContent.trim()}`);});
     // A bar painted after a label hides it: the label's centre must not sit under a later filled bar.
     const bars=[...svg.querySelectorAll('rect.bar')].filter(shown);
     svg.querySelectorAll('text[data-label]').forEach(t=>{if(!shown(t)||!t.textContent.trim())return;const r=t.getBoundingClientRect();const cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
@@ -107,6 +112,8 @@ async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)th
         if(f.dataset.mode==='steps')return shown(scenes.at(-1))&&f.querySelector('.dg-step-notes').getBoundingClientRect().height>0;return scenes.every(shown);})));await c.close();
     }
     const c=await b.newContext({viewport:{width:390,height:1000},reducedMotion:'reduce'});const p=await c.newPage();await p.goto(pathToFileURL(path.resolve(input)).href);
+    // The first scene of every figure, before the loop below moves each one on.
+    check('mobile: initial geometry',!(await inspect(p)).length,(await inspect(p)).join('; '));
     for(const f of await p.locator('[data-diagram]').all()){
       const radios=f.locator('.dg-switch input');if(await radios.count()>1){await radios.nth(1).check();check('reduced motion: immediate state',await f.getAttribute('data-animating')==='false');}
       const next=f.locator('[data-go="1"]');if(await next.count()){await next.click();check('reduced motion: immediate step',await f.getAttribute('data-animating')==='false');}

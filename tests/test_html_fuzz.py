@@ -325,6 +325,17 @@ class FuzzTests(unittest.TestCase):
         svg = render_network(spec, "n", narrow=True)[0]
         self.assertIn(">2 ハッシュ化</tspan>", svg)
 
+    def test_a_long_phone_tag_on_the_right_column_moves_left_of_the_arriving_line(self):
+        spec = {"type": "network", "columns": 3, "rows": 2, "nodes": [{"id": f"{r}{c}", "label": f"{r}{c}", "column": c, "row": 1 if r == "a" else 2}
+                                                                      for r in "ab" for c in (1, 3)],
+                "variants": [{"label": "v", "edges": [{"id": f"{r}", "from": f"{r}1", "to": f"{r}3", "label": "保存", "kind": "file"} for r in "ab"],
+                              "marks": [{"node": "b3", "label": "同じ 5e1c…", "tone": "red"}]}]}
+        svg = render_network(spec, "n", narrow=True)[0]
+        mx = float(re.search(r'data-key="mark:b3" transform="translate\(([\d.]+),', svg).group(1))
+        width = float(re.search(r'data-key="mark:b3:rect" x="[-\d.]+" y="-11" width="([\d.]+)"', svg).group(1))
+        line_x = float(re.search(r'data-key="edge:b:path"[^>]*d="M ([\d.]+)', svg).group(1))
+        self.assertTrue(mx + width / 2 <= line_x - 8 or mx - width / 2 >= line_x + 8, (mx, width, line_x))
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):
