@@ -314,7 +314,7 @@ def _threshold_svg(spec,prefix):
         if limit is not None and row['value']>limit:
             tx=_scale(limit,lo,hi,x0,width,log)
             out.append(f'<rect x="{tx:.2f}" y="{y}" width="{x-tx:.2f}" height="23" rx="3" class="bar-excess" data-key="excess-{_esc(row["id"])}"/>')
-        out.append(_svg_wrapped_text(810,y+15,value_label,'external-label',f"row-value-{row['id']}",10))
+        out.append(_svg_wrapped_text(x+8,y+15,value_label,'external-label',f"row-value-{row['id']}",10))  # the value sits at the end of its own bar
     for i,threshold in enumerate(thresholds):
         x=_scale(float(threshold['value']),lo,hi,x0,width,log);key=_esc(threshold['id']);tone=threshold.get('tone','red')
         out.append(f'<line x1="{x:.2f}" y1="42" x2="{x:.2f}" y2="{h-25}" class="marker marker-{tone}" data-key="threshold-{key}"/>')
