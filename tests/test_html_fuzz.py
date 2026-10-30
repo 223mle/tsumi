@@ -299,6 +299,15 @@ class FuzzTests(unittest.TestCase):
                         "panels": [{"spec": net}]}, warnings=notes)
         self.assertTrue(any("drawn blue" in n for n in notes), notes)
 
+    def test_a_three_line_threshold_name_is_noted(self):
+        sys.path.insert(0, str(Path(__file__).parents[1] / "skills/html-explainer/scripts"))
+        from diagrams import render_diagram
+        spec = {"type": "threshold", "min": 1, "max": 1e12, "scale": "log", "unit": "秒", "ticks": [1, 1e12],
+                "rows": [{"id": "f", "label": "速いハッシュ\n（10億回/秒）", "value": 2821}, {"id": "s", "label": "遅いハッシュ", "value": 2.8e11}]}
+        notes = []
+        render_diagram({"id": "bf", "title": "総当たり", "caption": "説明用。", "status": "illustrative", "panels": [{"spec": spec}]}, warnings=notes)
+        self.assertTrue(any("row f" in n for n in notes), notes)
+
     def test_networks(self):
         rnd = random.Random(20261030)
         for _ in range(250):

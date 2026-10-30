@@ -486,6 +486,8 @@ def _threshold_svg(spec,prefix,narrow=False):
     thresholds=spec.get('thresholds',[]);limit=max(float(t['value'])for t in thresholds)if thresholds else None
     for i,row in enumerate(spec['rows']):
         y=53+i*44;x=_scale(float(row['value']),lo,hi,x0,width,log);tone=row.get('tone','blue')
+        if narrow and len(wrap(row['label'],row_chars*2,3) or [])>2:
+            NOTES.append(f"threshold row {row['id']}: the name wraps to 3 lines on the phone layout and crowds the next row; keep it to {row_chars} full-width characters per line, 2 lines")
         out.append(_svg_wrapped_text(x0-16,y+16,row['label'],'lane-label',f"row-label-{row['id']}",row_chars,'end'))
         value_label=row.get('value_label',f"{row['value']:g}{spec['unit']}");tip=f"{row['label']}: {value_label}"
         out.append(f'<rect x="{x0}" y="{y}" width="{max(0,x-x0):.2f}" height="23" rx="3" class="bar bar-{tone}" data-key="row-{_esc(row["id"])}" data-tip="{_esc(tip)}"/>')
