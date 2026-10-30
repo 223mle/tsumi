@@ -346,7 +346,7 @@ def _path_midpoint(source: tuple[float, float], target: tuple[float, float], rou
 NARROW_WIDTH = 420
 
 
-def _layout_narrow(spec: dict[str, Any]) -> tuple[dict[str, tuple[float, float]], float, float]:
+def _layout_narrow(spec: dict[str, Any], extra_gap: float = 0.0) -> tuple[dict[str, tuple[float, float]], float, float]:
     """The phone layout: the grid turned on its side, so a left-to-right flow reads top to bottom."""
     rows = sorted({n["row"] for n in spec["nodes"]})
     cols = sorted({n["column"] for n in spec["nodes"]})
@@ -354,7 +354,7 @@ def _layout_narrow(spec: dict[str, Any]) -> tuple[dict[str, tuple[float, float]]
         raise ValueError("network: no phone layout for three rows")
     xs = [NARROW_WIDTH / 2] if len(rows) == 1 else [NARROW_WIDTH / 2 - 105, NARROW_WIDTH / 2 + 105]
     top = 84.0 if spec.get("boundaries") else 64.0
-    gap = 164.0 if any(v.get("marks") for v in spec["variants"]) else 132.0  # marks sit where vertical edges arrive
+    gap = (164.0 if any(v.get("marks") for v in spec["variants"]) else 132.0) + extra_gap  # marks sit where vertical edges arrive
     note_lines = max((len(_wrap(v["note"], 60)) for v in spec["variants"] if v.get("note")), default=0)
     height = top + 64 + (len(cols) - 1) * gap + (20 + 16 * (note_lines - 1) if note_lines else 0)
     return ({n["id"]: (xs[rows.index(n["row"])], top + cols.index(n["column"]) * gap) for n in spec["nodes"]},
@@ -369,7 +369,13 @@ def render_network(spec: object, prefix: str = "diagram", narrow: bool = False) 
     """
     data = validate_network(spec)
     if narrow:
-        return _render(data, prefix, None)
+        # Taller row gaps give long labels and detours more room before the phone layout gives up.
+        for extra in (0.0, 48.0, 96.0):
+            try:
+                return _render(data, prefix, None, extra)
+            except _NoRoute:
+                if extra == 96.0:
+                    raise
     for i, margins in enumerate(MARGINS):
         try:
             return _render(data, prefix, margins)
@@ -426,10 +432,10 @@ def _place_label(words, label_sides, mx, my, margins, obstacles, endpoint_ids, h
     return None
 
 
-def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | None) -> list[str]:
+def _render(data: dict[str, Any], prefix: str, margins: tuple[float, float] | None, extra_gap: float = 0.0) -> list[str]:
     """Draw every variant; margins None selects the narrow phone layout."""
     safe_prefix = re.sub(r"[^A-Za-z0-9_-]", "-", prefix)
-    positions, _, height = _layout(data, margins) if margins else _layout_narrow(data)
+    positions, _, height = _layout(data, margins) if margins else _layout_narrow(data, extra_gap)
     canvas = 960 if margins else NARROW_WIDTH
     node_map = {n["id"]: n for n in data["nodes"]}
     obstacles = {n["id"]: (positions[n["id"]][0] - 72, positions[n["id"]][1] - 36,
