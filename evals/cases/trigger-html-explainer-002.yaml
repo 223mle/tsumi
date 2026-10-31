@@ -1,0 +1,14 @@
+id: trigger-html-explainer-002
+title: 文章だけの清書ではHTML作成スキルを読まない
+targets: [html-explainer]
+tags: [trigger, ja, must-pass]
+source: 手書き。HTML資料作成と文章の清書の境界。
+trials: 3
+prompt: |
+  次の日本語を自然に直してください。HTMLや図は不要です。
+  添付書類の確認が完了しましたので、保管先へ保存することが可能になりました。
+checks:
+  - type: must_not_read
+    glob: "**/html-explainer/SKILL.md"
+  - type: must_read
+    glob: "**/unslop/SKILL.md"

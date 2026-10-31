@@ -1,0 +1,159 @@
+#!/usr/bin/env node
+const fs=require('node:fs');const path=require('node:path');const {pathToFileURL}=require('node:url');const {chromium}=require('playwright');
+async function inspect(page){return page.evaluate(()=>{
+  const errors=[];
+  function shown(el){for(let p=el;p&&p instanceof Element;p=p.parentElement){const s=getComputedStyle(p);if(s.display==='none'||s.visibility==='hidden'||Number(s.opacity)<.05)return false;}return true;}
+  document.querySelectorAll('.dg-live svg').forEach(svg=>{
+    const bounds=svg.getBoundingClientRect();if(!bounds.width)return;
+    // Any label must keep clear of shapes that are not its own: other nodes, actor boxes, tags and bars.
+    const shapes=[...svg.querySelectorAll('.dg-node>rect,.dg-actor>rect,.dg-mark>rect,rect.bar')].filter(shown);
+    svg.querySelectorAll('text[data-label]').forEach(t=>{if(!shown(t)||!t.textContent.trim())return;
+      const own=t.closest('.dg-node,.dg-actor,.dg-mark');const r=t.getBoundingClientRect();
+      const key=(t.dataset.key||'').replace(/^segment-label-/,'segment-').replace(/^row-value-/,'row-');
+      for(const sh of shapes){
+        if(own&&own.contains(sh))continue;
+        if(t.classList.contains('bar-label')&&sh.dataset.key===key)continue;  // a label inside its own bar
+        const q=sh.getBoundingClientRect();const w=Math.min(r.right,q.right)-Math.max(r.left,q.left),h=Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top);
+        if(w>3&&h>3){errors.push(`label on a shape: ${t.textContent.trim()}`);break;}
+      }});
+    // A tag's or an edge label's text must stay inside its own background, or its ends spill onto lines and arrowheads.
+    svg.querySelectorAll('.dg-mark,.dg-edge-label,.dg-actor').forEach(g=>{const t=g.querySelector('text'),bg=g.querySelector('rect');if(!t||!bg||!shown(g)||!t.textContent.trim())return;
+      const a=t.getBoundingClientRect(),q=bg.getBoundingClientRect(),pad=g.matches('.dg-mark,.dg-actor')?3:0;if(a.left<q.left+pad-1||a.right>q.right-pad+1)errors.push(`text too wide for its background: ${t.textContent.trim()}`);});
+    // A tag drawn over an arrow's end hides the head, so the arrow seems to stop short of its node.
+    const tags=[...svg.querySelectorAll('.dg-mark>rect')].filter(shown);
+    svg.querySelectorAll('path[marker-end]').forEach(pa=>{if(!tags.length||!shown(pa))return;const m=pa.getScreenCTM();if(!m)return;const e=pa.getPointAtLength(pa.getTotalLength()).matrixTransform(m);
+      const tag=tags.find(t=>{const q=t.getBoundingClientRect();return e.x>q.left+1&&e.x<q.right-1&&e.y>q.top-6&&e.y<q.bottom+1;});
+      if(tag)errors.push(`tag over an arrowhead: ${tag.parentElement.textContent.trim()}`);});
+    // A bar painted after a label hides it: the label's centre must not sit under a later filled bar.
+    const bars=[...svg.querySelectorAll('rect.bar')].filter(shown);
+    svg.querySelectorAll('text[data-label]').forEach(t=>{if(!shown(t)||!t.textContent.trim())return;const r=t.getBoundingClientRect();const cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
+      if(bars.some(bar=>{const q=bar.getBoundingClientRect();return t.compareDocumentPosition(bar)&Node.DOCUMENT_POSITION_FOLLOWING&&cx>q.left&&cx<q.right&&cy>q.top&&cy<q.bottom;}))errors.push(`label under a bar: ${t.textContent.trim()}`);});
+    const keys=[...svg.querySelectorAll('[data-key]')].map(e=>e.dataset.key);
+    if(new Set(keys).size!==keys.length)errors.push('duplicate animation key');
+    svg.querySelectorAll('[data-label]').forEach(el=>{if(!shown(el))return;const r=el.getBoundingClientRect();if(r.width&&r.height&&(r.left<bounds.left-2||r.right>bounds.right+2||r.top<bounds.top-2||r.bottom>bounds.bottom+2))errors.push(`clipped label: ${el.textContent.trim()}`);});
+    const labels=[...svg.querySelectorAll('.dg-edge-label,text[data-label]')].filter(el=>!el.closest('.dg-edge-label')||el.matches('.dg-edge-label')).filter(shown).filter(el=>el.textContent.trim()).map(el=>({text:el.textContent.trim(),r:el.getBoundingClientRect()}));
+    for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){const a=labels[i],b=labels[j];const w=Math.min(a.r.right,b.r.right)-Math.max(a.r.left,b.r.left),h=Math.min(a.r.bottom,b.r.bottom)-Math.max(a.r.top,b.r.top);if(w>3&&h>3)errors.push(`overlapping labels: ${a.text} / ${b.text}`);}
+  });
+  if(document.documentElement.scrollWidth>innerWidth+1)errors.push('page overflow');
+  // A figure's text alternative should carry its content, not a stock sentence.
+  document.querySelectorAll('.dg-live svg desc').forEach(d=>{if(/^(同じ時間軸で処理の重なりを比較する図|ノード間の処理経路を示します。)$/.test(d.textContent.trim()))errors.push('stock text alternative');});
+  return errors;
+});}
+async function snapshot(figure){return figure.evaluate(f=>[...f.querySelectorAll('.dg-live [data-key]')].map(e=>[e.dataset.key,['x','y','width','d','transform','opacity'].map(k=>e.getAttribute(k)).join('|'),e.textContent]).sort((a,b)=>a[0].localeCompare(b[0])));}
+async function main(){const [input,out]=process.argv.slice(2);if(!input||!out)throw Error('Usage: check-diagrams.cjs document.html evidence-dir');fs.mkdirSync(out,{recursive:true});const report={input:path.resolve(input),checks:[],errors:[]};const b=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
+  function check(name,passed,detail){report.checks.push({name,passed,detail});if(!passed)report.errors.push(name+(detail?': '+detail:''));}
+  try{
+    for(const theme of ['light','dark']){
+      const c=await b.newContext({viewport:{width:1440,height:1000},colorScheme:theme,reducedMotion:'no-preference'});await c.route(/^https?:/,r=>r.abort());const p=await c.newPage();p.on('pageerror',e=>report.errors.push(e.message));await p.goto(pathToFileURL(path.resolve(input)).href);
+      const diagrams=p.locator('[data-diagram]');check(`${theme}: diagrams found`,await diagrams.count()>0);
+      for(let i=0;i<await diagrams.count();i++){
+        const f=diagrams.nth(i),id=await f.getAttribute('id');await f.scrollIntoViewIfNeeded();
+        check(`${theme}/${id}: initial geometry`,(await inspect(p)).length===0,(await inspect(p)).join('; '));
+        await f.screenshot({path:path.join(out,`${theme}-${id}-initial.png`)});
+        const radios=f.locator('.dg-switch input');
+        if(await radios.count()>1){
+          const before=await snapshot(f);await radios.first().focus();await p.keyboard.press('ArrowRight');await p.waitForTimeout(280);const middle=await snapshot(f);
+          await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);const after=await snapshot(f);
+          // Judge motion by geometry and opacity only: a state that changes only colours, dashes or label text has nothing to interpolate.
+          const geo=s=>JSON.stringify(s.map(([k,g])=>[k,g]));
+          check(`${theme}/${id}: interpolated transition`,geo(before)===geo(after)||(geo(before)!==geo(middle)&&geo(middle)!==geo(after)));
+          check(`${theme}/${id}: synchronized state`,await f.getAttribute('data-rendered-state')==='1');
+          // Compare all visible target labels with the selected static source, including reused edge IDs.
+          const labels=await f.evaluate(fig=>[...fig.querySelectorAll('.dg-panel')].every(panel=>{
+            const scenes=panel.querySelectorAll('.dg-static-scene');const target=scenes[Math.min(1,scenes.length-1)];const live=panel.querySelector('.dg-live');
+            const sameText=[...target.querySelectorAll('text')].every(el=>!el.textContent.trim()||live.textContent.includes(el.textContent));
+            const targetKeys=new Map([...target.querySelectorAll('[data-key]')].map(el=>[el.dataset.key,el.tagName]));
+            const kinds=[...live.querySelectorAll('[data-key]')].every(el=>!targetKeys.has(el.dataset.key)||targetKeys.get(el.dataset.key)===el.tagName);
+            return sameText&&kinds;
+          }));check(`${theme}/${id}: updated label text`,labels);
+          const errors=await inspect(p);check(`${theme}/${id}: after geometry`,!errors.length,errors.join('; '));
+          await f.screenshot({path:path.join(out,`${theme}-${id}-after.png`)});
+          // Keep one picture per variant so every state can be read, not only the second one.
+          for(let v=0;v<await radios.count();v++){await radios.nth(v).check();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);await f.screenshot({path:path.join(out,`${theme}-${id}-variant-${v+1}.png`)});}
+          await radios.first().check();await radios.nth(1).check();await radios.first().check();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);check(`${theme}/${id}: rapid reversal`,await f.getAttribute('data-rendered-state')==='0');
+        }
+        const stepButtons=f.locator('[data-step]');
+        if(await stepButtons.count()>1){
+          const n=await stepButtons.count();const text0=await f.locator('.dg-step-text').textContent();
+          const before=await snapshot(f);await f.locator('[data-go="1"]').click();await p.waitForTimeout(280);const middle=await snapshot(f);
+          await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);const after=await snapshot(f);
+          check(`${theme}/${id}: step interpolates`,JSON.stringify(before)!==JSON.stringify(middle)&&JSON.stringify(middle)!==JSON.stringify(after));
+          check(`${theme}/${id}: step text follows`,(await f.getAttribute('data-rendered-state'))==='1'&&(await f.locator('.dg-step-text').textContent())!==text0&&(await stepButtons.nth(1).getAttribute('aria-current'))==='step');
+          await f.locator('[data-go="1"]').focus();await p.keyboard.press('ArrowLeft');await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+          check(`${theme}/${id}: arrow keys step`,(await f.getAttribute('data-rendered-state'))==='0');
+          await stepButtons.first().click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+          // Keyboard users step to the end with Enter and must keep their focus on the button.
+          await f.locator('[data-go="1"]').focus();for(let k=0;k<n;k++){await p.keyboard.press('Enter');}
+          await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+          check(`${theme}/${id}: keyboard focus survives the last step`,await p.evaluate(()=>document.activeElement?.dataset?.go==='1'));
+          check(`${theme}/${id}: last step disables next`,(await f.locator('[data-go="1"]').getAttribute('aria-disabled'))==='true');
+          const errors=await inspect(p);check(`${theme}/${id}: step geometry`,!errors.length,errors.join('; '));
+          for(let v=0;v<n;v++){await stepButtons.nth(v).click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);await f.screenshot({path:path.join(out,`${theme}-${id}-step-${v+1}.png`)});}
+          await stepButtons.first().click();await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+        }
+        const range=f.locator('.dg-slider input');if(await range.count()){
+          const max=Number(await range.getAttribute('max'));
+          for(let v=0;v<=max;v++){await range.evaluate((r,v)=>{r.value=v;r.dispatchEvent(new Event('input'));},v);await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);await f.screenshot({path:path.join(out,`${theme}-${id}-value-${v}.png`)});}
+          const errors=await inspect(p);
+          check(`${theme}/${id}: slider reaches every value`,(await f.getAttribute('data-rendered-state'))===String(max)&&(await f.locator('.dg-slider output').textContent())===(JSON.parse(await range.getAttribute('data-labels'))[max]),errors.join('; '));
+          check(`${theme}/${id}: slider geometry`,!errors.length,errors.join('; '));
+          await range.focus();await p.keyboard.press('Home');await p.waitForFunction(id=>document.getElementById(id).dataset.animating==='false',id);
+          check(`${theme}/${id}: slider keyboard`,(await f.getAttribute('data-rendered-state'))==='0');
+        }
+        const grid=f.locator('.dg-grid-toggle');if(await grid.count()){
+          await grid.click();const all=await f.locator('.dg-static-scene').evaluateAll(es=>es.filter(e=>getComputedStyle(e.closest('.dg-panel')).display!=='none').every(e=>e.getBoundingClientRect().height>0));
+          const errors=await inspect(p);check(`${theme}/${id}: small multiples show every variant`,all&&!errors.length,errors.join('; '));
+          await f.screenshot({path:path.join(out,`${theme}-${id}-all.png`)});await grid.click();
+          check(`${theme}/${id}: back to one variant`,await f.locator('.dg-live').evaluateAll(es=>es.some(e=>e.getBoundingClientRect().height>0)));
+        }
+        const play=f.locator('.dg-play');if(await play.count()){
+          await play.click();await p.waitForTimeout(120);const x=await f.locator('.dg-flow-particle').evaluateAll(es=>es.map(e=>e.getAttribute('transform')));await p.waitForTimeout(240);const y=await f.locator('.dg-flow-particle').evaluateAll(es=>es.map(e=>e.getAttribute('transform')));check(`${theme}/${id}: moving flow`,x.length>0&&JSON.stringify(x)!==JSON.stringify(y));await play.click();check(`${theme}/${id}: stop flow`,await f.locator('.dg-flow-particle').count()===0);
+        }
+      }
+      await p.emulateMedia({media:'print'});check(`${theme}: print scenes`,await p.locator('[data-diagram]').evaluateAll(fs=>fs.every(f=>{const scenes=[...f.querySelectorAll('.dg-panel:not(.dg-narrow) .dg-static-scene')];const shown=s=>s.getBoundingClientRect().height>0;
+        // A step-through figure prints its final, complete scene plus every step as text.
+        if(f.dataset.mode==='steps')return shown(scenes.at(-1))&&f.querySelector('.dg-step-notes').getBoundingClientRect().height>0;return scenes.every(shown);})));await c.close();
+    }
+    const c=await b.newContext({viewport:{width:390,height:1000},reducedMotion:'reduce'});const p=await c.newPage();await p.goto(pathToFileURL(path.resolve(input)).href);
+    // The first scene of every figure, before the loop below moves each one on.
+    check('mobile: initial geometry',!(await inspect(p)).length,(await inspect(p)).join('; '));
+    for(const f of await p.locator('[data-diagram]').all()){
+      const radios=f.locator('.dg-switch input');if(await radios.count()>1){await radios.nth(1).check();check('reduced motion: immediate state',await f.getAttribute('data-animating')==='false');}
+      const next=f.locator('[data-go="1"]');if(await next.count()){await next.click();check('reduced motion: immediate step',await f.getAttribute('data-animating')==='false');}
+    }
+    check('mobile: geometry',!(await inspect(p)).length,(await inspect(p)).join('; '));await p.screenshot({path:path.join(out,'mobile.png'),fullPage:true});await c.close();
+    {
+      // On a phone screen, every step's current arrow stays between the sticky contents bar and the sticky step bar.
+      const sc=await b.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});const sp=await sc.newPage();await sp.goto(pathToFileURL(path.resolve(input)).href);
+      for(const f of await sp.locator('[data-diagram][data-mode=steps]').all()){
+        await f.scrollIntoViewIfNeeded();const next=f.locator('[data-go="1"]');const hidden=[];
+        for(let i=0;i<20;i++){
+          const at=await f.evaluate(fig=>{const svg=[...fig.querySelectorAll('.dg-live svg')].find(s=>s.getClientRects().length);const cur=svg&&svg.querySelector('.dg-msg.is-current .dg-msg-line,.dg-edge.is-current');if(!cur)return null;
+            const toc=document.querySelector('.toc'),bar=fig.querySelector('.dg-step-bar');const r=cur.getBoundingClientRect();
+            const top=toc&&getComputedStyle(toc).position==='sticky'?toc.getBoundingClientRect().bottom:0,bottom=bar&&getComputedStyle(bar).position==='sticky'?bar.getBoundingClientRect().top:innerHeight;
+            return r.bottom<top||r.top>bottom?fig.dataset.state:null;});
+          if(at!==null&&i>0)hidden.push(Number(at)+1);  // the first state sits wherever the reader scrolled; later ones follow the buttons
+          if(await next.getAttribute('aria-disabled')==='true')break;await next.click();await sp.waitForTimeout(120);
+        }
+        check(`mobile: ${await f.getAttribute('id')} current step stays on screen`,!hidden.length,`steps ${hidden.join(', ')} hidden by the sticky bars`);
+      }
+      await sc.close();
+    }
+    {
+      // Pointing at a term highlights its node, but never brings back a node the current state hides.
+      const tc=await b.newContext({viewport:{width:1280,height:900},reducedMotion:'reduce'});const tp=await tc.newPage();await tp.goto(pathToFileURL(path.resolve(input)).href);
+      const names=await tp.evaluate(()=>[...new Set([...document.querySelectorAll('[data-ref]')].filter(e=>e.getAttribute('opacity')==='0').map(e=>e.dataset.ref))]);
+      for(const name of names){
+        const term=tp.locator(`.term[data-term="${name}"]`).first();if(!await term.count())continue;
+        await term.scrollIntoViewIfNeeded();await term.hover();await tp.waitForTimeout(100);
+        const shown=await tp.evaluate(n=>[...document.querySelectorAll('.dg-live [data-ref]')].filter(e=>e.dataset.ref===n&&e.getAttribute('opacity')==='0'&&getComputedStyle(e).opacity!=='0').length,name);
+        check(`term ${name}: hidden node stays hidden`,!shown,`${shown} hidden node(s) shown on hover`);
+      }
+      await tc.close();
+    }
+    const nc=await b.newContext({javaScriptEnabled:false,viewport:{width:390,height:1000}});const np=await nc.newPage();await np.goto(pathToFileURL(path.resolve(input)).href);check('no JS: every scene or step visible',await np.locator('[data-diagram]').evaluateAll(fs=>fs.length>0&&fs.every(f=>{const scenes=[...f.querySelectorAll('.dg-static-scene')].filter(s=>getComputedStyle(s.closest('.dg-panel')).display!=='none');const shown=s=>s.getBoundingClientRect().height>0;
+      if(f.dataset.mode==='steps')return shown(scenes.at(-1))&&f.querySelectorAll('.dg-step-notes li').length===scenes.length;return scenes.every(shown);})));await nc.close();
+  }finally{await b.close();report.passed=report.errors.length===0;fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');}
+  console.log(JSON.stringify({passed:report.passed,checks:report.checks.length,errors:report.errors,evidence:out}));process.exitCode=report.passed?0:1;
+}
+main().catch(e=>{console.error(e);process.exitCode=2;});

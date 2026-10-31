@@ -1,0 +1,236 @@
+(() => {
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  const SVG='http://www.w3.org/2000/svg';
+  const numberPattern=/-?(?:\d*\.\d+|\d+\.?\d*)(?:e[+-]?\d+)?/gi;
+  const animated=new Set(['x','y','x1','y1','x2','y2','width','height','cx','cy','r','opacity','transform','d']);
+  function interpolator(a,b){
+    if(a===null || b===null) return t=>t<.5?a:b;
+    const aa=a.match(numberPattern),bb=b.match(numberPattern);
+    if(!aa||!bb||aa.length!==bb.length||a.replace(numberPattern,'#')!==b.replace(numberPattern,'#'))return t=>t<.5?a:b;
+    const av=aa.map(Number),bv=bb.map(Number);return t=>{let i=0;return b.replace(numberPattern,()=>String(av[i]+(bv[i]-av[i++])*t));};
+  }
+  function liveClone(svg){
+    const clone=svg.cloneNode(true);const replacements=new Map();
+    clone.querySelectorAll('[id]').forEach(el=>{replacements.set(el.id,el.id+'-live');el.id+='-live';});
+    [clone,...clone.querySelectorAll('*')].forEach(el=>{
+      for(const attr of [...el.attributes]){
+        let value=attr.value;
+        if(attr.name==='aria-labelledby'||attr.name==='aria-describedby')value=value.split(' ').map(id=>replacements.get(id)||id).join(' ');
+        else value=value.replace(/url\(#([^)]+)\)/g,(_,id)=>`url(#${replacements.get(id)||id})`);
+        if(value!==attr.value)el.setAttribute(attr.name,value);
+      }
+    });return clone;
+  }
+  document.querySelectorAll('[data-diagram]').forEach(figure=>{
+    const panels=[...figure.querySelectorAll('.dg-panel')].map(panel=>{
+      const scenes=[...panel.querySelectorAll('.dg-static-scene svg')].map(liveClone);
+      const svg=scenes[0].cloneNode(true);
+      const defs=svg.querySelector('defs')||svg.insertBefore(document.createElementNS(SVG,'defs'),svg.firstChild);
+      scenes.slice(1).forEach(scene=>scene.querySelectorAll('defs>*').forEach(el=>defs.append(el.cloneNode(true))));
+      panel.querySelector('.dg-live').append(svg);
+      return {svg,scenes};
+    });
+    figure.classList.add('dg-enhanced');
+    let transition=0,flowFrame=0,visible=false,playing=false,flowOrigin=0,particles=[];
+    const play=figure.querySelector('.dg-play');
+    const stepButtons=[...figure.querySelectorAll('[data-step]')];
+    const stepText=figure.querySelector('.dg-step-text'),stepCount=figure.querySelector('.dg-step-count'),autoButton=figure.querySelector('[data-autoplay]');
+    function removeParticles(){particles.forEach(p=>p.node.remove());particles=[];}
+    function particleFrame(now){
+      if(!playing||!visible||reduced.matches||document.hidden){flowFrame=0;return;}
+      // Edges run one after another in their written order, so the dots retrace the numbered sequence.
+      const live=particles.filter(p=>{p.node.style.display='none';return Number(p.path.closest('[opacity]')?.getAttribute('opacity')??1)>=.5;});
+      const leg=1100,cycle=live.length*leg+700,t=(now-flowOrigin)%cycle;
+      live.forEach((p,i)=>{
+        const progress=(t-i*leg)/leg;if(progress<0||progress>1)return;
+        p.node.style.display='';
+        const point=p.path.getPointAtLength(progress*p.path.getTotalLength());
+        p.node.setAttribute('transform',`translate(${point.x},${point.y})`);
+      });flowFrame=requestAnimationFrame(particleFrame);
+    }
+    function startFlow(){
+      cancelAnimationFrame(flowFrame);removeParticles();
+      if(!playing||!visible||reduced.matches)return;
+      // Only the layout on screen gets dots; the other (wide or phone) one is display:none.
+      panels.filter(({svg})=>svg.getClientRects().length).forEach(({svg})=>svg.querySelectorAll('path[data-flow]').forEach((path,i)=>{
+        const request=path.dataset.flow==='request';
+        const node=document.createElementNS(SVG,request?'circle':'rect');
+        node.setAttribute('class','dg-flow-particle'+(request?' dg-flow-request':''));node.setAttribute('aria-hidden','true');
+        if(request)node.setAttribute('r','3');else{node.setAttribute('x','-4');node.setAttribute('y','-3');node.setAttribute('width','8');node.setAttribute('height','6');node.setAttribute('rx','1');}
+        svg.insertBefore(node,svg.querySelector(':scope>.dg-edge-label,:scope>.dg-node'));particles.push({path,node});
+      }));flowOrigin=performance.now();flowFrame=requestAnimationFrame(particleFrame);
+    }
+    function select(index,instant=false,follow=true){
+      cancelAnimationFrame(transition);cancelAnimationFrame(flowFrame);removeParticles();
+      const updates=[];
+      panels.forEach(({svg,scenes})=>{
+        const target=scenes[Math.min(index,scenes.length-1)];
+        ['title','desc'].forEach(tag=>{const a=svg.querySelector(tag),b=target.querySelector(tag);if(a&&b)a.textContent=b.textContent;});
+        const live=new Map([...svg.querySelectorAll('[data-key]')].map(el=>[el.dataset.key,el]));
+        const wanted=new Map([...target.querySelectorAll('[data-key]')].map(el=>[el.dataset.key,el]));
+        wanted.forEach((dest,key)=>{
+          let el=live.get(key);
+          if(!el){
+            // Insert the highest missing keyed ancestor once, retaining its child geometry.
+            let ancestor=dest.parentElement;while(ancestor&&ancestor!==target){if(ancestor.hasAttribute('data-key')&&!live.has(ancestor.dataset.key))return;ancestor=ancestor.parentElement;}
+            el=dest.cloneNode(true);el.setAttribute('opacity','0');
+            // Keep the target's paint order: a bar that appears later must still sit under the labels drawn after it.
+            let after=dest.nextElementSibling;while(after&&!(after.dataset&&live.get(after.dataset.key)?.parentNode===svg))after=after.nextElementSibling;
+            const ref=after&&dest.parentElement===target?live.get(after.dataset.key):null;
+            if(ref)svg.insertBefore(el,ref);else svg.append(el);
+            live.set(key,el);el.querySelectorAll('[data-key]').forEach(child=>live.set(child.dataset.key,child));
+          }
+          const attrs=[];
+          for(const attr of dest.attributes){
+            if(animated.has(attr.name))attrs.push([attr.name,interpolator(el.getAttribute(attr.name),attr.value)]);
+            else if(attr.name!=='id'&&attr.name!=='data-key')el.setAttribute(attr.name,attr.value);
+          }
+          if(!dest.hasAttribute('opacity'))attrs.push(['opacity',interpolator(el.getAttribute('opacity')||'1','1')]);
+          updates.push({el,attrs,dest,text:dest.tagName.toLowerCase()==='text'||(dest.classList.contains('dg-edge-label')&&!dest.querySelector('[data-key]'))});
+        });
+        live.forEach((el,key)=>{if(!wanted.has(key))updates.push({el,attrs:[['opacity',interpolator(el.getAttribute('opacity')||'1','0')]],dest:null,text:false});});
+      });
+      figure.dataset.state=String(index);figure.dataset.animating='true';syncSteps(index,follow);
+      const duration=instant||reduced.matches?0:figure.dataset.mode==='slider'?260:760;const start=performance.now();
+      function frame(now){
+        const linear=duration?Math.min(1,(now-start)/duration):1;const t=linear<.5?4*linear**3:1-(-2*linear+2)**3/2;
+        updates.forEach(({el,attrs,dest,text})=>{
+          attrs.forEach(([key,interpolate])=>{const value=interpolate(t);if(value!==null)el.setAttribute(key,value);});
+          if(text&&linear>=.5&&dest)el.replaceChildren(...[...dest.childNodes].map(n=>n.cloneNode(true)));
+          if(linear===1)el.setAttribute('aria-hidden',String(dest===null));
+        });
+        if(linear<1)transition=requestAnimationFrame(frame);else{figure.dataset.animating='false';figure.dataset.renderedState=String(index);startFlow();}
+      }frame(start);
+    }
+    function syncSteps(index,follow=true){
+      const tpl=figure.querySelector(`template[data-step-text="${index}"]`);
+      // Replacing the text would drop keyboard focus held by a term inside it; hand focus to the next button first.
+      if(stepText&&stepText.contains(document.activeElement))figure.querySelector('[data-go="1"]')?.focus();
+      if(stepText&&tpl)stepText.replaceChildren(tpl.content.cloneNode(true));
+      const stepFocused=stepButtons.includes(document.activeElement);
+      stepButtons.forEach((b,i)=>{b.setAttribute('aria-current',i===index?'step':'false');b.classList.toggle('is-done',i<index);b.tabIndex=i===index?0:-1;});
+      if(stepFocused)stepButtons[index].focus();
+      if(stepCount)stepCount.textContent=`${index+1} / ${stepButtons.length}`;
+      // A tall step figure on a phone: keep the current arrow between the sticky contents bar and the sticky step bar.
+      if(follow&&figure.dataset.mode==='steps')panels.forEach(({svg,scenes})=>{
+        if(!svg.isConnected||!svg.getClientRects().length)return;
+        const target=scenes[Math.min(index,scenes.length-1)];
+        const key=target.querySelector('.dg-msg.is-current .dg-msg-line,.dg-edge.is-current')?.dataset.key;
+        const el=key&&svg.querySelector(`[data-key="${CSS.escape(key)}"]`);if(!el)return;
+        const toc=document.querySelector('.toc'),bar=figure.querySelector('.dg-step-bar');
+        const top=(toc&&getComputedStyle(toc).position==='sticky'?toc.getBoundingClientRect().bottom:0)+12;
+        const bottom=(bar&&getComputedStyle(bar).position==='sticky'?bar.getBoundingClientRect().top:innerHeight)-12;
+        const r=el.getBoundingClientRect();
+        const delta=r.top<top?r.top-top-24:r.bottom>bottom?r.bottom-bottom+24:0;
+        if(delta)window.scrollBy({top:delta,behavior:reduced.matches?'auto':'smooth'});
+      });
+      // On narrow screens the drawing scrolls sideways; bring the current step into view.
+      if(follow)panels.forEach(({svg,scenes})=>{
+        const box=svg.parentElement;if(box.scrollWidth<=box.clientWidth+2)return;
+        // Follow what this state is about: the current message or edge, or a node's mark.
+        const target=scenes[Math.min(index,scenes.length-1)];
+        let keys=[...target.querySelectorAll('.dg-msg.is-current .dg-msg-line,.dg-edge.is-current,.dg-mark')].map(e=>e.dataset.key);
+        if(!keys.length){
+          // Otherwise follow the edges this state adds, or failing that the ones it removes.
+          const prev=scenes[Math.min(Number(figure.dataset.renderedState||0),scenes.length-1)];
+          const edges=sc=>new Set([...sc.querySelectorAll('.dg-edge')].map(e=>e.dataset.key));
+          const now=edges(target),before=edges(prev);
+          keys=[...now].filter(k=>!before.has(k));if(!keys.length)keys=[...before].filter(k=>!now.has(k));
+        }
+        if(!keys.length){
+          // Charts: follow the bars and markers that move or appear in this state.
+          const geo=sc=>new Map([...sc.querySelectorAll('[data-key^="segment-"],[data-key^="marker-"],[data-key^="unknown-marker-"]')].map(e=>[e.dataset.key,['x','width','x1'].map(a=>e.getAttribute(a)).join()]));
+          const prev=geo(scenes[Math.min(Number(figure.dataset.renderedState||0),scenes.length-1)]);
+          keys=[...geo(target)].filter(([k,v])=>prev.get(k)!==v).map(([k])=>k);
+        }
+        const els=keys.map(k=>svg.querySelector(`[data-key="${CSS.escape(k)}"]`)).filter(Boolean);
+        if(!els.length)return;
+        const rs=els.map(e=>e.getBoundingClientRect());
+        const r={left:Math.min(...rs.map(x=>x.left)),right:Math.max(...rs.map(x=>x.right))};r.width=r.right-r.left;
+        const b=box.getBoundingClientRect();
+        const left=r.width>b.width-40?box.scrollLeft+r.left-b.left-40:box.scrollLeft+(r.left+r.right)/2-(b.left+b.right)/2;
+        box.scrollTo({left:Math.max(0,left),behavior:reduced.matches?'auto':'smooth'});
+      });
+      // aria-disabled, not disabled: a disabled button would drop the focus it holds.
+      figure.querySelectorAll('[data-go]').forEach(b=>{const next=index+Number(b.dataset.go);b.setAttribute('aria-disabled',String(next<0||next>=stepButtons.length));});
+    }
+    function go(delta){const n=stepButtons.length;const next=Math.max(0,Math.min(n-1,Number(figure.dataset.state||0)+delta));if(next!==Number(figure.dataset.state||0))select(next);return next;}
+    let autoTimer=0;
+    function stopAuto(){clearTimeout(autoTimer);autoTimer=0;if(autoButton)autoButton.setAttribute('aria-pressed','false');}
+    function tick(){if(!autoTimer)return;if(!visible){stopAuto();return;}const n=stepButtons.length;const cur=Number(figure.dataset.state||0);if(cur>=n-1){stopAuto();return;}go(1);autoTimer=setTimeout(tick,reduced.matches?2600:3200);}
+    figure.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{stopAuto();select(Number(b.dataset.step));}));
+    figure.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{if(b.getAttribute('aria-disabled')==='true')return;stopAuto();go(Number(b.dataset.go));}));
+    if(autoButton)autoButton.addEventListener('click',()=>{
+      if(autoTimer){stopAuto();return;}
+      if(Number(figure.dataset.state||0)>=stepButtons.length-1)select(0);
+      autoButton.setAttribute('aria-pressed','true');autoTimer=setTimeout(tick,reduced.matches?1600:2200);
+    });
+    if(stepButtons.length)figure.addEventListener('keydown',e=>{
+      if(e.target.closest('input,textarea,.dg-scroll'))return;  // arrows inside a scroll box scroll it
+      if(e.key==='ArrowRight'){stopAuto();go(1);e.preventDefault();}
+      else if(e.key==='ArrowLeft'){stopAuto();go(-1);e.preventDefault();}
+      else if(e.key==='Home'&&e.target.closest('[data-step]')){stopAuto();select(0);e.preventDefault();}
+      else if(e.key==='End'&&e.target.closest('[data-step]')){stopAuto();select(stepButtons.length-1);e.preventDefault();}
+    });
+    figure.querySelectorAll('.dg-switch input').forEach(input=>input.addEventListener('change',()=>{if(input.checked)select(Number(input.value));}));
+    // When a chart is scrolled sideways on a phone, keep its row names pinned at the left edge.
+    panels.forEach(({svg})=>{
+      const box=svg.parentElement,panel=box.parentElement;
+      const pin=document.createElement('div');pin.className='dg-pinned-labels';pin.setAttribute('aria-hidden','true');panel.append(pin);
+      function update(){
+        const names=[...svg.querySelectorAll('.lane-label')];
+        if(!names.length||box.scrollWidth<=box.clientWidth+2||figure.classList.contains('dg-fit')){pin.hidden=true;return;}
+        const p=panel.getBoundingClientRect(),b=box.getBoundingClientRect();
+        const hiddenRight=Math.max(...names.map(n=>n.getBoundingClientRect().right));
+        if(hiddenRight>b.left+4){pin.hidden=true;return;}
+        pin.hidden=false;pin.style.top=(b.top-p.top)+'px';pin.style.height=b.height+'px';
+        pin.replaceChildren(...names.map(n=>{const r=n.getBoundingClientRect(),el=document.createElement('span');el.textContent=n.textContent;el.style.top=(r.top-b.top+r.height/2)+'px';return el;}));
+      }
+      box.addEventListener('scroll',()=>requestAnimationFrame(update),{passive:true});addEventListener('resize',update);update();
+    });
+    const range=figure.querySelector('.dg-slider input');
+    if(range){
+      // Dragging moves through the variants in order; each step interpolates briefly so the motion stays continuous.
+      const out=figure.querySelector('.dg-slider output'),names=JSON.parse(range.dataset.labels);
+      range.addEventListener('input',()=>{const i=Number(range.value);select(i);out.textContent=names[i];range.setAttribute('aria-valuetext',names[i]);});
+      // On a narrow track, show every k-th value (and the last) so neighbouring values never run together; the chip shows the current one.
+      const ticks=[...figure.querySelectorAll('.dg-slider-ticks span')];
+      const thin=()=>{
+        for(let k=1;k<=ticks.length;k++){
+          const on=ticks.map((_,i)=>i%k===0||i===ticks.length-1);
+          if(k>1&&(ticks.length-1)%k)on[ticks.length-1-((ticks.length-1)%k)]=false;  // keep the gap before the last value at least one step wide
+          ticks.forEach((t,i)=>t.style.visibility=on[i]?'':'hidden');
+          const rs=ticks.filter((_,i)=>on[i]).map(t=>t.getBoundingClientRect());
+          if(rs.every((r,i)=>i===0||r.left>=rs[i-1].right+6))break;
+        }
+      };
+      thin();addEventListener('resize',thin);
+    }
+    const fitButton=figure.querySelector('.dg-fit-toggle');
+    if(fitButton)fitButton.addEventListener('click',()=>{
+      // On a phone the reader can trade legible labels for the whole picture, and back.
+      const on=fitButton.getAttribute('aria-pressed')!=='true';
+      fitButton.setAttribute('aria-pressed',String(on));figure.classList.toggle('dg-fit',on);
+    });
+    const gridButton=figure.querySelector('.dg-grid-toggle');
+    if(gridButton)gridButton.addEventListener('click',()=>{
+      // Small multiples: the static scenes, already in the page for print, side by side.
+      const on=gridButton.getAttribute('aria-pressed')!=='true';
+      gridButton.setAttribute('aria-pressed',String(on));
+      figure.classList.toggle('dg-grid',on);figure.querySelectorAll('.dg-switch input').forEach(i=>i.disabled=on);
+    });
+    if(play)play.addEventListener('click',()=>{playing=!playing;play.setAttribute('aria-pressed',String(playing));startFlow();});
+    new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;startFlow();},{threshold:.05}).observe(figure);
+    document.addEventListener('visibilitychange',startFlow);
+    reduced.addEventListener('change',()=>{select(Number(figure.dataset.state||0),true);});
+    select(Number(figure.dataset.state||0),true,false);
+  });
+})();
+(() => {
+  // One floating tooltip for chart marks that carry data-tip; the text follows variant changes because it is an attribute.
+  const tip=document.createElement('div');tip.className='dg-tip';tip.setAttribute('role','tooltip');tip.hidden=true;document.body.append(tip);
+  function show(el,x,y){tip.textContent=el.getAttribute('data-tip');tip.hidden=false;const r=tip.getBoundingClientRect();
+    tip.style.left=Math.max(8,Math.min(innerWidth-r.width-8,x-r.width/2))+'px';tip.style.top=Math.max(8,y-r.height-12)+'px';}
+  document.addEventListener('pointermove',e=>{const el=e.target.closest&&e.target.closest('.dg-live [data-tip]');if(el)show(el,e.clientX,e.clientY);else tip.hidden=true;});
+  document.addEventListener('scroll',()=>{tip.hidden=true;},{passive:true});
+})();

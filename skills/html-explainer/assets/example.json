@@ -1,0 +1,14 @@
+{
+  "title": "文書処理の流れ",
+  "lead": "入力を受け取ってから結果を返すまでを、処理の順番と待ち時間で説明します。",
+  "sections": [{
+    "id": "overview", "title": "最初の処理",
+    "paragraphs": ["処理は受付、解析、保存の順に進みます。"],
+    "figures": [
+      {"id": "flow", "kind": "flow", "title": "処理の順番", "summary": "受付から保存まで3段階で進む", "caption": "矢印は次の処理へ渡すことを表します。", "status": "illustrative", "steps": [{"label": "受付", "detail": "入力を受け取る", "to_next": "入力を解析へ渡す"}, {"label": "解析", "detail": "内容を読み取る", "to_next": "結果を保存へ渡す"}, {"label": "保存", "detail": "結果を記録する"}]},
+      {"id": "time", "kind": "timeline", "title": "処理時間", "summary": "解析が最も長い", "caption": "説明用の例です。実測値ではありません。", "status": "illustrative", "unit": "秒", "axis_max": 7, "rows": [{"label": "受付", "start": 0, "duration": 2}, {"label": "解析", "start": 2, "duration": 4}, {"label": "保存", "start": 6, "duration": 1}]}
+    ]
+  },
+  {"id": "compare", "title": "件数の比較", "paragraphs": ["処理件数を並べて比べます。"], "figures": [{"id": "bars", "kind": "bars", "title": "処理件数", "summary": "解析が最も多い", "caption": "説明用の例です。実測値ではありません。", "status": "illustrative", "unit": "件", "rows": [{"label": "受付", "value": 2}, {"label": "解析", "value": 5}, {"label": "保存", "value": 3}]}, {"id": "table", "kind": "table", "title": "処理の対応表", "summary": "各段階の役割", "caption": "処理の内容を一覧にしています。", "status": "illustrative", "columns": ["段階", "内容"], "rows": [["受付", "入力を受け取る"], ["解析", "内容を読み取る"], ["保存", "結果を記録する"]]}]}
+  ]
+}

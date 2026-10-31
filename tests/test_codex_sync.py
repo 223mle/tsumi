@@ -12,7 +12,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 SYNC = ROOT / "scripts" / "sync-codex-skills"
 INSTALL = ROOT / "scripts" / "install-codex-sync"
-NAMES = ("unslop", "agent-design-review", "tsumi-mode")
+NAMES = ("unslop", "agent-design-review", "tsumi-mode", "html-explainer")
 
 
 class CodexSyncTest(unittest.TestCase):
