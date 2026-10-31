@@ -69,7 +69,7 @@ description はエージェントがスキルを読むかどうかを決める�
 - 個人用スキル（`~/.claude/skills`、`~/.codex/skills`）も CLI に読まれる。同じ名前のスキルがあると結果が混ざる。そこで、tsumi が持つファイルへの `must_read` は、tsumi のコピーを読んだときだけ合格にする。
 - 形式の検査（name の形、description の長さ、いつ使うかの記述）は `scripts/check-skills` が先に行う。
 
-今あるお題は16件。子スキルが単独で発動するか（agent-design-review で3件、unslop で4件、tsumi-reflect で2件）と、`/tsumi-mode` から状況に合う子スキルやプレイブック、pstack のスキルへ振り分けるか（tsumi-mode-001、003〜008）。pstack の `unslop` は tsumi の `unslop` と同じ名前なので、pstack のものを読まないことを確かめる検査は、glob に `*/pstack/*` を入れてパスで分ける。tsumi-mode 自身の発動は、コマンド専用であることを `scripts/check-skills` が確かめるので、お題にしない。実行は `evals/bin/run-trigger`。結果は DESIGN.md 12章にある。
+今あるお題は20件。子スキルが単独で発動するか（agent-design-review で3件、unslop で4件、tsumi-reflect で2件、html-explainer で4件）と、`/tsumi-mode` から状況に合う子スキルやプレイブック、pstack のスキルへ振り分けるか（tsumi-mode-001、003〜008）。pstack の `unslop` は tsumi の `unslop` と同じ名前なので、pstack のものを読まないことを確かめる検査は、glob に `*/pstack/*` を入れてパスで分ける。tsumi-mode 自身の発動は、コマンド専用であることを `scripts/check-skills` が確かめるので、お題にしない。実行は `evals/bin/run-trigger`。結果は DESIGN.md 12章にある。
 
 ### blinding の規則
 
