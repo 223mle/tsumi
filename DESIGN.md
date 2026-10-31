@@ -291,6 +291,7 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - 清書と起草の出力の評価は [evals/prose/results.md](evals/prose/results.md) にある。
 - 「Start from evals」節を足した版（d0ba2a0。コミット前に回し始めたので、結果の名前は e19e3dc-dirty）で、同じ条件で14件を各3回回し、42回すべて合格した（20261023-132734-e19e3dc-dirty-claude）。足したお題 tsumi-mode-008 は、変更前の版（e19e3dc にお題だけを足したもの）では1回回して落ちた。このとき読んだのは poteto-mode、Investigation プレイブック、agent-design-review で、`create-verification-skill` は読まなかった。
 - `tsumi-reflect` を足した版（e503d8f）で、同じ条件で16件を各3回回し、48回すべて合格した（20261023-133228-e503d8f-claude）。足したお題のうち tsumi-reflect-001 は、変更前の版（e19e3dc にお題だけを足したもの）では1回回して落ちた。このとき読んだのは `agent-design-review` だけで、reflect は読まなかった。tsumi-reflect-002 は読むべきでない依頼なので、変更前の版でも通る。
+- `html-explainer` を足し、`unslop` の description を一文の清書にも当てるよう直した版（0daae47）で、同じ条件で20件を各3回回し、60回すべて合格した（20261031-110910-0daae47-claude）。直す前の版（6becd2c）では、一文の清書を頼む html-explainer-002 で3回とも `unslop` を読まなかった。経緯は [evals/html/diagram-results.md](evals/html/diagram-results.md) にある。
 - Codex の同期（`scripts/install-codex-sync` と `scripts/sync-codex-skills`）は、`tsumi-reflect` を扱っていない。Codex では `tsumi-reflect` は読まれない。
 - main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。同じ理由で、CI の検査は結果を出すだけで、マージを止められない。
 

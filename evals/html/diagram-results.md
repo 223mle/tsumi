@@ -522,21 +522,23 @@ node scripts/check-diagrams.cjs /tmp/animated.html /tmp/animated-evidence
 
 同じシナリオでの新しい不明瞭点の推移は、5件・3件・3件・2件・5件・4件・0件・2件・3件・2件・2件・0件・1件・2件・1件・2件・1件・1件・1件・0件・0件・0件・2件・0件・0件。
 
-#### 呼び出しの代替確認（本物のトリガー評価ではない）
+#### 呼び出しの評価
 
-`evals/bin/run-trigger` は、ログイン済みの Claude CLI か Cursor CLI が要る。この環境では Claude CLI が未ログイン（`loggedIn: false`）で、Cursor CLI は入っていないため、本物のトリガー評価（`evals/cases/trigger-html-explainer-00{1..4}.yaml`、各3回）は実行していない。
+`evals/bin/run-trigger --harness claude`（Opus 5.5、pstack 0.15.25）で、`evals/cases/trigger-html-explainer-00{1..4}.yaml` を各3回回した。最初の実行（20261031-095910-6becd2c-claude）は12回中3回だけが合格だった。落ちた理由は次の2つで、html-explainer を読むか読まないかの判定は12回すべてで期待どおりだった。
 
-代わりに、各お題の依頼文と、このリポジトリで自動呼び出しされる4スキル（agent-design-review・html-explainer・tsumi-reflect・unslop）の description だけを、前の会話を持たない実行者に渡し、読む SKILL.md を答えさせた。お題ごとに別の実行者で3回。お題の判定条件（must_read／must_not_read）に照らすと、12回すべてが合格だった。
+- 001と004は、html-explainer（001では unslop も）を読んだあと HTML を作り終える前に、300秒の制限時間を超えた。制限時間を900秒にした再実行では、どちらも3/3で合格した（20261031-103413-6becd2c-claude）。
+- 002（一文だけの清書）では、3回とも unslop を読まずに直接答えた。unslop の本文は短い一文の依頼も扱うが、description が「チャットの返信には使わない」と書いていたため、会話で直した文を返す依頼まで対象外と読まれた。description に「直す対象が一文だけでも、直した文をこの会話で返すだけでも使う」と足し、除外は「Slack などに送る返信の文面」とした。直した版（0daae47）では、002 と unslop の4件がすべて3/3で合格した（20261031-110528-0daae47-claude）。unslop-002（事実確認）と unslop-004（コミットメッセージ）で unslop を読まないことも変わらなかった。
 
-| お題 | 判定条件 | 合格 |
-| --- | --- | --- |
-| 001 図解付きの単独HTML資料 | html-explainer と unslop を読む | 3/3 |
-| 002 文章だけの清書（HTMLや図は不要） | html-explainer を読まない、unslop を読む | 3/3 |
-| 003 ReactのWebアプリ実装 | html-explainer を読まない | 3/3 |
-| 004 1手ずつ進む図の解説ページ | html-explainer を読む | 3/3 |
+同じ版で全20件を各3回回した一括評価も、60回すべて合格した（20261031-110910-0daae47-claude）。
 
-この確認は、実際の Claude Code が読んだファイルを stream-json から判定するものではなく、description の書き分けで境界を判断できるかだけを見ている。ほかのプラグインやユーザーのスキルが並ぶ環境での発動は、ログイン後に `evals/bin/run-trigger --harness claude` で確かめる。
+| お題 | 判定条件 | 6becd2c（300秒） | 再実行（900秒） |
+| --- | --- | --- | --- |
+| 001 図解付きの単独HTML資料 | html-explainer と unslop を読む | 0/3（すべて時間切れ。読む判定は合格） | 3/3 |
+| 002 文章だけの清書（HTMLや図は不要） | html-explainer を読まない、unslop を読む | 0/3（unslop を読まない） | 3/3（0daae47） |
+| 003 ReactのWebアプリ実装 | html-explainer を読まない | 3/3 | — |
+| 004 1手ずつ進む図の解説ページ | html-explainer を読む | 0/3（すべて時間切れ。読む判定は合格） | 3/3 |
 
+その前に、Claude CLI が未ログインだったときの代わりとして、description だけを渡した実行者に読む SKILL.md を答えさせる確認をしていた（12回すべて合格）。この確認は002の失敗を見つけられなかった。description の文言だけを見る判定では、実際のモデルが一文の清書でスキルを呼ばずに答える動きは再現できない。
 
 ### コードの独立レビュー
 
