@@ -1,0 +1,11 @@
+id: trigger-prompt-polish-001
+title: やりたいことを伝えてプロンプトのブラッシュアップを頼むと prompt-polish を読む
+targets: [prompt-polish]
+tags: [trigger, ja, must-pass]
+source: 2026-11-17 の Daiki の依頼。「こういうことをやりたいけど、プロンプトをブラッシュアップして」と言ったら発動させる
+trials: 3
+prompt: |
+  社内の問い合わせログから、よく聞かれる質問を洗い出して FAQ の改訂案を作りたいです。Claude Code に頼むつもりで、今考えているのは「問い合わせログを分析して FAQ を直して」くらいです。このプロンプトをブラッシュアップしてください。
+checks:
+  - type: must_read
+    glob: "**/prompt-polish/SKILL.md"

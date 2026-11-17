@@ -116,7 +116,7 @@ python3 scripts/install-codex-sync
 
 ## スキル一覧
 
-入口は `tsumi-mode` で、コマンドで呼んだときだけ動きます。残りの3つは単独でも動き、tsumi-mode を付けなくても、依頼の内容に合えばエージェントが自分で読み込みます。
+入口は `tsumi-mode` で、コマンドで呼んだときだけ動きます。残りのスキルは単独でも動き、tsumi-mode を付けなくても、依頼の内容に合えばエージェントが自分で読み込みます。
 
 | スキル | 単独で読み込まれる場面 |
 |---|---|
@@ -124,6 +124,7 @@ python3 scripts/install-codex-sync
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | エージェントやスキルを設計するとき、設計を見直すとき、同じ間違いや出力のぶれが続くとき |
 | [`unslop`](skills/unslop/SKILL.md) | 日本語の文書を書くとき、「日本語を直して」「分かりやすくして」と頼んだとき |
 | [`html-explainer`](skills/html-explainer/SKILL.md) | 日本語の解説・設計説明を、図やアニメーションで仕組みが分かる単独HTML資料にするとき。冒頭に要点を置き、シーケンス図や経路図を1手ずつ進め、折れ線で逆転点を示し、用語と図を連動させます。図はスマートフォン用の配置にも切り替わります。unslopと組み合わせ、生成後に実描画を確認します |
+| [`prompt-polish`](skills/prompt-polish/SKILL.md) | やりたいことを伝えて「プロンプトをブラッシュアップして」と頼んだとき。Claude Opus 5.5 のエージェントに貼る日本語の依頼文を1本返し、置いた仮定と、範囲を広げる案を2〜3個添えます。システムプロンプトの改善と、Claude 以外のモデル向けのプロンプトでは読み込まれません |
 | [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | 会話の最後に「reflect して」と言ったとき。週報や振り返りの文書を書く依頼では読み込まれません |
 
 <details>
@@ -139,6 +140,7 @@ python3 scripts/install-codex-sync
 | スキル、プロンプト、ツール定義、スキーマを変えた | Eval プレイブック（回帰評価）。description を変えたら `scripts/check-skills` とトリガーお題も |
 | 人に回す出力を決める、人の修正が届く | Review triage プレイブック |
 | 日本語の文書を書く・直す（README、設計書、ADR、手順書、PR 説明など。コミット文は除く） | `unslop` |
+| やりたいことのメモや書きかけのプロンプトを、Claude Opus 5.5 のエージェントに貼る依頼文にする | `prompt-polish` |
 | それ以外（コード、設計、デバッグ、検証、PR） | pstack の `poteto-mode` の規則のまま |
 
 </details>

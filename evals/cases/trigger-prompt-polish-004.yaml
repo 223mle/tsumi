@@ -1,0 +1,13 @@
+id: trigger-prompt-polish-004
+title: システムプロンプトの改善では prompt-polish を読まない
+targets: [prompt-polish]
+tags: [trigger, ja]
+source: 2026-11-17 の Daiki の決定。システムプロンプトとエージェント定義の改善は agent-design-review の担当にする
+trials: 3
+prompt: |
+  問い合わせ対応ボットのシステムプロンプトに注意書きを足し続けた結果、同じ間違いが減りません。設計から見直してください。
+
+  あなたは問い合わせ対応の担当です。敬語で答えてください。返金の質問には答えないでください。注意: 返金の質問には絶対に答えないでください。注意: 金額を書かないでください。
+checks:
+  - type: must_not_read
+    glob: "**/prompt-polish/SKILL.md"

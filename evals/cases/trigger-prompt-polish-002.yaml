@@ -1,0 +1,13 @@
+id: trigger-prompt-polish-002
+title: モデルを指定せずに書きかけのプロンプトを磨く依頼で prompt-polish を読む
+targets: [prompt-polish]
+tags: [trigger, ja]
+source: 2026-11-17 の Daiki の決定。モデルの指定がないプロンプト改善の依頼でも発動させる
+trials: 3
+prompt: |
+  エージェントに作業を任せるときに貼る、次のプロンプトを磨いてください。
+
+  このリポジトリのテストが遅いので速くして。
+checks:
+  - type: must_read
+    glob: "**/prompt-polish/SKILL.md"

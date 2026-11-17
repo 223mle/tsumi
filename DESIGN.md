@@ -1,6 +1,6 @@
 # tsumi 設計
 
-更新 2026-10-23（JST）。
+更新 2026-11-17（JST）。
 
 ラベルの意味は次の通り。
 
@@ -28,6 +28,7 @@
 - 作業は評価から始める（2026-10-23 の Daiki の決定。4.5）。作る・直す・変える作業すべてで、先に合格の定義（A）を書き、次に実物を動かして証拠を取る仕組み（B）を用意する。4段とは軸が違う。4段は修正を置く場所の順番で、こちらは作業の順番である。
 - tsumi は、トップの実践と、Daiki とエージェントの対話の記録から育てる（同日の Daiki の決定。4.6）。当面は poteto の投稿と pstack を起点にし、今後もトップのブログやスキルから取り込む。
 - 対話の記録が tsumi に入る入口は `tsumi-reflect` だけにする（同日の Daiki の決定。4.6）。材料は reflect をしたスレッドだけで、複数のスレッドをまとめて読み直すことはしない。
+- やりたいことのメモや書きかけのプロンプトを、Claude Opus 5.5 のエージェントに貼る依頼文にする作業は `prompt-polish` に集める（2026-11-17 の Daiki の決定。4.7）。
 
 ## 1. 読んだもの
 
@@ -36,6 +37,7 @@
 - 223mle/skills（public、最新コミット 43e6320、2026-10-18 00:06 JST）。7スキルの SKILL.md と、clear-japanese と agent-design-review の参照ファイルを全部読んだ（measured）。
 - Agent Skills の公式ドキュメント3ページ。要点は `docs/skill-authoring.md`（measured）。
 - pstack v0.15.25 の `technical-writing` と `unslop` の SKILL.md を全部読んだ（measured、2026-10-22）。
+- Felix Rieseberg の記事、Thariq Shihipar の記事2本、Anthropic の公式ドキュメント2ページ（Prompting best practices と Prompting Claude Opus 5.5）。要点は `skills/prompt-polish/references/` の3ファイルにあり、URL は各ファイルの末尾に書いた（measured、2026-11-17。サブエージェントが取得した要約を読んだもので、原文の全文は確かめていない）。
 - poteto の投稿 2111133080526495985。原文と図は box の `/workspace/dstack/research/` にある。図は poteto の著作物なので、このリポジトリには入れていない。
 
 ## 2. pstack の構造（要点、measured）
@@ -64,6 +66,7 @@
 | `agent-design-review` | エージェントやスキルの設計と改善。4段の中身（呼び出し側からの道具設計、モデルと道具の契約、再発した修正の追い方） | 223mle/skills から移した | 読まれる |
 | `unslop` | 日本語の文書の起草と清書。pstack の `technical-writing` と `unslop` の代わり | 223mle/skills から移した `clear-japanese` を改名して広げた | 読まれる |
 | `tsumi-reflect` | pstack の `reflect` に tsumi の追加分を当てる。対話の記録が tsumi に入る唯一の入口 | 新規。`overlays/reflect.md` の中身を移した | 読まれる |
+| `prompt-polish` | やりたいことのメモや書きかけのプロンプトを、Claude Opus 5.5 のエージェントに貼る日本語の依頼文にする | 新規。記事2本と公式ドキュメントの要点を参照ファイルにした | 読まれる |
 
 ### 4.0 tsumi-mode をルーターにした理由
 
@@ -151,6 +154,7 @@ tsumi に書いた Daiki の考えは、次から取った（measured）。
 - `tsumi-mode` の description はモデルに見えず、`/` メニューに出るだけなので、英語で役割と呼び方だけを書いた。
 - `unslop` は全文日本語。`clear-japanese` のときのまま。
 - スキル本文も 223mle/skills に合わせた。`unslop` は日本語、それ以外は英語。223mle/skills の README は英語にする理由を「トークン効率と小型モデルでの追従性のため」と書いている（measured）。
+- `prompt-polish` は description も本文も日本語にした。出力する依頼文が日本語で、発動させたい言い回し（「プロンプトをブラッシュアップして」）も日本語だからである。`html-explainer` も同じ理由で日本語になっている。
 
 ### 4.4 tsumi-mode だけをコマンド専用にした理由
 
@@ -188,6 +192,19 @@ Daiki の狙いは、tsumi を、Daiki とエージェントの対話の記録�
 - reflect は `tsumi-reflect` という別の名前の子スキルにし、`overlays/reflect.md` は中身を移して消した。overlay は tsumi-mode の Non-negotiables からしか読まれないので、tsumi-mode を使っていない会話で `/pstack:reflect` を打つと、tsumi の追加分が働かなかった。pstack と同じ名前にしなかったのは、同じ名前のスキルの動きを Cursor では確かめておらず、Codex では同じ名前のスキルを1つしか置けないため（4.2）。子スキルなので `disable-model-invocation` は付けない（`scripts/check-skills` が強制する）。頼んでいないのに動く恐れは、description に「明示的に reflect と言ったとき」と書き、読むべきでない依頼のお題（tsumi-reflect-002）で見張る。
 - pstack の reflect の手順4は、lint やスクリプトで強制したほうが確実なものを保留に移す（measured）。tsumi はこれを変え、PR に収まる小さな仕組みの対策（評価のお題、`check-skills` の検査、スキーマの1項目など）は、Daiki の承認を得てスキルの修正と同じ PR に入れる。収まらないものだけを保留として記録する。仕組みで直すことを最優先にする4段の考え方と、pstack の手順4が逆を向いていたため。
 
+### 4.7 prompt-polish で決めたこと
+
+2026-11-17 の Daiki との問答で決めた。
+
+- **扱うのは、ツールを使える Claude Opus 5.5 のセッションに貼る1回分の依頼文だけにする。** Felix Rieseberg の記事と Thariq Shihipar の記事は、どちらもエージェントに作業を任せる使い方を前提にしている。システムプロンプト、エージェント定義、SKILL.md の改善は `agent-design-review` が持つので、発動させない。Claude 以外のモデルを名指しした依頼でも発動させない。
+- **質問は、答えで依頼文の構成が変わる点だけにする。** 読めば分かる事実は先に調べ、残った点を1問ずつ最大3問聞く。残りは仮定を置き、依頼文の外に並べる。
+- **完成版は1本で、依頼の範囲を保つ。** Felix の記事の3方向のうち、深さ（生の材料、専門家の道具、外の判定者）は依頼文に入れる。範囲が広がる高度と幅は、依頼文の外に2〜3案を添え、選ばれたら書き直す。頼んだ作業と別の作業が出てくることを防ぐためである。
+- **依頼文は日本語で書く。** 貼る前に Daiki が読んで直せることを優先した。
+- **資料が食い違うときは、公式ドキュメントを優先する。** 食い違いは2か所あった。Felix の記事は外の判定者を置くよう述べ、公式ドキュメントは「最後に検証して」という指示が検証のしすぎを招くとしている。そこで、完了の判定手段（テスト、コマンド、照合するデータ）を書き、自己点検の念押しは書かないことにした。もう1か所は、Felix の記事がモデルの「できない」を押し返すよう述べ、公式ドキュメントが強調のための語は効きすぎるとしている点である。高い目標は数値と理由で書き、強調のための語は使わないことにした。
+- **分からないことが多い依頼では、質問を増やさない。** 依頼文の最初の段に、着手前にすること（盲点の洗い出し、試作、1問ずつの聞き取り）を書く。Thariq の記事の発見の段階を、このスキルの中でやり直さない。
+- **出力の品質の評価は、この版では作らない**（同日の Daiki の決定）。発動の評価だけを行い、出力はお題を通した結果を Daiki が読んで判断する。
+- 名前にモデル名を入れなかった。Opus の次の版が出たら、`references/opus-5-5.md` を差し替える。
+
 ## 5. pstack への上書き（脇役）
 
 dyl-stack の同名プレイブック上書きと同じ仕組みを使う。pstack のスキルを使うとき、`tsumi-mode/overlays/<スキル名>.md` があれば本体のあとに読む。食い違ったら overlay が勝つ。
@@ -222,6 +239,8 @@ tsumi/
       SKILL.md  references/
     tsumi-reflect/
       SKILL.md
+    prompt-polish/
+      SKILL.md  references/
   scripts/
     check-skills          # name、description、manifest の機械的な検査
     install-hooks
@@ -292,12 +311,13 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - 「Start from evals」節を足した版（d0ba2a0。コミット前に回し始めたので、結果の名前は e19e3dc-dirty）で、同じ条件で14件を各3回回し、42回すべて合格した（20261023-132734-e19e3dc-dirty-claude）。足したお題 tsumi-mode-008 は、変更前の版（e19e3dc にお題だけを足したもの）では1回回して落ちた。このとき読んだのは poteto-mode、Investigation プレイブック、agent-design-review で、`create-verification-skill` は読まなかった。
 - `tsumi-reflect` を足した版（e503d8f）で、同じ条件で16件を各3回回し、48回すべて合格した（20261023-133228-e503d8f-claude）。足したお題のうち tsumi-reflect-001 は、変更前の版（e19e3dc にお題だけを足したもの）では1回回して落ちた。このとき読んだのは `agent-design-review` だけで、reflect は読まなかった。tsumi-reflect-002 は読むべきでない依頼なので、変更前の版でも通る。
 - `html-explainer` を足し、`unslop` の description を一文の清書にも当てるよう直した版（0daae47）で、同じ条件で20件を各3回回し、60回すべて合格した（20261031-110910-0daae47-claude）。直す前の版（6becd2c）では、一文の清書を頼む html-explainer-002 で3回とも `unslop` を読まなかった。経緯は [evals/html/diagram-results.md](evals/html/diagram-results.md) にある。
-- Codex の同期（`scripts/install-codex-sync` と `scripts/sync-codex-skills`）は、`tsumi-reflect` を扱っていない。Codex では `tsumi-reflect` は読まれない。
+- Codex の同期（`scripts/install-codex-sync` と `scripts/sync-codex-skills`）は、`tsumi-reflect` と `prompt-polish` を扱っていない。Codex では、この2つは読まれない。
+- `prompt-polish` の参照ファイルは、記事と公式ドキュメントをサブエージェントが取得してまとめた要約から書いた。原文の全文との照合はしていない。出力の品質の評価もない（4.7）。
 - main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。同じ理由で、CI の検査は結果を出すだけで、マージを止められない。
 
 ## 13. 引用元の著作権表示
 
-この文書の2章と3章は、pstack と dyl-stack の文を短く引用し、要約している。tsumi のスキルには、両者の文章を写していない。`agent-design-review` と `unslop`（旧 `clear-japanese`）は 223mle/skills（MIT、Copyright (c) 2026 223mle）から移した。`unslop` の `references/doc-types.md` と、参照ファイルに足した規則の一部は、pstack の `technical-writing` と `unslop` の考え方を日本語の例に置き換えて書いた。223mle は Daiki 本人のアカウント。
+この文書の2章と3章は、pstack と dyl-stack の文を短く引用し、要約している。tsumi のスキルには、両者の文章を写していない。`agent-design-review` と `unslop`（旧 `clear-japanese`）は 223mle/skills（MIT、Copyright (c) 2026 223mle）から移した。`unslop` の `references/doc-types.md` と、参照ファイルに足した規則の一部は、pstack の `technical-writing` と `unslop` の考え方を日本語の例に置き換えて書いた。`prompt-polish` の参照ファイルは、Felix Rieseberg の記事、Thariq Shihipar の記事、Anthropic の公式ドキュメントの考え方を自分の言葉で要約したもので、原文を写していない。出典は各ファイルの末尾にある。223mle は Daiki 本人のアカウント。
 
 pstack（https://github.com/cursor/plugins/tree/main/pstack）
 

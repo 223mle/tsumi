@@ -1,0 +1,15 @@
+id: trigger-prompt-polish-006
+title: プロンプトではない文章のブラッシュアップでは prompt-polish を読まず unslop を読む
+targets: [prompt-polish, unslop]
+tags: [trigger, ja]
+source: 手書き。「ブラッシュアップ」という同じ語で頼む、文章の清書との境界
+trials: 3
+prompt: |
+  次のお知らせ文をブラッシュアップしてください。
+
+  来週の水曜日に、オフィスの入退室カードが新しいものに切り替わります。新しいカードは総務から配布されます。古いカードは切り替えの日から使用することができなくなります。
+checks:
+  - type: must_not_read
+    glob: "**/prompt-polish/SKILL.md"
+  - type: must_read
+    glob: "**/unslop/SKILL.md"

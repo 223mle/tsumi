@@ -1,0 +1,13 @@
+id: trigger-prompt-polish-005
+title: Claude 以外のモデルを名指ししたプロンプトの改善では prompt-polish を読まない
+targets: [prompt-polish]
+tags: [trigger, ja]
+source: 2026-11-17 の Daiki の決定。GPT や Gemini など他のモデルを名指しした依頼は対象外にする
+trials: 3
+prompt: |
+  Gemini の画像生成に渡す次のプロンプトを改善してください。
+
+  夕焼けの海辺を歩く柴犬、水彩画風。
+checks:
+  - type: must_not_read
+    glob: "**/prompt-polish/SKILL.md"
