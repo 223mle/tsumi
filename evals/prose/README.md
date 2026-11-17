@@ -36,6 +36,7 @@ Claude Code で実行する場合は、インストール済みの unslop が自
 | coined-term | 2026-10-22 | どの版も落ちなかった。造語の失敗は coined-term-draft で捕まえる | 3/3→3/3 |
 | notice | 2026-10-27 | 独立した仕様の配置と因果を作らない条件を adr-structure に移した | 2026-10-27 の比較は [当時の results.md](https://github.com/223mle/tsumi/blob/abd898a/evals/prose/results.md) を参照 |
 | coined-term-draft | 2026-10-27 | 初出定義を reader-scope に残し、確認先と個別例の扱いへ範囲を広げた | 2026-10-27 の比較は [当時の results.md](https://github.com/223mle/tsumi/blob/abd898a/evals/prose/results.md) を参照 |
+| retention | 2026-11-17 | 2回の全件評価で、どの版も落ちなかった。trivial-pr-draft を足すために外した | 3/3→3/3 |
 
 ## Codex CLI で再実行する
 

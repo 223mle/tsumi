@@ -1,0 +1,13 @@
+id: trigger-unslop-005
+title: 変更をコミットして PR を作る依頼で、PR 説明を書く前に unslop を読む
+targets: [unslop]
+tags: [trigger, ja]
+source: 2026-11-17 の reflect。PR を作る途中で自分が書く PR 説明で unslop を読まなかった（skill-description-not-a-trigger の3回目）。trigger-unslop-004（コミットメッセージでは読まない）と対にする
+trials: 3
+prompt: |
+  次の変更をコミットして、ドラフトの PR を作ってください。コマンドを実行できない場合は、PR のタイトルと説明の文面だけ書いてください。
+
+  検索結果の一覧で、1ページに表示する件数を20件から50件に変えた。利用者から、ページ送りが多いと言われていたため。変えたのは `config/search.toml` の `page_size` だけ。
+checks:
+  - type: must_read
+    glob: "**/unslop/SKILL.md"
