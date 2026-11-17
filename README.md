@@ -114,7 +114,7 @@ When you start a task, put `/tsumi-mode` (in Claude Code, `/tsumi:tsumi-mode`) b
 
 ## Skills
 
-The entry point is `tsumi-mode`, which runs only when you invoke it by command. The other three also work alone: the agent loads them when your request matches, with or without tsumi-mode.
+The entry point is `tsumi-mode`, which runs only when you invoke it by command. The others also work alone: the agent loads them when your request matches, with or without tsumi-mode.
 
 | skill | loads on its own when |
 |---|---|
@@ -122,6 +122,7 @@ The entry point is `tsumi-mode`, which runs only when you invoke it by command. 
 | [`agent-design-review`](skills/agent-design-review/SKILL.md) | you design an agent or skill, review a design, or keep seeing the same mistake or drifting output. |
 | [`unslop`](skills/unslop/SKILL.md) | you write a Japanese document, or ask to fix or clarify Japanese text. |
 | [`html-explainer`](skills/html-explainer/SKILL.md) | you ask for a Japanese explanatory HTML document with diagrams or animation. Opens with the key points, steps through sequences and request paths one message at a time, shows break-even points on line charts, links glossary terms to the diagram, switches figures to phone layouts, and checks the page in a browser. Uses unslop. |
+| [`prompt-polish`](skills/prompt-polish/SKILL.md) | you describe what you want done and ask to polish the prompt. Returns one Japanese task prompt to paste into a Claude Opus 5.5 agent session, the assumptions it made, and two or three ways to raise the ambition. Not for system prompts or prompts for non-Claude models. |
 | [`tsumi-reflect`](skills/tsumi-reflect/SKILL.md) | you say "reflect" at the end of a conversation. Not for weekly reports or retrospectives. |
 
 <details>
@@ -137,6 +138,7 @@ The entry point is `tsumi-mode`, which runs only when you invoke it by command. 
 | a skill, prompt, tool definition, or schema changed | the Eval playbook (regression evals). If a description changed, also `scripts/check-skills` and the trigger cases |
 | deciding which outputs go to a human, or a human correction arrives | the Review triage playbook |
 | writing or fixing a Japanese document (README, design doc, ADR, how-to, PR description; not commit messages) | `unslop` |
+| turning a rough idea or a draft prompt into a task prompt for a Claude Opus 5.5 agent session | `prompt-polish` |
 | anything else (code, design, debugging, verification, PRs) | pstack's `poteto-mode` rules, unchanged |
 
 </details>

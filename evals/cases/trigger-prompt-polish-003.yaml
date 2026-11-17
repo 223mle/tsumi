@@ -1,0 +1,13 @@
+id: trigger-prompt-polish-003
+title: Opus 5.5 に任せる作業の依頼文を作る依頼で prompt-polish を読む
+targets: [prompt-polish]
+tags: [trigger, ja]
+source: 手書き。「プロンプト」という語を使わず、依頼文を作ってほしいと頼む言い方
+trials: 3
+prompt: |
+  Opus 5.5 に次の作業を任せたいです。一番よい結果が出るように、渡す依頼文を作ってください。
+
+  四半期の売上データ（CSV）から、解約が増えた原因を調べてレポートにまとめる。
+checks:
+  - type: must_read
+    glob: "**/prompt-polish/SKILL.md"
