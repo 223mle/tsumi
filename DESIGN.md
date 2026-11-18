@@ -1,6 +1,6 @@
 # tsumi 設計
 
-更新 2026-11-17（JST）。
+更新 2026-11-18（JST）。
 
 ラベルの意味は次の通り。
 
@@ -311,6 +311,12 @@ LICENSE は未決なので置いていない。`research/` は調査メモで、
 - 「Start from evals」節を足した版（d0ba2a0。コミット前に回し始めたので、結果の名前は e19e3dc-dirty）で、同じ条件で14件を各3回回し、42回すべて合格した（20261023-132734-e19e3dc-dirty-claude）。足したお題 tsumi-mode-008 は、変更前の版（e19e3dc にお題だけを足したもの）では1回回して落ちた。このとき読んだのは poteto-mode、Investigation プレイブック、agent-design-review で、`create-verification-skill` は読まなかった。
 - `tsumi-reflect` を足した版（e503d8f）で、同じ条件で16件を各3回回し、48回すべて合格した（20261023-133228-e503d8f-claude）。足したお題のうち tsumi-reflect-001 は、変更前の版（e19e3dc にお題だけを足したもの）では1回回して落ちた。このとき読んだのは `agent-design-review` だけで、reflect は読まなかった。tsumi-reflect-002 は読むべきでない依頼なので、変更前の版でも通る。
 - `html-explainer` を足し、`unslop` の description を一文の清書にも当てるよう直した版（0daae47）で、同じ条件で20件を各3回回し、60回すべて合格した（20261031-110910-0daae47-claude）。直す前の版（6becd2c）では、一文の清書を頼む html-explainer-002 で3回とも `unslop` を読まなかった。経緯は [evals/html/diagram-results.md](evals/html/diagram-results.md) にある。
+- `prompt-polish` を足した版（06fef26）で、同じ条件で27件を各3回回し、81回中70回合格した（20261117-152550-06fef26-claude）。足した6件（prompt-polish-001〜006）は18回すべて合格した。合格しなかった5件は次の通りで、`prompt-polish` を足したことによる回帰は見つかっていない。
+  - html-explainer-001 と 004 は、6回すべてが制限時間（300秒）で打ち切られた。エージェントが HTML を最後まで作ろうとするためである。`html-explainer` は6回とも読んでいた。001 の1回は、`unslop` を読む前に打ち切られた。足す前の版（eb3e4f3 に PR #18 の作業中の変更が入った状態）でも、001 は3回中2回、004 は3回中1回が打ち切られていた（20261117-102423-eb3e4f3-dirty-claude）。
+  - tsumi-mode-004 は3回中1回落ちた。落ちた回は `agent-design-review/SKILL.md` を Bash の `cat` で読んでいた。判定は Read と Skill の呼び出ししか数えないので、読んでいても不合格になる。Claude Code 2.1.322 では、読み取りだけの Bash コマンドは `--permission-mode dontAsk` でも通る。
+  - tsumi-reflect-001 は3回中2回落ちた。1回は pstack の `reflect` を `cat` で読んでいて、もう1回は読んでいなかった。足す前の版でも3回中2回落ちていた（同じ 20261117-102423 の実行）。
+  - unslop-005 は3回中2回、PR 説明を書く前に `unslop` を読まなかった。このお題だけを6回ずつ回し直すと、足す前の版（ded5c93）は3回、足した版は2回の合格だった（20261117-164004-ded5c93-claude と 20261117-164005-06fef26-claude）。足す前から半分ほどしか読まない。
+- 上の実行で、評価の側に直していない点が3つ残っている。判定が Bash での読み込みを数えないこと、html-explainer の発動のお題が300秒で終わらないこと、PR 説明の前に `unslop` を読む率が低いことである。
 - Codex の同期（`scripts/install-codex-sync` と `scripts/sync-codex-skills`）は、`tsumi-reflect` と `prompt-polish` を扱っていない。Codex では、この2つは読まれない。
 - `prompt-polish` の参照ファイルは、記事と公式ドキュメントをサブエージェントが取得してまとめた要約から書いた。原文の全文との照合はしていない。出力の品質の評価もない（4.7）。
 - main のブランチ保護は GitHub 側でかけられなかった（private リポジトリの無料プラン）。代わりの pre-push フックは手元だけの仕組み。同じ理由で、CI の検査は結果を出すだけで、マージを止められない。
